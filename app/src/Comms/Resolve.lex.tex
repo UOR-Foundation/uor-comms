@@ -1,0 +1,29 @@
+\begin{lexlean}{Comms.Resolve}
+\useglossary{lexlean.std.bool@1.2.0}
+\useglossary{lexlean.std.nat@1.2.0}
+\title{Boolean}
+\begin{semanticmodule}
+definition{
+  name: merge,
+  parameters: [a : Nat, b : Nat],
+  result: Nat,
+  body: (if (a <=? b) then b else a)
+}
+
+definition{
+  name: resolve,
+  parameters: [events : (List Nat), seed : Nat],
+  result: Nat,
+  body: (match events | List.nil => seed | List.cons head rest => (merge head (resolve rest seed))),
+  recursive_argument: events
+}
+
+definition{
+  name: joined,
+  parameters: [left : (List Nat), right : (List Nat)],
+  result: (List Nat),
+  body: (match left | List.nil => right | List.cons head rest => (cons head (joined rest right))),
+  recursive_argument: left
+}
+\end{semanticmodule}
+\end{lexlean}

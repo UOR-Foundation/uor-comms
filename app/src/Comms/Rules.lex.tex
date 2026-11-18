@@ -1,0 +1,48 @@
+\begin{lexlean}{Comms.Rules}
+\useglossary{lexlean.std.bool@1.2.0}
+\useglossary{lexlean.std.nat@1.2.0}
+\title{Boolean}
+\begin{semanticmodule}
+definition{name: absent, parameters: [], result: Nat, body: 0}
+
+definition{name: invited, parameters: [], result: Nat, body: 1}
+
+definition{name: joined, parameters: [], result: Nat, body: 2}
+
+definition{name: departed, parameters: [], result: Nat, body: 3}
+
+definition{name: banned, parameters: [], result: Nat, body: 4}
+
+definition{name: actJoin, parameters: [], result: Nat, body: 0}
+
+definition{name: actLeave, parameters: [], result: Nat, body: 1}
+
+definition{name: actInvite, parameters: [], result: Nat, body: 2}
+
+definition{name: actKick, parameters: [], result: Nat, body: 3}
+
+definition{name: actBan, parameters: [], result: Nat, body: 4}
+
+definition{name: actUnban, parameters: [], result: Nat, body: 5}
+
+definition{name: actSend, parameters: [], result: Nat, body: 6}
+
+definition{name: actSetPower, parameters: [], result: Nat, body: 7}
+
+definition{
+  name: permitted,
+  parameters: [
+    action : Nat,
+    senderStatus : Nat,
+    senderPower : Nat,
+    targetStatus : Nat,
+    targetPower : Nat,
+    required : Nat,
+    open : Nat,
+    grantedPower : Nat
+  ],
+  result: Bool,
+  body: (((action =? 0) && ((senderStatus =? 1) || ((open =? 1) && ((senderStatus =? 0) || (senderStatus =? 3))))) || (((action =? 1) && ((senderStatus =? 1) || (senderStatus =? 2))) || ((senderStatus =? 2) && ((required <=? senderPower) && (((action =? 2) && ((targetStatus =? 0) || (targetStatus =? 3))) || (((action =? 3) && ((targetPower <? senderPower) && ((targetStatus =? 1) || (targetStatus =? 2)))) || (((action =? 4) && ((targetPower <? senderPower) && ((targetStatus <? 4) || (4 <? targetStatus)))) || (((action =? 5) && (targetStatus =? 4)) || ((action =? 6) || ((action =? 7) && ((targetPower <? senderPower) && (grantedPower <=? senderPower))))))))))))
+}
+\end{semanticmodule}
+\end{lexlean}

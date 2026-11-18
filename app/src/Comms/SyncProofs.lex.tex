@@ -1,0 +1,31 @@
+\begin{lexlean}{Comms.SyncProofs}
+\useglossary{lexlean.std.bool@1.2.0}
+\useglossary{lexlean.std.nat@1.2.0}
+\importmodule{Comms.Sync}
+\title{Boolean}
+\begin{semanticmodule}
+theorem{
+  name: equalHeadsMoveNothing,
+  parameters: [head : Nat],
+  statement: ((Comms.Sync::bytesMove head head) = false),
+  proof: linear_arithmetic{definitions: [Comms.Sync::bytesMove]},
+  axioms: [propext]
+}
+
+theorem{
+  name: emptyOfferWantsNothing,
+  parameters: [store : (List Nat)],
+  statement: ((Comms.Sync::wanted (nil Nat) store) = (nil Nat)),
+  proof: simplify{definitions: [Comms.Sync::wanted]},
+  axioms: [propext]
+}
+
+theorem{
+  name: heldContentIsNotFetchedAgain,
+  parameters: [kappa : Nat, rest : (List Nat), offered : (List Nat)],
+  statement: ((Comms.Sync::wanted (cons kappa offered) (cons kappa rest)) = (Comms.Sync::wanted offered (cons kappa rest))),
+  proof: linear_arithmetic{definitions: [Comms.Sync::holds, Comms.Sync::wanted]},
+  axioms: [propext]
+}
+\end{semanticmodule}
+\end{lexlean}

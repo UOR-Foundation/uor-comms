@@ -25,17 +25,65 @@
 # `Result` only when a row here declares it and the negative test exists. A type
 # is declared once. Nothing else sanctions a type: there is no list in the gate.
 #
-# The first row is the template's own Prism application in `app/` (TC-01).
+# The first rows are this repository's Prism application in `app/`, the room kernel (RK-01 to RK-09).
 # A capability starts with a row here; `just new-capability` writes the row,
 # its scenario and its failing test in the order `AGENTS.md` sets out.
 
 spec = "template/1"
 
 [[id]]
-id = "TC-01"
+id = "RK-01"
 level = "build"
-suite = "contract"
-statement = "The checker answers conformant exactly when every universal policy file's observed digest equals its locked digest"
+suite = "room"
+statement = "An event is admitted only when its address matches, it is signed, its device may sign, its parents are known and it is permitted"
+
+[[id]]
+id = "RK-02"
+level = "build"
+suite = "room"
+statement = "Only a joined member with the required power writes, and nobody removes a member of equal or higher power"
+
+[[id]]
+id = "RK-03"
+level = "build"
+suite = "room"
+statement = "Candidates for a state key are in a strict total order by rank then address, and the word-by-word comparison of the kernel is that order"
+
+[[id]]
+id = "RK-04"
+level = "build"
+suite = "room"
+statement = "The resolved state does not depend on the order or repetition of delivery"
+
+[[id]]
+id = "RK-05"
+level = "build"
+suite = "room"
+statement = "A member holds no key from before joining unless history is shared, and none from removal onward"
+
+[[id]]
+id = "RK-06"
+level = "build"
+suite = "room"
+statement = "A call connects only through an answer, an ended call stays ended, and the two sides never both yield when calls cross"
+
+[[id]]
+id = "RK-07"
+level = "build"
+suite = "room"
+statement = "A permitted ban leaves the member banned, a refused event changes nothing, and only joining makes a member"
+
+[[id]]
+id = "RK-08"
+level = "build"
+suite = "room"
+statement = "Equal heads move no bytes and content already held is not requested again"
+
+[[id]]
+id = "RK-09"
+level = "build"
+suite = "room"
+statement = "The kernel answers each of its six questions with the function the theorems are about, and invalid request for anything else"
 
 [[id]]
 id = "FR-01"

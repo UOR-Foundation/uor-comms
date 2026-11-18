@@ -1,0 +1,90 @@
+\begin{lexlean}{Comms.MemberProofs}
+\useglossary{lexlean.std.bool@1.2.0}
+\useglossary{lexlean.std.nat@1.2.0}
+\importmodule{Comms.Member}
+\importmodule{Comms.Rules}
+\title{Boolean}
+\begin{semanticmodule}
+definition{
+  name: statusAfter,
+  parameters: [actions : (List Nat), start : Nat],
+  result: Nat,
+  body: (match actions
+    | List.nil => start
+    | List.cons head rest => (Comms.Member::nextStatus head (statusAfter rest start))),
+  recursive_argument: actions
+}
+
+theorem{
+  name: statusStaysInRange,
+  parameters: [action : Nat, targetStatus : Nat],
+  statement: (((targetStatus <=? 4) && (4 <? (Comms.Member::nextStatus action targetStatus))) = false),
+  proof: linear_arithmetic{definitions: [Comms.Member::nextStatus]},
+  axioms: [Quot.sound, propext]
+}
+
+theorem{
+  name: banLeavesBanned,
+  parameters: [targetStatus : Nat],
+  statement: ((Comms.Member::nextStatus 4 targetStatus) = 4),
+  proof: linear_arithmetic{definitions: [Comms.Member::nextStatus]},
+  axioms: [Quot.sound, propext]
+}
+
+theorem{
+  name: onlyJoiningMakesAMember,
+  parameters: [action : Nat, targetStatus : Nat],
+  statement: ((((Comms.Member::nextStatus action targetStatus) =? 2) && ((0 <? action) && ((targetStatus <? 2) || (2 <? targetStatus)))) = false),
+  proof: linear_arithmetic{definitions: [Comms.Member::nextStatus]},
+  axioms: [Quot.sound, propext]
+}
+
+theorem{
+  name: refusedEventChangesNothing,
+  parameters: [action : Nat, targetStatus : Nat],
+  statement: ((Comms.Member::applied 0 action targetStatus) = targetStatus),
+  proof: linear_arithmetic{definitions: [Comms.Member::applied, Comms.Member::nextStatus]},
+  axioms: [Quot.sound, propext]
+}
+
+theorem{
+  name: powerChangesOnlyByPowerChange,
+  parameters: [action : Nat, targetPower : Nat, grantedPower : Nat],
+  statement: ((((Comms.Member::nextPower action targetPower grantedPower) =? targetPower) || (action =? 7)) = true),
+  proof: linear_arithmetic{definitions: [Comms.Member::nextPower]},
+  axioms: [Quot.sound, propext]
+}
+
+theorem{
+  name: newestBanDecides,
+  parameters: [earlier : (List Nat), start : Nat],
+  statement: ((statusAfter (cons 4 earlier) start) = 4),
+  proof: linear_arithmetic{definitions: [Comms.Member::nextStatus, statusAfter]},
+  axioms: [Quot.sound, propext]
+}
+
+theorem{
+  name: bannedMemberIsNotInvitedOrKicked,
+  parameters: [
+    action : Nat,
+    senderStatus : Nat,
+    senderPower : Nat,
+    targetPower : Nat,
+    required : Nat,
+    open : Nat,
+    grantedPower : Nat
+  ],
+  statement: (((Comms.Rules::permitted action senderStatus senderPower 4 targetPower required open grantedPower) && ((action =? 2) || (action =? 3))) = false),
+  proof: linear_arithmetic{definitions: [Comms.Rules::permitted]},
+  axioms: [Quot.sound, propext]
+}
+
+theorem{
+  name: permittedBanTakesEffect,
+  parameters: [targetStatus : Nat],
+  statement: ((Comms.Member::applied 1 4 targetStatus) = 4),
+  proof: linear_arithmetic{definitions: [Comms.Member::applied, Comms.Member::nextStatus]},
+  axioms: [Quot.sound, propext]
+}
+\end{semanticmodule}
+\end{lexlean}

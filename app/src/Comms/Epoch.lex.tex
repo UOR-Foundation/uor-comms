@@ -1,0 +1,15 @@
+\begin{lexlean}{Comms.Epoch}
+\useglossary{lexlean.std.bool@1.2.0}
+\useglossary{lexlean.std.nat@1.2.0}
+\title{Boolean}
+\begin{semanticmodule}
+definition{name: nextEpoch, parameters: [epoch : Nat], result: Nat, body: (epoch + 1)}
+
+definition{
+  name: holdsKey,
+  parameters: [joinedAt : Nat, leftAt : Nat, messageEpoch : Nat, historyShared : Nat],
+  result: Bool,
+  body: (((joinedAt <=? messageEpoch) || (historyShared =? 1)) && (messageEpoch <? leftAt))
+}
+\end{semanticmodule}
+\end{lexlean}

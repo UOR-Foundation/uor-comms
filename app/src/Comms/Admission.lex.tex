@@ -1,0 +1,19 @@
+\begin{lexlean}{Comms.Admission}
+\useglossary{lexlean.std.bool@1.2.0}
+\useglossary{lexlean.std.nat@1.2.0}
+\title{Boolean}
+\begin{semanticmodule}
+definition{
+  name: admitted,
+  parameters: [
+    addressMatches : Nat,
+    signatureValid : Nat,
+    deviceMaySign : Nat,
+    parentsKnown : Nat,
+    permitted : Nat
+  ],
+  result: Bool,
+  body: ((addressMatches =? 1) && ((signatureValid =? 1) && ((deviceMaySign =? 1) && ((parentsKnown =? 1) && (permitted =? 1)))))
+}
+\end{semanticmodule}
+\end{lexlean}

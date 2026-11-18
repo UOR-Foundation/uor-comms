@@ -44,11 +44,10 @@ test:
 # supplied by the locked SDK.
 deny:
     cargo deny --all-features check
-
-# The template's own Prism application, the contract checker. The model must
+# This repository's Prism application, the room kernel. The model must
 # be canonical and locked. `prismpm verify` builds the holo, replaying its
 # acceptance vectors in the compiled guest, then has the Lean kernel and
-# leanchecker check every theorem (`TC-01`) and the generated code against the
+# leanchecker check every theorem (`RK-01` to `RK-09`) and the generated code against the
 # model. It runs the build itself, so a separate `prismpm build` would repeat it.
 #
 # A pull request, a merge queue run and a main push may reuse a kept proof;

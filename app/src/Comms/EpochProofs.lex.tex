@@ -1,0 +1,47 @@
+\begin{lexlean}{Comms.EpochProofs}
+\useglossary{lexlean.std.bool@1.2.0}
+\useglossary{lexlean.std.nat@1.2.0}
+\importmodule{Comms.Epoch}
+\title{Boolean}
+\begin{semanticmodule}
+theorem{
+  name: membershipChangeRotatesKey,
+  parameters: [epoch : Nat],
+  statement: ((epoch <? (Comms.Epoch::nextEpoch epoch)) = true),
+  proof: linear_arithmetic{definitions: [Comms.Epoch::nextEpoch]},
+  axioms: [Quot.sound, propext]
+}
+
+theorem{
+  name: joinerCannotReadEarlier,
+  parameters: [joinedAt : Nat, leftAt : Nat, messageEpoch : Nat],
+  statement: (((Comms.Epoch::holdsKey joinedAt leftAt messageEpoch 0) && (messageEpoch <? joinedAt)) = false),
+  proof: linear_arithmetic{definitions: [Comms.Epoch::holdsKey]},
+  axioms: [Quot.sound, propext]
+}
+
+theorem{
+  name: removedMemberCannotReadLater,
+  parameters: [joinedAt : Nat, leftAt : Nat, messageEpoch : Nat, historyShared : Nat],
+  statement: (((Comms.Epoch::holdsKey joinedAt leftAt messageEpoch historyShared) && (leftAt <=? messageEpoch)) = false),
+  proof: linear_arithmetic{definitions: [Comms.Epoch::holdsKey]},
+  axioms: [Quot.sound, propext]
+}
+
+theorem{
+  name: removalEpochIsUnreadable,
+  parameters: [joinedAt : Nat, epoch : Nat, historyShared : Nat],
+  statement: ((Comms.Epoch::holdsKey joinedAt (Comms.Epoch::nextEpoch epoch) (Comms.Epoch::nextEpoch epoch) historyShared) = false),
+  proof: linear_arithmetic{definitions: [Comms.Epoch::holdsKey, Comms.Epoch::nextEpoch]},
+  axioms: [Quot.sound, propext]
+}
+
+theorem{
+  name: currentMemberReadsFromJoining,
+  parameters: [joinedAt : Nat, leftAt : Nat, historyShared : Nat],
+  statement: (((leftAt <=? joinedAt) || (Comms.Epoch::holdsKey joinedAt leftAt joinedAt historyShared)) = true),
+  proof: linear_arithmetic{definitions: [Comms.Epoch::holdsKey]},
+  axioms: [Classical.choice, Quot.sound, propext]
+}
+\end{semanticmodule}
+\end{lexlean}

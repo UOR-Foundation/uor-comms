@@ -1,0 +1,55 @@
+\begin{lexlean}{Comms.AdmissionProofs}
+\useglossary{lexlean.std.bool@1.2.0}
+\useglossary{lexlean.std.nat@1.2.0}
+\importmodule{Comms.Admission}
+\title{Boolean}
+\begin{semanticmodule}
+theorem{
+  name: tamperedEventRefused,
+  parameters: [signatureValid : Nat, deviceMaySign : Nat, parentsKnown : Nat, permitted : Nat],
+  statement: ((Comms.Admission::admitted 0 signatureValid deviceMaySign parentsKnown permitted) = false),
+  proof: linear_arithmetic{definitions: [Comms.Admission::admitted]},
+  axioms: [Quot.sound, propext]
+}
+
+theorem{
+  name: unsignedEventRefused,
+  parameters: [addressMatches : Nat, deviceMaySign : Nat, parentsKnown : Nat, permitted : Nat],
+  statement: ((Comms.Admission::admitted addressMatches 0 deviceMaySign parentsKnown permitted) = false),
+  proof: linear_arithmetic{definitions: [Comms.Admission::admitted]},
+  axioms: [Quot.sound, propext]
+}
+
+theorem{
+  name: removedDeviceRefused,
+  parameters: [addressMatches : Nat, signatureValid : Nat, parentsKnown : Nat, permitted : Nat],
+  statement: ((Comms.Admission::admitted addressMatches signatureValid 0 parentsKnown permitted) = false),
+  proof: linear_arithmetic{definitions: [Comms.Admission::admitted]},
+  axioms: [Quot.sound, propext]
+}
+
+theorem{
+  name: orphanEventRefused,
+  parameters: [addressMatches : Nat, signatureValid : Nat, deviceMaySign : Nat, permitted : Nat],
+  statement: ((Comms.Admission::admitted addressMatches signatureValid deviceMaySign 0 permitted) = false),
+  proof: linear_arithmetic{definitions: [Comms.Admission::admitted]},
+  axioms: [Quot.sound, propext]
+}
+
+theorem{
+  name: unpermittedEventRefused,
+  parameters: [addressMatches : Nat, signatureValid : Nat, deviceMaySign : Nat, parentsKnown : Nat],
+  statement: ((Comms.Admission::admitted addressMatches signatureValid deviceMaySign parentsKnown 0) = false),
+  proof: linear_arithmetic{definitions: [Comms.Admission::admitted]},
+  axioms: [Quot.sound, propext]
+}
+
+theorem{
+  name: soundEventAdmitted,
+  parameters: [],
+  statement: ((Comms.Admission::admitted 1 1 1 1 1) = true),
+  proof: reflexivity{},
+  axioms: []
+}
+\end{semanticmodule}
+\end{lexlean}

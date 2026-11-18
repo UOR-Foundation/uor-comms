@@ -1,0 +1,33 @@
+\begin{lexlean}{Comms.Sync}
+\useglossary{lexlean.std.bool@1.2.0}
+\useglossary{lexlean.std.nat@1.2.0}
+\title{Boolean}
+\begin{semanticmodule}
+definition{
+  name: holds,
+  parameters: [store : (List Nat), kappa : Nat],
+  result: Bool,
+  body: (match store
+    | List.nil => false
+    | List.cons head rest => (if (head =? kappa) then true else (holds rest kappa))),
+  recursive_argument: store
+}
+
+definition{
+  name: wanted,
+  parameters: [offered : (List Nat), store : (List Nat)],
+  result: (List Nat),
+  body: (match offered
+    | List.nil => (nil Nat)
+    | List.cons head rest => (if (holds store head) then (wanted rest store) else (cons head (wanted rest store)))),
+  recursive_argument: offered
+}
+
+definition{
+  name: bytesMove,
+  parameters: [localHead : Nat, remoteHead : Nat],
+  result: Bool,
+  body: (if (localHead =? remoteHead) then false else true)
+}
+\end{semanticmodule}
+\end{lexlean}

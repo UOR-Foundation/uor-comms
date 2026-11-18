@@ -18,12 +18,6 @@ The three honesty levels (R2):
 `cargo xtask audit-limits` fails if any code path returns an error the
 model does not sanction.
 
-## contract
-
-| ID | Level | Statement |
-| --- | --- | --- |
-| `TC-01` | `build` | The checker answers conformant exactly when every universal policy file's observed digest equals its locked digest |
-
 ## frame
 
 | ID | Level | Statement |
@@ -33,6 +27,20 @@ model does not sanction.
 | `FR-03` | `build` | A first visit's bytes are counted once the page has started, the frame's and the app's each within its own budget |
 | `FR-04` | `build` | An app's workspace key opens only on a device of the Prism ID that made it, follows the ID when it joins or is recovered, and stays locked on a removed device |
 | `FR-05` | `build` | An app's pages on every device of one Prism ID meet on a relay topic only those devices derive, per app, with every message sealed to the ID, and a removed device is left behind |
+
+## room
+
+| ID | Level | Statement |
+| --- | --- | --- |
+| `RK-01` | `build` | An event is admitted only when its address matches, it is signed, its device may sign, its parents are known and it is permitted |
+| `RK-02` | `build` | Only a joined member with the required power writes, and nobody removes a member of equal or higher power |
+| `RK-03` | `build` | Candidates for a state key are in a strict total order by rank then address, and the word-by-word comparison of the kernel is that order |
+| `RK-04` | `build` | The resolved state does not depend on the order or repetition of delivery |
+| `RK-05` | `build` | A member holds no key from before joining unless history is shared, and none from removal onward |
+| `RK-06` | `build` | A call connects only through an answer, an ended call stays ended, and the two sides never both yield when calls cross |
+| `RK-07` | `build` | A permitted ban leaves the member banned, a refused event changes nothing, and only joining makes a member |
+| `RK-08` | `build` | Equal heads move no bytes and content already held is not requested again |
+| `RK-09` | `build` | The kernel answers each of its six questions with the function the theorems are about, and invalid request for anything else |
 
 ## Cited authorities
 
