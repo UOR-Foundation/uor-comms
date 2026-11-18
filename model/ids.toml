@@ -25,7 +25,7 @@
 # `Result` only when a row here declares it and the negative test exists. A type
 # is declared once. Nothing else sanctions a type: there is no list in the gate.
 #
-# The first rows are this repository's Prism application in `app/`, the room kernel (RK-01 to RK-12).
+# The first rows are this repository's Prism application in `app/`, the room kernel (RK-01 to RK-13).
 # A capability starts with a row here; `just new-capability` writes the row,
 # its scenario and its failing test in the order `AGENTS.md` sets out.
 
@@ -102,6 +102,12 @@ id = "RK-12"
 level = "build"
 suite = "room"
 statement = "An event is composed only when its action is permitted and its form is canonical, the sent event replaces the head it cites, and a send is stored only once signed and announced only once stored"
+
+[[id]]
+id = "RK-13"
+level = "build"
+suite = "room"
+statement = "Only a joined member with the power to send redacts, their own event with that alone and another's only with the redaction power; a redacted event shows no content and is not fetched, in whatever order redactions arrive, and a redaction changes no member's status or power"
 
 [[id]]
 id = "FR-01"

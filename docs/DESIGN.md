@@ -55,7 +55,7 @@ Judging against cited evidence, and not against "current" state, is what makes a
 | Words | Field |
 |---|---|
 | 0 | version, 1 |
-| 1 | action, 0 to 7 as in `Comms.Rules` |
+| 1 | action, 0 to 7 as in `Comms.Rules`, 8 for a redaction |
 | 2 to 5 | room |
 | 6 to 9 | sender |
 | 10 to 13 | device |
@@ -66,9 +66,11 @@ Judging against cited evidence, and not against "current" state, is what makes a
 | 24 | number of authority words |
 | then | parents, then authorities |
 
-An event has one byte form. Parents and authorities are each in ascending order of address, which also refuses an address named twice and a list that is not whole addresses; each list holds at most 20 addresses. The version must be 1 and the action below 8. Decoding the bytes returns every word below 2^64 unchanged.
+An event has one byte form. Parents and authorities are each in ascending order of address, which also refuses an address named twice and a list that is not whole addresses; each list holds at most 20 addresses. The version must be 1 and the action below 9. Decoding the bytes returns every word below 2^64 unchanged.
 
 **Sending.** `Comms.Send` composes an event only when `Comms.Rules` permits the action against the sender's state and the form is canonical; otherwise it returns no bytes. The host then reports three steps in order: signed, stored, announced. The core asks for one step at a time, a report for any other step changes nothing, and so an address is announced only after its bytes are stored. The sent event becomes a head of the room and the heads it cites stop being heads.
+
+**Redaction.** A redaction is an event with action 8 whose target is the address of the event it redacts (`Comms.Redact`). Only a joined member with the power to send may redact: their own event with that alone, another member's only with the room's redaction power. A peer keeps the set of events redacted. An event in that set shows no content and its content is not fetched; the event record itself stays, so its address, its place in the graph and its effect on membership and power do not change. The set only grows, and the order and number of times redactions arrive make no difference. This follows Matrix in substance; Matrix strips keys from a plaintext event, and here the content is a separate encrypted object that is simply dropped.
 
 **Resolved state.** For each state key, every admitted candidate gets an ordering key built from its rank and its address (`Comms.Order`). Rank puts changes to membership and power ahead of everything else, then the sender's power. The address breaks ties, and addresses are unique, so the order is total. The resolved value is the greatest candidate (`Comms.Resolve`). Timestamps play no part.
 
@@ -92,6 +94,7 @@ An event has one byte form. Parents and authorities are each in ascending order 
 
 - Whether the address covers the signature. `Comms.Event` fixes the bytes that are signed; the signature's own bytes and where they travel are not specified.
 - The creating event: it has no parents and cannot name its own address as its room.
+- Whether a redaction is applied before the event it names arrives, and how a peer learns that the redactor sent that event. `Comms.Redact` takes "own" as an input.
 - Reading an event back into fields, and refusing a byte length that is not whole words. `decode` returns words and drops up to seven trailing bytes.
 - The kernel does not yet answer compose or decode; `Comms.Event` and `Comms.Send` are model and theorems only.
 - The ban race: a ban and an event from the banned member that do not see each other. Rank decides it; the security argument is not proved.

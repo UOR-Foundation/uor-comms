@@ -45,12 +45,10 @@ fn scenario(id: &str) {
         .find(|scenario| scenario.starts_with(id))
         .unwrap_or_else(|| panic!("{id} has no scenario"));
     let mut pins = 0;
-    for step in steps.lines() {
-        let (head, text, exact) = match (step.split_once(" states "), step.split_once(" contains "))
-        {
-            (Some((head, text)), _) => (head, text, true),
-            (None, Some((head, text))) => (head, text, false),
-            _ => continue,
+    for (step, exact) in steps.lines().map(|s| (s, s.contains(" states "))) {
+        let mark = [" contains ", " states "][usize::from(exact)];
+        let Some((head, text)) = step.split_once(mark) else {
+            continue;
         };
         let mut words = head.split(' ').rev();
         let (file, name) = (words.next().unwrap(), words.nth(1).unwrap());
@@ -103,4 +101,6 @@ mod pins {
     fn room_rk_11() { scenario("RK-11") }
     #[test]
     fn room_rk_12() { scenario("RK-12") }
+    #[test]
+    fn room_rk_13() { scenario("RK-13") }
 }

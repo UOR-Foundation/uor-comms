@@ -1,0 +1,133 @@
+\begin{lexlean}{Comms.RedactProofs}
+\useglossary{lexlean.std.bool@1.2.0}
+\useglossary{lexlean.std.nat@1.2.0}
+\importmodule{Comms.Event}
+\importmodule{Comms.Redact}
+\importmodule{Comms.Rules}
+\importmodule{Comms.State}
+\importmodule{Comms.Sync}
+\title{Boolean}
+\begin{semanticmodule}
+theorem{
+  name: onlyJoinedMembersRedact,
+  parameters: [senderStatus : Nat, senderPower : Nat, required : Nat, redactPower : Nat, own : Nat],
+  statement: (((not (senderStatus =? 2)) && (Comms.Redact::allowed senderStatus senderPower required redactPower own)) = false),
+  proof: linear_arithmetic{definitions: [Comms.Redact::allowed]},
+  axioms: [Quot.sound, propext]
+}
+
+theorem{
+  name: ownEventNeedsOnlySendingPower,
+  parameters: [senderStatus : Nat, senderPower : Nat, required : Nat, redactPower : Nat, own : Nat],
+  statement: (((senderStatus =? 2) && ((required <=? senderPower) && ((own =? 1) && (not (Comms.Redact::allowed senderStatus senderPower required redactPower own))))) = false),
+  proof: linear_arithmetic{definitions: [Comms.Redact::allowed]},
+  axioms: [Classical.choice, Quot.sound, propext]
+}
+
+theorem{
+  name: anothersEventNeedsPower,
+  parameters: [senderStatus : Nat, senderPower : Nat, required : Nat, redactPower : Nat, own : Nat],
+  statement: (((not (own =? 1)) && ((senderPower <? redactPower) && (Comms.Redact::allowed senderStatus senderPower required redactPower own))) = false),
+  proof: linear_arithmetic{definitions: [Comms.Redact::allowed]},
+  axioms: [Quot.sound, propext]
+}
+
+theorem{
+  name: redactionNeedsSendingPower,
+  parameters: [senderStatus : Nat, senderPower : Nat, required : Nat, redactPower : Nat, own : Nat],
+  statement: (((senderPower <? required) && (Comms.Redact::allowed senderStatus senderPower required redactPower own)) = false),
+  proof: linear_arithmetic{definitions: [Comms.Redact::allowed]},
+  axioms: [Quot.sound, propext]
+}
+
+theorem{
+  name: redactionNeedsCanonicalForm,
+  parameters: [
+    senderStatus : Nat,
+    senderPower : Nat,
+    required : Nat,
+    redactPower : Nat,
+    own : Nat,
+    parents : (List Nat),
+    authorities : (List Nat)
+  ],
+  statement: ((Comms.Redact::mayCompose 2 senderStatus senderPower required redactPower own parents authorities) = false),
+  proof: linear_arithmetic{definitions: [Comms.Event::canonical, Comms.Redact::mayCompose]},
+  axioms: [Quot.sound, propext]
+}
+
+theorem{
+  name: bannedMemberRedactsNothing,
+  parameters: [senderPower : Nat, required : Nat, redactPower : Nat, own : Nat],
+  statement: ((Comms.Redact::allowed 4 senderPower required redactPower own) = false),
+  proof: linear_arithmetic{definitions: [Comms.Redact::allowed]},
+  axioms: [Quot.sound, propext]
+}
+
+theorem{
+  name: redactedContentIsGone,
+  parameters: [rest : (List Nat), event : Nat, content : Nat],
+  statement: ((Comms.Redact::shown (cons event rest) event content) = 0),
+  proof: linear_arithmetic{definitions: [Comms.Redact::shown]},
+  axioms: [propext]
+}
+
+theorem{
+  name: laterRedactionUndoesNone,
+  parameters: [rest : (List Nat), other : Nat, event : Nat, content : Nat],
+  statement: ((Comms.Redact::shown (cons other (cons event rest)) event content) = 0),
+  proof: linear_arithmetic{definitions: [Comms.Redact::shown]},
+  axioms: [Quot.sound, propext]
+}
+
+theorem{
+  name: redeliveredRedactionChangesNothing,
+  parameters: [rest : (List Nat), again : Nat, event : Nat, content : Nat],
+  statement: ((Comms.Redact::shown (cons again (cons again rest)) event content) = (Comms.Redact::shown (cons again rest) event content)),
+  proof: linear_arithmetic{definitions: [Comms.Redact::shown]},
+  axioms: [Quot.sound, propext]
+}
+
+theorem{
+  name: redactionOrderChangesNothing,
+  parameters: [rest : (List Nat), earlier : Nat, later : Nat, event : Nat, content : Nat],
+  statement: ((Comms.Redact::shown (cons earlier (cons later rest)) event content) = (Comms.Redact::shown (cons later (cons earlier rest)) event content)),
+  proof: linear_arithmetic{definitions: [Comms.Redact::shown]},
+  axioms: [Quot.sound, propext]
+}
+
+theorem{
+  name: redactionTouchesOnlyItsEvent,
+  parameters: [rest : (List Nat), other : Nat, event : Nat, content : Nat],
+  statement: (((other =? event) || ((Comms.Redact::shown (cons other rest) event content) =? (Comms.Redact::shown rest event content))) = true),
+  proof: linear_arithmetic{definitions: [Comms.Redact::shown]},
+  axioms: [Quot.sound, propext]
+}
+
+theorem{
+  name: redactedContentIsNotFetched,
+  parameters: [rest : (List Nat), event : Nat, content : Nat, store : (List Nat)],
+  statement: ((Comms.Redact::fetched (cons event rest) event content store) = false),
+  proof: linear_arithmetic{definitions: [Comms.Redact::fetched, Comms.Sync::holds]},
+  axioms: [propext]
+}
+
+theorem{
+  name: redactionChangesNoMember,
+  parameters: [
+    field : Nat,
+    isSubject : Bool,
+    senderStatus : Nat,
+    senderPower : Nat,
+    targetStatus : Nat,
+    targetPower : Nat,
+    required : Nat,
+    open : Nat,
+    grantedPower : Nat
+  ],
+  statement: ((Comms.State::step field isSubject 8 senderStatus senderPower targetStatus targetPower required open grantedPower) = (if (field =? 0) then targetStatus else targetPower)),
+  proof: linear_arithmetic{definitions: [Comms.Rules::permitted, Comms.State::step]},
+  axioms: [Quot.sound, propext]
+}
+\end{semanticmodule}
+\end{lexlean}

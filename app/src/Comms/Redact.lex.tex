@@ -1,0 +1,65 @@
+\begin{lexlean}{Comms.Redact}
+\useglossary{lexlean.std.bool@1.2.0}
+\useglossary{lexlean.std.nat@1.2.0}
+\importmodule{Comms.Event}
+\importmodule{Comms.Sync}
+\title{Boolean}
+\begin{semanticmodule}
+definition{name: actRedact, parameters: [], result: Nat, body: 8}
+
+definition{
+  name: allowed,
+  parameters: [senderStatus : Nat, senderPower : Nat, required : Nat, redactPower : Nat, own : Nat],
+  result: Bool,
+  body: ((senderStatus =? 2) && ((required <=? senderPower) && ((own =? 1) || (redactPower <=? senderPower))))
+}
+
+definition{
+  name: mayCompose,
+  parameters: [
+    version : Nat,
+    senderStatus : Nat,
+    senderPower : Nat,
+    required : Nat,
+    redactPower : Nat,
+    own : Nat,
+    parents : (List Nat),
+    authorities : (List Nat)
+  ],
+  result: Bool,
+  body: ((allowed senderStatus senderPower required redactPower own) && (Comms.Event::canonical version 8 parents authorities))
+}
+
+definition{
+  name: recorded,
+  parameters: [
+    redacted : (List Nat),
+    event : Nat,
+    senderStatus : Nat,
+    senderPower : Nat,
+    required : Nat,
+    redactPower : Nat,
+    own : Nat
+  ],
+  result: (List Nat),
+  body: (if (allowed senderStatus senderPower required redactPower own) then (cons event redacted) else redacted)
+}
+
+definition{
+  name: shown,
+  parameters: [redacted : (List Nat), event : Nat, content : Nat],
+  result: Nat,
+  body: (match redacted
+    | List.nil => content
+    | List.cons head rest => (if (head =? event) then 0 else (shown rest event content))),
+  recursive_argument: redacted
+}
+
+definition{
+  name: fetched,
+  parameters: [redacted : (List Nat), event : Nat, content : Nat, store : (List Nat)],
+  result: Bool,
+  body: (if (Comms.Sync::holds redacted event) then false else (if (Comms.Sync::holds store content) then false else true))
+}
+\end{semanticmodule}
+\end{lexlean}

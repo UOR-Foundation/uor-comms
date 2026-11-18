@@ -3,11 +3,11 @@
 Last run: 2026-11-18, the `build` workflow of this repository, `just app` in the SDK image `prismpm.lock` pins, Lean 4.32.1.
 Result: `19 modules are canonical`, `verified attestation: a43e6052f386c4caddb0498f476e3856c2e3ffc733a5c94cb55fccdf834f7ed7`, provenance signed, [run 44301638095](https://github.com/UOR-Foundation/uor-comms/actions/runs/44301638095). That run was of a throwaway commit holding these same model files; the run of the commit that carries this document is named in the pull request.
 
-That run covered the 58 theorems of the first eight proof modules. The 14 theorems of `Comms.StateProofs` were added afterwards: the gate run of the pull request that adds them is the run that proves them, and it is named there. The 20 theorems of `Comms.EventProofs` and `Comms.SendProofs` were added after that in the same way.
+That run covered the 58 theorems of the first eight proof modules. The 14 theorems of `Comms.StateProofs` were added afterwards: the gate run of the pull request that adds them is the run that proves them, and it is named there. The 20 theorems of `Comms.EventProofs` and `Comms.SendProofs` were added after that in the same way, and then the 13 of `Comms.RedactProofs`.
 
 "Proved" means Lean accepted the theorem in that run. "Tested" means an acceptance vector was replayed in the compiled guest in that run. Each theorem declares the exact axioms Lean observed (`propext`, `Quot.sound`, `Classical.choice`, or none).
 
-## Proved (92 theorems)
+## Proved (105 theorems)
 
 | Module | Theorems | What they say |
 |---|---|---|
@@ -30,6 +30,9 @@ That run covered the 58 theorems of the first eight proof modules. The 14 theore
 | `Comms.SendProofs` | `composedExactlyWhenPermittedAndCanonical`, `bannedSenderComposesNothing`, `wrongVersionComposesNothing` | An event is composed exactly when the permission rule allows the action and the form is canonical; never for a banned sender or another version |
 | | `sentEventBecomesAHead`, `soleHeadIsReplaced` | The sent event is a head afterwards; a room with one head, cited, is left with the sent event alone |
 | | `announcedOnlyAfterStored`, `storedOnlyAfterSigned`, `sendNeverStepsBack`, `wrongReportChangesNothing`, `announceIsAskedOnlyOnceStored` | A send reaches stored only from signed and announced only from stored, never moves back, ignores a report for any other step, and asks for the announcement only once stored |
+| `Comms.RedactProofs` | `onlyJoinedMembersRedact`, `bannedMemberRedactsNothing`, `redactionNeedsSendingPower`, `ownEventNeedsOnlySendingPower`, `anothersEventNeedsPower`, `redactionNeedsCanonicalForm` | Only a joined member with the power to send redacts; their own event needs nothing more, another member's needs the redaction power; a redaction of another version is not composed |
+| | `redactedContentIsGone`, `laterRedactionUndoesNone`, `redeliveredRedactionChangesNothing`, `redactionOrderChangesNothing`, `redactionTouchesOnlyItsEvent`, `redactedContentIsNotFetched` | A redacted event shows no content, a later redaction of another event does not bring it back, a redaction delivered twice or two delivered in either order give the same result, a redaction changes no other event, and redacted content is not fetched |
+| | `redactionChangesNoMember` | A redaction changes no member's status or power |
 | `Comms.SyncProofs` | `equalHeadsMoveNothing`, `emptyOfferWantsNothing`, `heldContentIsNotFetchedAgain` | Equal heads send nothing; held content is never requested |
 | `Comms.CallProofs` | `endedCallStaysEnded`, `hangUpAlwaysEnds`, `stateStaysInRange`, `noConnectionFromIdle`, `callerConnectsOnlyWhenAnswered`, `calleeConnectsOnlyByAccepting`, `crossedCallsNeverBothYield`, `crossedCallsOneSideYields`, `namedStatesMatch` | A call connects only through an answer and ends for good; when calls cross exactly one side yields |
 
@@ -57,6 +60,7 @@ The expected answers were computed by a script that restates the rules in JavaSc
 - **The fold over a set of events.** `Comms.State` folds a list in a given order. That the order `Comms.Order` gives makes the result the same on every peer is not stated as a theorem. That applying an event twice changes nothing was tried and is not proved.
 - **One byte form for every event.** The theorems cover one word, one list of words and pairs of addresses. That two different well-formed events never share bytes is not stated as one theorem, and that two ascending lists with the same addresses are equal is not proved.
 - **Heads in general.** That every cited head stops being a head and every other head stays is proved for a room with one head only; the general statements were tried and are not proved.
+- **Redaction over any history.** That a redaction stays in force is proved for the next redaction that arrives, not by induction over every later one; order and redelivery are proved for neighbours at the front of the list. The model does not check that the redactor sent the event ("own" is an input), and the kernel does not answer redaction.
 - **The length of an event.** `layout` joins the lists it is given. That room, sender, device, target and content are four words each is not checked, and `decode` drops up to seven trailing bytes without refusing them.
 - **That the host sends as the model does.** `Comms.Send` says when an event is composed and in what order it is signed, stored and announced. The kernel does not answer these yet and nothing checks a host against them.
 - **Room settings as events.** The required power and whether the room is open are fixed for the fold. Events that change them, and a required power per action, are not modelled.
@@ -74,5 +78,5 @@ The expected answers were computed by a script that restates the rules in JavaSc
 ## Not done
 
 - No host: nothing stores events, moves bytes, encrypts or draws a screen. The send path is modelled; receiving, and reading an event back into fields, are not.
-- Knock, space-restricted joins, redaction, reporting, presence, per-user synced data and profiles are not in the model.
+- Knock, space-restricted joins, reporting, presence, per-user synced data and profiles are not in the model.
 - Hosted-prover runs made while developing are diagnostics; only the build workflow's run is cited above.
