@@ -704,12 +704,19 @@ pub mod prism {
         Html,
     }
 
+    /// The comment syntax of `path` if it is non-Prism implementation this gate counts.
+    ///
+    /// Nothing under `host/` is counted. The owner decided on 2026-11-18 that the messenger's
+    /// host is built in this repository: the driver that stores, sends, signs and encrypts what
+    /// the LexLean core asks for cannot be written in Prism, which has no storage or network.
+    /// The exemption is that folder only. Every decision stays in the model under `app/`, and
+    /// everything outside `host/` stays under this gate.
     fn language(path: &str) -> Option<Comments> {
         let name = path.rsplit('/').next().unwrap_or(path);
         let (_, extension) = name.rsplit_once('.')?;
         LANGUAGES
             .iter()
-            .find(|(e, _)| *e == extension)
+            .find(|(e, _)| *e == extension && !path.starts_with("host/"))
             .map(|(_, c)| *c)
     }
 
