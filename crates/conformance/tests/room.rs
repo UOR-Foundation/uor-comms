@@ -278,5 +278,8 @@ fn room_rk_09() {
     let vectors = declaration(&kernel, "application")
         .matches("AcceptanceVector {request := 0x")
         .count();
-    assert!(vectors >= 28, "the holo carries {vectors} acceptance vectors");
+    assert!(
+        vectors >= 28,
+        "the holo carries {vectors} acceptance vectors"
+    );
 }
