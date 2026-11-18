@@ -83,7 +83,7 @@ statement = "Equal heads move no bytes and content already held is not requested
 id = "RK-09"
 level = "build"
 suite = "room"
-statement = "The kernel answers each of its six questions with the function the theorems are about, and invalid request for anything else"
+statement = "The kernel answers each of its nine questions with the function the theorems are about, and invalid request for anything else"
 
 [[id]]
 id = "RK-10"

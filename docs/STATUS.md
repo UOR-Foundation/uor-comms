@@ -36,9 +36,9 @@ That run covered the 58 theorems of the first eight proof modules. The 14 theore
 | `Comms.SyncProofs` | `equalHeadsMoveNothing`, `emptyOfferWantsNothing`, `heldContentIsNotFetchedAgain` | Equal heads send nothing; held content is never requested |
 | `Comms.CallProofs` | `endedCallStaysEnded`, `hangUpAlwaysEnds`, `stateStaysInRange`, `noConnectionFromIdle`, `callerConnectsOnlyWhenAnswered`, `calleeConnectsOnlyByAccepting`, `crossedCallsNeverBothYield`, `crossedCallsOneSideYields`, `namedStatesMatch` | A call connects only through an answer and ends for good; when calls cross exactly one side yields |
 
-## Tested (29 acceptance vectors)
+## Tested (42 acceptance vectors)
 
-The holo's entry point, `RoomKernel.dispatch`, answers six operations. The vectors are in the `application` record of `app/src/RoomKernel.lex.tex` and were replayed in the compiled guest.
+The holo's entry point, `RoomKernel.dispatch`, answers nine operations. The vectors are in the `application` record of `app/src/RoomKernel.lex.tex` and were replayed in the compiled guest.
 
 | Operation | Vectors | Covers |
 |---|---|---|
@@ -48,7 +48,10 @@ The holo's entry point, `RoomKernel.dispatch`, answers six operations. The vecto
 | Key | 4 | inside membership; before joining with and without shared history; at removal |
 | Call | 4 | answer connects; ended stays ended; idle ignores an answer; accepting connects |
 | Member | 3 | permitted ban; refused ban; accepted invitation |
-| Invalid | 4 | empty; unknown operation; wrong length; a request at the guest's allocation bound |
+| Redact | 5 | another member's event with and without the redaction power; own event; banned sender; own event below the power to send |
+| Send | 5 | signed, stored and announced in turn; a report for another step; no report |
+| Heads | 2 | equal heads; different heads |
+| Invalid | 5 | empty; unknown operation; wrong length, twice; a request at the guest's allocation bound |
 
 The expected answers were computed by a script that restates the rules in JavaScript; the replay is what checks them against the model.
 
@@ -60,9 +63,9 @@ The expected answers were computed by a script that restates the rules in JavaSc
 - **The fold over a set of events.** `Comms.State` folds a list in a given order. That the order `Comms.Order` gives makes the result the same on every peer is not stated as a theorem. That applying an event twice changes nothing was tried and is not proved.
 - **One byte form for every event.** The theorems cover one word, one list of words and pairs of addresses. That two different well-formed events never share bytes is not stated as one theorem, and that two ascending lists with the same addresses are equal is not proved.
 - **Heads in general.** That every cited head stops being a head and every other head stays is proved for a room with one head only; the general statements were tried and are not proved.
-- **Redaction over any history.** That a redaction stays in force is proved for the next redaction that arrives, not by induction over every later one; order and redelivery are proved for neighbours at the front of the list. The model does not check that the redactor sent the event ("own" is an input), and the kernel does not answer redaction.
+- **Redaction over any history.** That a redaction stays in force is proved for the next redaction that arrives, not by induction over every later one; order and redelivery are proved for neighbours at the front of the list. The model does not check that the redactor sent the event ("own" is an input). The kernel answers who may redact, not what a redacted event shows.
 - **The length of an event.** `layout` joins the lists it is given. That room, sender, device, target and content are four words each is not checked, and `decode` drops up to seven trailing bytes without refusing them.
-- **That the host sends as the model does.** `Comms.Send` says when an event is composed and in what order it is signed, stored and announced. The kernel does not answer these yet and nothing checks a host against them.
+- **That the host sends as the model does.** `Comms.Send` says when an event is composed and in what order it is signed, stored and announced. The kernel answers the order of the three steps. It does not compose an event: a request is at most 256 bytes, and an event with its parents and authorities is up to 1,480.
 - **Room settings as events.** The required power and whether the room is open are fixed for the fold. Events that change them, and a required power per action, are not modelled.
 - **The ban race.** A ban and an event from the banned member that do not see each other are settled by rank; the security argument is not proved.
 - **The planted-defect check** was run in a scaffold before this repository existed, not through this gate.

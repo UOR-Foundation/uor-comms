@@ -96,7 +96,7 @@ An event has one byte form. Parents and authorities are each in ascending order 
 - The creating event: it has no parents and cannot name its own address as its room.
 - Whether a redaction is applied before the event it names arrives, and how a peer learns that the redactor sent that event. `Comms.Redact` takes "own" as an input.
 - Reading an event back into fields, and refusing a byte length that is not whole words. `decode` returns words and drops up to seven trailing bytes.
-- The kernel does not yet answer compose or decode; `Comms.Event` and `Comms.Send` are model and theorems only.
+- The kernel does not compose or decode an event. Its request bound is 256 bytes and an event is up to 1,480; raising the bound, and reading an event into fields, come first.
 - The ban race: a ban and an event from the banned member that do not see each other. Rank decides it; the security argument is not proved.
 - Group keys between users: how a room key is wrapped to each member's devices.
 - Confirming that a contact's Prism ID is theirs.

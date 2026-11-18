@@ -384,6 +384,9 @@ to ask, so it asks the kernel: one request, one decision.
 | Hold a key | `04` | 26 | `holds`, `withheld` |
 | Step a call | `05` | 3 | `idle`, `calling`, `ringing`, `connected`, `ended` |
 | Step a membership | `06` | 4 | `absent`, `invited`, `joined`, `departed`, `banned` |
+| Permit a redaction | `07` | 27 | `permitted`, `refused` |
+| Step a send | `08` | 3 | `sign`, `store`, `announce`, `nothing` |
+| Compare heads | `09` | 65 | `fetch`, `nothing` |
 
 Anything else is answered `invalid request`. Numbers are big-endian; an
 address is 32 bytes. The field layout of each request is in
