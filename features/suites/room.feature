@@ -101,3 +101,35 @@ Feature: room
     And onlyAnUnbanLiftsABan in Comms/StateProofs.lex.tex states (((not (action =? 5)) && (not ((Comms.State::step 0 isSubject action (if (action <? 2) then 4 else senderStatus) senderPower 4 targetPower required open grantedPower) =? 4))) = false)
     And statusStaysInRangeAfterAnyHistory in Comms/StateProofs.lex.tex states ((4 <? (Comms.State::state 0 member creator creatorPower required open events)) = false)
     And noPowerAboveTheCreator in Comms/StateProofs.lex.tex states ((creatorPower <? (Comms.State::state 1 member creator creatorPower required open events)) = false)
+
+  @RK-11 @build
+  Scenario: An event's bytes are its words at eight bytes each, decoding returns every word below 2^64 unchanged, and a list of addresses has one accepted order with no address twice
+    Given the event bytes in app/src/Comms/Event.lex.tex
+    When the Lean kernel checks the theorems of EventProofs during prismpm verify
+    Then layout in Comms/Event.lex.tex contains body: (cons version (cons action (joined room (joined sender (joined device (joined target (cons granted (joined content (cons (count parents) (cons (count authorities) (joined parents authorities)))))))))))
+    And decode in Comms/Event.lex.tex contains body: (decodeFrom bytes 7 0)
+    And decodingUndoesEncoding in Comms/EventProofs.lex.tex states ((Comms.Event::decodeFrom (Comms.Event::encode words) 7 0) = (Comms.Event::normal words))
+    And wordSurvivesItsBytes in Comms/EventProofs.lex.tex states ((Comms.Event::rebuilt word) = (Comms.Event::reduced word))
+    And boundedWordIsUnchanged in Comms/EventProofs.lex.tex states (((word <? 18446744073709551616) && (not ((Comms.Event::reduced word) =? word))) = false)
+    And bytesSurviveTheirWord in Comms/EventProofs.lex.tex states ((((b0 <? 256) && ((b1 <? 256) && ((b2 <? 256) && ((b3 <? 256) && ((b4 <? 256) && ((b5 <? 256) && ((b6 <? 256) && (b7 <? 256)))))))) && (not (((Comms.Event::low (prim quotient (Comms.Event::wordOf b0 b1 b2 b3 b4 b5 b6 b7) 72057594037927936 0 : Nat)) =? b0) && (((Comms.Event::low (prim quotient (Comms.Event::wordOf b0 b1 b2 b3 b4 b5 b6 b7) 281474976710656 0 : Nat)) =? b1) && (((Comms.Event::low (prim quotient (Comms.Event::wordOf b0 b1 b2 b3 b4 b5 b6 b7) 1099511627776 0 : Nat)) =? b2) && (((Comms.Event::low (prim quotient (Comms.Event::wordOf b0 b1 b2 b3 b4 b5 b6 b7) 4294967296 0 : Nat)) =? b3) && (((Comms.Event::low (prim quotient (Comms.Event::wordOf b0 b1 b2 b3 b4 b5 b6 b7) 16777216 0 : Nat)) =? b4) && (((Comms.Event::low (prim quotient (Comms.Event::wordOf b0 b1 b2 b3 b4 b5 b6 b7) 65536 0 : Nat)) =? b5) && (((Comms.Event::low (prim quotient (Comms.Event::wordOf b0 b1 b2 b3 b4 b5 b6 b7) 256 0 : Nat)) =? b6) && ((Comms.Event::low (Comms.Event::wordOf b0 b1 b2 b3 b4 b5 b6 b7)) =? b7)))))))))) = false)
+    And everyWordIsEightBytes in Comms/EventProofs.lex.tex states ((Comms.Event::count (Comms.Event::encode words)) = (prim multiply 8 (Comms.Event::count words) : Nat))
+    And repeatedAddressRefused in Comms/EventProofs.lex.tex states ((Comms.Event::ascending (cons a0 (cons a1 (cons a2 (cons a3 (cons a0 (cons a1 (cons a2 (cons a3 rest))))))))) = false)
+    And addressesHaveOneOrder in Comms/EventProofs.lex.tex states (((Comms.Event::ascending (cons a0 (cons a1 (cons a2 (cons a3 (cons b0 (cons b1 (cons b2 (cons b3 (nil Nat)))))))))) && (Comms.Event::ascending (cons b0 (cons b1 (cons b2 (cons b3 (cons a0 (cons a1 (cons a2 (cons a3 (nil Nat))))))))))) = false)
+    And partAddressRefused in Comms/EventProofs.lex.tex states ((Comms.Event::ascending (cons a0 (cons a1 (cons a2 (nil Nat))))) = false)
+    And wrongVersionRefused in Comms/EventProofs.lex.tex states ((Comms.Event::canonical 2 action parents authorities) = false)
+
+  @RK-12 @build
+  Scenario: An event is composed only when its action is permitted and its form is canonical, the sent event replaces the head it cites, and a send is stored only once signed and announced only once stored
+    Given the send path in app/src/Comms/Send.lex.tex
+    When the Lean kernel checks the theorems of SendProofs during prismpm verify
+    Then compose in Comms/Send.lex.tex contains body: (if (mayCompose version action senderStatus senderPower targetStatus targetPower required open grantedPower parents authorities) then (Comms.Event::encode event) else (nil Nat))
+    And composedExactlyWhenPermittedAndCanonical in Comms/SendProofs.lex.tex states ((Comms.Send::mayCompose version action senderStatus senderPower targetStatus targetPower required open grantedPower parents authorities) = ((Comms.Rules::permitted action senderStatus senderPower targetStatus targetPower required open grantedPower) && (Comms.Event::canonical version action parents authorities)))
+    And bannedSenderComposesNothing in Comms/SendProofs.lex.tex states ((Comms.Send::mayCompose version action 4 senderPower targetStatus targetPower required open grantedPower parents authorities) = false)
+    And wrongVersionComposesNothing in Comms/SendProofs.lex.tex states ((Comms.Send::mayCompose 2 action senderStatus senderPower targetStatus targetPower required open grantedPower parents authorities) = false)
+    And sentEventBecomesAHead in Comms/SendProofs.lex.tex states ((Comms.Sync::holds (Comms.Send::headsAfter heads cited kappa) kappa) = true)
+    And soleHeadIsReplaced in Comms/SendProofs.lex.tex states ((Comms.Send::headsAfter (cons head (nil Nat)) (cons head (nil Nat)) kappa) = (cons kappa (nil Nat)))
+    And announcedOnlyAfterStored in Comms/SendProofs.lex.tex states ((((Comms.Send::advance phase report) =? 4) && (not ((phase =? 3) || (phase =? 4)))) = false)
+    And storedOnlyAfterSigned in Comms/SendProofs.lex.tex states ((((Comms.Send::advance phase report) =? 3) && (not ((phase =? 2) || (phase =? 3)))) = false)
+    And sendNeverStepsBack in Comms/SendProofs.lex.tex states (((Comms.Send::advance phase report) <? phase) = false)
+    And wrongReportChangesNothing in Comms/SendProofs.lex.tex states (((not (report =? phase)) && (not ((Comms.Send::advance phase report) =? phase))) = false)
+    And announceIsAskedOnlyOnceStored in Comms/SendProofs.lex.tex states ((((Comms.Send::instruction phase) =? 3) && (not (phase =? 3))) = false)

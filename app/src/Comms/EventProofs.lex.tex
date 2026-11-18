@@ -1,0 +1,132 @@
+\begin{lexlean}{Comms.EventProofs}
+\useglossary{lexlean.std.bool@1.2.0}
+\useglossary{lexlean.std.nat@1.2.0}
+\importmodule{Comms.Event}
+\importmodule{Comms.Order}
+\title{Boolean}
+\begin{semanticmodule}
+theorem{
+  name: wordSurvivesItsBytes,
+  parameters: [word : Nat],
+  statement: ((Comms.Event::rebuilt word) = (Comms.Event::reduced word)),
+  proof: linear_arithmetic{
+    definitions: [Comms.Event::low, Comms.Event::push, Comms.Event::rebuilt, Comms.Event::reduced]
+  },
+  axioms: [Quot.sound, propext]
+}
+
+theorem{
+  name: boundedWordIsUnchanged,
+  parameters: [word : Nat],
+  statement: (((word <? 18446744073709551616) && (not ((Comms.Event::reduced word) =? word))) = false),
+  proof: linear_arithmetic{definitions: [Comms.Event::reduced]},
+  axioms: [Quot.sound, propext]
+}
+
+theorem{
+  name: bytesSurviveTheirWord,
+  parameters: [b0 : Nat, b1 : Nat, b2 : Nat, b3 : Nat, b4 : Nat, b5 : Nat, b6 : Nat, b7 : Nat],
+  statement: ((((b0 <? 256) && ((b1 <? 256) && ((b2 <? 256) && ((b3 <? 256) && ((b4 <? 256) && ((b5 <? 256) && ((b6 <? 256) && (b7 <? 256)))))))) && (not (((Comms.Event::low (prim quotient (Comms.Event::wordOf b0 b1 b2 b3 b4 b5 b6 b7) 72057594037927936 0 : Nat)) =? b0) && (((Comms.Event::low (prim quotient (Comms.Event::wordOf b0 b1 b2 b3 b4 b5 b6 b7) 281474976710656 0 : Nat)) =? b1) && (((Comms.Event::low (prim quotient (Comms.Event::wordOf b0 b1 b2 b3 b4 b5 b6 b7) 1099511627776 0 : Nat)) =? b2) && (((Comms.Event::low (prim quotient (Comms.Event::wordOf b0 b1 b2 b3 b4 b5 b6 b7) 4294967296 0 : Nat)) =? b3) && (((Comms.Event::low (prim quotient (Comms.Event::wordOf b0 b1 b2 b3 b4 b5 b6 b7) 16777216 0 : Nat)) =? b4) && (((Comms.Event::low (prim quotient (Comms.Event::wordOf b0 b1 b2 b3 b4 b5 b6 b7) 65536 0 : Nat)) =? b5) && (((Comms.Event::low (prim quotient (Comms.Event::wordOf b0 b1 b2 b3 b4 b5 b6 b7) 256 0 : Nat)) =? b6) && ((Comms.Event::low (Comms.Event::wordOf b0 b1 b2 b3 b4 b5 b6 b7)) =? b7)))))))))) = false),
+  proof: linear_arithmetic{definitions: [Comms.Event::low, Comms.Event::wordOf]},
+  axioms: [Classical.choice, Quot.sound, propext]
+}
+
+theorem{
+  name: decodingUndoesEncoding,
+  parameters: [words : (List Nat)],
+  statement: ((Comms.Event::decodeFrom (Comms.Event::encode words) 7 0) = (Comms.Event::normal words)),
+  proof: induction{
+    branches: [
+      {
+        proof: simplify{
+          definitions: [Comms.Event::decodeFrom, Comms.Event::encode, Comms.Event::normal]
+        },
+        binders: [],
+        constructor: nil
+      },
+      {
+        proof: simplify{
+          definitions: [
+            ih,
+            Comms.Event::decodeFrom,
+            Comms.Event::encode,
+            Comms.Event::normal,
+            Comms.Event::rebuilt
+          ]
+        },
+        binders: [head, rest, ih],
+        constructor: cons
+      }
+    ],
+    scrutinee: words
+  },
+  axioms: [propext]
+}
+
+theorem{
+  name: eightMoreBytes,
+  parameters: [total : Nat],
+  statement: ((1 + (1 + (1 + (1 + (1 + (1 + (1 + (1 + (prim multiply 8 total : Nat))))))))) = (prim multiply 8 (1 + total) : Nat)),
+  proof: linear_arithmetic{definitions: [Comms.Event::push]},
+  axioms: [Quot.sound, propext]
+}
+
+theorem{
+  name: everyWordIsEightBytes,
+  parameters: [words : (List Nat)],
+  statement: ((Comms.Event::count (Comms.Event::encode words)) = (prim multiply 8 (Comms.Event::count words) : Nat)),
+  proof: induction{
+    branches: [
+      {
+        proof: linear_arithmetic{definitions: [Comms.Event::count, Comms.Event::encode]},
+        binders: [],
+        constructor: nil
+      },
+      {
+        proof: simplify{definitions: [eightMoreBytes, ih, Comms.Event::count, Comms.Event::encode]},
+        binders: [head, rest, ih],
+        constructor: cons
+      }
+    ],
+    scrutinee: words
+  },
+  axioms: [Quot.sound, propext]
+}
+
+theorem{
+  name: repeatedAddressRefused,
+  parameters: [a0 : Nat, a1 : Nat, a2 : Nat, a3 : Nat, rest : (List Nat)],
+  statement: ((Comms.Event::ascending (cons a0 (cons a1 (cons a2 (cons a3 (cons a0 (cons a1 (cons a2 (cons a3 rest))))))))) = false),
+  proof: linear_arithmetic{
+    definitions: [Comms.Event::ascending, Comms.Event::climbs, Comms.Order::precedesWide]
+  },
+  axioms: [Quot.sound, propext]
+}
+
+theorem{
+  name: addressesHaveOneOrder,
+  parameters: [a0 : Nat, a1 : Nat, a2 : Nat, a3 : Nat, b0 : Nat, b1 : Nat, b2 : Nat, b3 : Nat],
+  statement: (((Comms.Event::ascending (cons a0 (cons a1 (cons a2 (cons a3 (cons b0 (cons b1 (cons b2 (cons b3 (nil Nat)))))))))) && (Comms.Event::ascending (cons b0 (cons b1 (cons b2 (cons b3 (cons a0 (cons a1 (cons a2 (cons a3 (nil Nat))))))))))) = false),
+  proof: linear_arithmetic{
+    definitions: [Comms.Event::ascending, Comms.Event::climbs, Comms.Order::precedesWide]
+  },
+  axioms: [Quot.sound, propext]
+}
+
+theorem{
+  name: partAddressRefused,
+  parameters: [a0 : Nat, a1 : Nat, a2 : Nat],
+  statement: ((Comms.Event::ascending (cons a0 (cons a1 (cons a2 (nil Nat))))) = false),
+  proof: linear_arithmetic{definitions: [Comms.Event::ascending, Comms.Event::climbs]},
+  axioms: [propext]
+}
+
+theorem{
+  name: wrongVersionRefused,
+  parameters: [action : Nat, parents : (List Nat), authorities : (List Nat)],
+  statement: ((Comms.Event::canonical 2 action parents authorities) = false),
+  proof: linear_arithmetic{definitions: [Comms.Event::canonical]},
+  axioms: [Quot.sound, propext]
+}
+\end{semanticmodule}
+\end{lexlean}

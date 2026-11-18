@@ -1,0 +1,79 @@
+\begin{lexlean}{Comms.Send}
+\useglossary{lexlean.std.bool@1.2.0}
+\useglossary{lexlean.std.nat@1.2.0}
+\importmodule{Comms.Event}
+\importmodule{Comms.Rules}
+\importmodule{Comms.Sync}
+\title{Boolean}
+\begin{semanticmodule}
+definition{
+  name: mayCompose,
+  parameters: [
+    version : Nat,
+    action : Nat,
+    senderStatus : Nat,
+    senderPower : Nat,
+    targetStatus : Nat,
+    targetPower : Nat,
+    required : Nat,
+    open : Nat,
+    grantedPower : Nat,
+    parents : (List Nat),
+    authorities : (List Nat)
+  ],
+  result: Bool,
+  body: ((Comms.Rules::permitted action senderStatus senderPower targetStatus targetPower required open grantedPower) && (Comms.Event::canonical version action parents authorities))
+}
+
+definition{
+  name: compose,
+  parameters: [
+    version : Nat,
+    action : Nat,
+    senderStatus : Nat,
+    senderPower : Nat,
+    targetStatus : Nat,
+    targetPower : Nat,
+    required : Nat,
+    open : Nat,
+    grantedPower : Nat,
+    parents : (List Nat),
+    authorities : (List Nat),
+    event : (List Nat)
+  ],
+  result: (List Nat),
+  body: (if (mayCompose version action senderStatus senderPower targetStatus targetPower required open grantedPower parents authorities) then (Comms.Event::encode event) else (nil Nat))
+}
+
+definition{
+  name: without,
+  parameters: [cited : (List Nat), heads : (List Nat)],
+  result: (List Nat),
+  body: (match heads
+    | List.nil => (nil Nat)
+    | List.cons head rest => (if (Comms.Sync::holds cited head) then (without cited rest) else (cons head (without cited rest)))),
+  recursive_argument: heads
+}
+
+definition{
+  name: headsAfter,
+  parameters: [heads : (List Nat), cited : (List Nat), kappa : Nat],
+  result: (List Nat),
+  body: (cons kappa (without cited heads))
+}
+
+definition{
+  name: instruction,
+  parameters: [phase : Nat],
+  result: Nat,
+  body: (if (phase =? 1) then 1 else (if (phase =? 2) then 2 else (if (phase =? 3) then 3 else 0)))
+}
+
+definition{
+  name: advance,
+  parameters: [phase : Nat, report : Nat],
+  result: Nat,
+  body: (if ((phase =? 1) && (report =? 1)) then 2 else (if ((phase =? 2) && (report =? 2)) then 3 else (if ((phase =? 3) && (report =? 3)) then 4 else phase)))
+}
+\end{semanticmodule}
+\end{lexlean}
