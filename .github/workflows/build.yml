@@ -96,6 +96,18 @@ jobs:
             echo "project=$project"
             echo "command=$command"
           } >>"$GITHUB_OUTPUT"
+      - name: Free runner disk for the SDK image
+        shell: bash
+        # The SDK image unpacks to about 21 GB. A private repository's hosted
+        # runner starts with less free disk than that, and the pull ends in
+        # "no space left on device" before any check runs. These toolchains
+        # are preinstalled on the runner and unused by this job.
+        run: |
+          set -euo pipefail
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc /usr/local/.ghcup \
+            /opt/hostedtoolcache/CodeQL /usr/share/swift /usr/local/share/boost
+          docker image prune --all --force >/dev/null
+          df -h /
       - name: Build and verify the holo through the locked SDK
         shell: bash
         env:
