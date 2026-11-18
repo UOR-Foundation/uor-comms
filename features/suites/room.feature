@@ -70,7 +70,7 @@ Feature: room
     And heldContentIsNotFetchedAgain in Comms/SyncProofs.lex.tex states ((Comms.Sync::wanted (cons kappa offered) (cons kappa rest)) = (Comms.Sync::wanted offered (cons kappa rest)))
 
   @RK-09 @build
-  Scenario: The kernel answers each of its six questions with the function the theorems are about, and invalid request for anything else
+  Scenario: The kernel answers each of its nine questions with the function the theorems are about, and invalid request for anything else
     Given the kernel in app/src/RoomKernel.lex.tex
     When prismpm verify replays the acceptance vectors in the compiled guest
     Then admitAnswer in RoomKernel.lex.tex contains (if (Comms.Admission::admitted (flag (sameAddress value 1 33))
@@ -83,6 +83,11 @@ Feature: room
     And route in RoomKernel.lex.tex contains (if ((operation =? 4) && (length =? 26)) then (keyAnswer value)
     And route in RoomKernel.lex.tex contains (if ((operation =? 5) && (length =? 3)) then (callName (Comms.Call::step (natAt value 1 1 0) (natAt value 2 1 0)))
     And route in RoomKernel.lex.tex contains (if ((operation =? 6) && (length =? 4)) then (statusName (Comms.Member::applied (natAt value 1 1 0) (natAt value 2 1 0) (natAt value 3 1 0)))
+    And redactAnswer in RoomKernel.lex.tex contains (if (Comms.Redact::allowed (natAt value 1 1 0)
+    And headsAnswer in RoomKernel.lex.tex contains (if (Comms.Sync::bytesMove (flag (sameAddress value 1 33)) 1)
+    And route in RoomKernel.lex.tex contains (if ((operation =? 7) && (length =? 27)) then (redactAnswer value)
+    And route in RoomKernel.lex.tex contains (if ((operation =? 8) && (length =? 3)) then (sendName (Comms.Send::instruction (Comms.Send::advance (natAt value 1 1 0) (natAt value 2 1 0))))
+    And route in RoomKernel.lex.tex contains (if ((operation =? 9) && (length =? 65)) then (headsAnswer value)
     And route in RoomKernel.lex.tex contains else (prim utf8_encode "invalid request" : Bytes)
     And dispatch in RoomKernel.lex.tex contains (route (natAt value 0 1 0) (Foundation.Bytes::byteLength value) value)
     And application in RoomKernel.lex.tex contains response := 0x61646d6974746564})
