@@ -5,16 +5,9 @@
 \begin{semanticmodule}
 definition{
   name: admitted,
-  parameters: [
-    claimedKappa : Nat,
-    derivedKappa : Nat,
-    signatureValid : Nat,
-    deviceMaySign : Nat,
-    parentsKnown : Nat,
-    permitted : Nat
-  ],
+  parameters: [addressMatches : Nat, signatureValid : Nat, deviceMaySign : Nat, parentsKnown : Nat, permitted : Nat],
   result: Bool,
-  body: ((claimedKappa =? derivedKappa) && ((signatureValid =? 1) && ((deviceMaySign =? 1) && ((parentsKnown =? 1) && (permitted =? 1)))))
+  body: ((addressMatches =? 1) && ((signatureValid =? 1) && ((deviceMaySign =? 1) && ((parentsKnown =? 1) && (permitted =? 1)))))
 }
 \end{semanticmodule}
 \end{lexlean}

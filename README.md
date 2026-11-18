@@ -371,33 +371,38 @@ The page is then at `https://OWNER.github.io/NAME/`. The workflow runs beside
 `bootstrap`, not after it: `just app` is the proof-bearing build, so the page
 goes live as soon as the Lean kernel has accepted the model.
 
-## The template is a Prism application
+## The application: the room kernel
 
-`app/` is the **template contract checker**. A repository built from this
-template inherits seven universal policy files that it must never edit. The
-checker takes, for six of them, the digest `template.lock` pins and the digest
-actually on disk, and answers `conformant` or names every file that drifted.
+`app/` is the **room kernel** of a serverless messenger. A peer has no server
+to ask, so it asks the kernel: one request, one decision.
 
-What makes it Prism and not a script: Lean proves the verdict is right.
+| Operation | First byte | Request length | Answers |
+| --- | --- | --- | --- |
+| Admit an event | `01` | 69 | `admitted`, `refused` |
+| Permit an action | `02` | 37 | `permitted`, `refused` |
+| Order two candidates | `03` | 81 | `left`, `right`, `same` |
+| Hold a key | `04` | 26 | `holds`, `withheld` |
+| Step a call | `05` | 3 | `idle`, `calling`, `ringing`, `connected`, `ended` |
+| Step a membership | `06` | 4 | `absent`, `invited`, `joined`, `departed`, `banned` |
 
-```
-theorem conformant_decides : conformant observation = true ↔ Conformant observation
-```
+Anything else is answered `invalid request`. Numbers are big-endian; an
+address is 32 bytes. The field layout of each request is in
+`app/src/RoomKernel.lex.tex`, and `docs/DESIGN.md` says what each decision
+means and where it comes from in Matrix.
 
-`Conformant` says every observed digest equals its locked digest. The holo that
-`prismpm verify` builds carries this proof, the WebAssembly guest that runs
-the check, and the acceptance vectors it passed, so anyone can confirm the
-checker before trusting its answer:
+What makes it Prism and not a script: Lean proves what each decision can and
+cannot answer. The theorems are in `app/src/Comms/*Proofs.lex.tex`, and
+`docs/STATUS.md` lists what is proved, what is only tested and what is
+assumed.
 
 ```sh
 just app
 npx prism-code inspect app/.prism/build/*/*.holo
 ```
 
-The claim is registered as `TC-01`, specified in
-`features/suites/contract.feature`, and pinned by the test `contract_tc_01`.
-Keep it as a worked example of all three, or replace `app/src/Contract.lex.tex`
-with your own model and `TC-01` with your own claims.
+The claims are registered as `RK-01` to `RK-09`, specified in
+`features/suites/room.feature`, and pinned by the tests in
+`crates/conformance/tests/room.rs`.
 
 To see a larger Prism application, the
 [Calculator](https://github.com/UOR-Foundation/PrismPM/tree/main/examples/Calculator)

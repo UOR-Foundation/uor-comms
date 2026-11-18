@@ -70,5 +70,58 @@ theorem{
   },
   axioms: [Quot.sound, propext]
 }
+
+definition{
+  name: wordBound,
+  parameters: [],
+  result: Nat,
+  body: 18446744073709551616
+}
+
+definition{
+  name: packed,
+  parameters: [w0 : Nat, w1 : Nat, w2 : Nat, w3 : Nat],
+  result: Nat,
+  body: ((prim multiply w0 6277101735386680763835789423207666416102355444464034512896 : Nat) + ((prim multiply w1 340282366920938463463374607431768211456 : Nat) + ((prim multiply w2 18446744073709551616 : Nat) + w3)))
+}
+
+definition{
+  name: wordsBounded,
+  parameters: [w0 : Nat, w1 : Nat, w2 : Nat, w3 : Nat],
+  result: Bool,
+  body: ((w0 <? 18446744073709551616) && ((w1 <? 18446744073709551616) && ((w2 <? 18446744073709551616) && (w3 <? 18446744073709551616))))
+}
+
+theorem{
+  name: wideOrderIsTotal,
+  parameters: [leftRank : Nat, l0 : Nat, l1 : Nat, l2 : Nat, l3 : Nat, rightRank : Nat, r0 : Nat, r1 : Nat, r2 : Nat, r3 : Nat],
+  statement: (((Comms.Order::precedesWide leftRank l0 l1 l2 l3 rightRank r0 r1 r2 r3) || ((Comms.Order::precedesWide rightRank r0 r1 r2 r3 leftRank l0 l1 l2 l3) || (Comms.Order::sameWide leftRank l0 l1 l2 l3 rightRank r0 r1 r2 r3))) = true),
+  proof: linear_arithmetic{definitions: [Comms.Order::precedesWide, Comms.Order::sameWide]},
+  axioms: [Classical.choice, Quot.sound, propext]
+}
+
+theorem{
+  name: wideOrderNeverBothWays,
+  parameters: [leftRank : Nat, l0 : Nat, l1 : Nat, l2 : Nat, l3 : Nat, rightRank : Nat, r0 : Nat, r1 : Nat, r2 : Nat, r3 : Nat],
+  statement: (((Comms.Order::precedesWide leftRank l0 l1 l2 l3 rightRank r0 r1 r2 r3) && (Comms.Order::precedesWide rightRank r0 r1 r2 r3 leftRank l0 l1 l2 l3)) = false),
+  proof: linear_arithmetic{definitions: [Comms.Order::precedesWide]},
+  axioms: [Quot.sound, propext]
+}
+
+theorem{
+  name: wideOrderMatchesPackedAddress,
+  parameters: [leftRank : Nat, l0 : Nat, l1 : Nat, l2 : Nat, l3 : Nat, rightRank : Nat, r0 : Nat, r1 : Nat, r2 : Nat, r3 : Nat],
+  statement: ((((wordsBounded l0 l1 l2 l3) && (wordsBounded r0 r1 r2 r3)) && ((Comms.Order::precedesWide leftRank l0 l1 l2 l3 rightRank r0 r1 r2 r3) && ((Comms.Order::precedes rightRank (packed r0 r1 r2 r3) leftRank (packed l0 l1 l2 l3)) || (Comms.Order::same leftRank (packed l0 l1 l2 l3) rightRank (packed r0 r1 r2 r3))))) = false),
+  proof: linear_arithmetic{definitions: [Comms.Order::precedes, Comms.Order::precedesWide, Comms.Order::same, packed, wordsBounded]},
+  axioms: [Quot.sound, propext]
+}
+
+theorem{
+  name: packedAddressIsBelowTheBound,
+  parameters: [w0 : Nat, w1 : Nat, w2 : Nat, w3 : Nat],
+  statement: (((wordsBounded w0 w1 w2 w3) && ((Comms.Order::addressBound) <=? (packed w0 w1 w2 w3))) = false),
+  proof: linear_arithmetic{definitions: [Comms.Order::addressBound, packed, wordsBounded]},
+  axioms: [Quot.sound, propext]
+}
 \end{semanticmodule}
 \end{lexlean}

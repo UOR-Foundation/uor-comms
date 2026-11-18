@@ -1,62 +1,86 @@
 {
-  "name": "Template contract",
-  "shortName": "Contract",
-  "live": "https://uor-foundation.github.io/template/",
-  "purpose": "Checks each universal policy file of a UOR template repository against its locked digest. Send the six expected and observed digests; it answers conformant, or names every file that drifted, and invalid request for anything else.",
-  "inputLabel": "Expected and observed digests",
-  "placeholder": "hex: followed by 384 bytes",
-  "submitLabel": "Check",
-  "outputLabel": "Verdict",
+  "name": "Room kernel",
+  "shortName": "Room",
+  "live": "https://uor-foundation.github.io/uor-comms/",
+  "purpose": "Decides one question about a room for a peer with no server to ask: admit an event, permit an action, order two candidates, hold a key, step a call, or step a membership. Send one request; it answers with the decision, and invalid request for anything else.",
+  "inputLabel": "Request",
+  "placeholder": "hex: one operation byte, then that operation's fields",
+  "submitLabel": "Decide",
+  "outputLabel": "Answer",
   "answers": {
     "positive": [
-      "conformant"
+      "admitted",
+      "permitted",
+      "holds",
+      "left",
+      "right",
+      "same",
+      "idle",
+      "calling",
+      "ringing",
+      "connected",
+      "ended",
+      "absent",
+      "invited",
+      "joined",
+      "departed",
+      "banned"
     ],
     "negative": [
-      "drift:*"
+      "refused",
+      "withheld"
     ],
     "refusal": "invalid request"
   },
   "promise": {
-    "headline": "Says conformant exactly when every policy file matches its lock.",
-    "detail": "Each of the six universal policy files is compared with the digest the lock records, and any file that drifted is named."
+    "headline": "Every peer that asks the same question gets the same answer.",
+    "detail": "Each answer is computed by a function in the LexLean model, and the Lean kernel has checked what that function can and cannot answer."
   },
-  "claim": "TC-01: the checker answers conformant exactly when every universal policy file's observed digest equals its locked digest.",
+  "claim": "RK-01 to RK-09: admission, permission, order, resolution, key access, calls, membership and sync are decided by modelled functions whose stated properties the Lean kernel checked.",
   "proposition": {
-    "name": "Conformant",
-    "text": "Conformant observation :=\n  SameDigest devcontainer.expected devcontainer.observed\n  /\\ SameDigest bootstrap.expected bootstrap.observed\n  /\\ SameDigest agents.expected agents.observed\n  /\\ SameDigest verification.expected verification.observed\n  /\\ SameDigest prismpmLock.expected prismpmLock.observed\n  /\\ SameDigest templateContract.expected templateContract.observed\n\nSameDigest left right :=\n  left.w0 = right.w0 /\\ left.w1 = right.w1 /\\ left.w2 = right.w2 /\\ left.w3 = right.w3",
-    "plain": "Every one of the six universal policy files has the digest the lock says it has."
+    "name": "admitted",
+    "text": "admitted addressMatches signatureValid deviceMaySign parentsKnown permitted :=\n  addressMatches = 1 && signatureValid = 1 && deviceMaySign = 1 && parentsKnown = 1 && permitted = 1",
+    "plain": "An event is accepted only when its bytes give its address, it is signed, the signing device may sign, its parents are held, and the permission rule allows it."
   },
   "theorems": [
     {
-      "name": "conformant_decides",
-      "statement": "conformant observation = true ↔ Conformant observation, for every observation",
-      "how": "Proved by simplification over the record fields, checked by the Lean kernel by prismpm verify in CI",
-      "where": "app/src/Contract.lex.tex"
+      "name": "tamperedEventRefused",
+      "statement": "admitted 0 signatureValid deviceMaySign parentsKnown permitted = false, for every value of the other four",
+      "how": "Proved by linear arithmetic over the definition, checked by the Lean kernel by prismpm verify in CI",
+      "where": "app/src/Comms/AdmissionProofs.lex.tex"
+    },
+    {
+      "name": "neighboursSwapAnywhere",
+      "statement": "resolve (before ++ earlier :: later :: after) seed = resolve (before ++ later :: earlier :: after) seed, for every sequence and seed",
+      "how": "Proved by induction on the events before the pair, checked by the Lean kernel by prismpm verify in CI",
+      "where": "app/src/Comms/ResolveProofs.lex.tex"
+    },
+    {
+      "name": "cannotRemoveEqualOrHigher",
+      "statement": "permitted is false for kick and ban whenever the sender's power is not above the target's",
+      "how": "Proved by linear arithmetic over the permission rule, checked by the Lean kernel by prismpm verify in CI",
+      "where": "app/src/Comms/RulesProofs.lex.tex"
     }
   ],
   "pinned": [
     {
-      "name": "contract_tc_01",
-      "what": "The theorem's statement and axioms, the six files the proposition names against template-contract.json, that a drifted file is named in the verdict, and that the verdict is decided by conformant. A string-matching test, not a theorem: a planted defect fails it.",
-      "where": "crates/conformance/tests/contract.rs"
+      "name": "room_rk_01 to room_rk_09",
+      "what": "Each theorem's exact statement, that it declares no axiom beyond Lean's three, and that each answer of the kernel is decided by the function its theorems are about. String-matching tests, not theorems: a planted defect fails them.",
+      "where": "crates/conformance/tests/room.rs"
     }
   ],
   "trusted": [
     {
       "name": "SDK image",
-      "value": "the digest prismpm.lock pins; see the bootstrap workflow's log"
+      "value": "the digest prismpm.lock pins; see the build workflow's log"
     },
     {
       "name": "Lean toolchain",
       "value": "leanprover/lean4:v4.32.1"
     },
     {
-      "name": "LexLean compiler semantics",
-      "value": "5262e5b4c8b5668ae7066ad686757a6bb7f80c941d515fb9d586894fbc7de69a"
-    },
-    {
-      "name": "prism-code runtime, vendored",
-      "value": "0.2.0, see try/vendor/prism-code/VENDOR.md"
+      "name": "BLAKE3, signatures and Prism ID",
+      "value": "the kernel is told whether an address matches, a signature verifies and a device may sign; it does not compute them"
     },
     {
       "name": "Your browser",
@@ -65,14 +89,14 @@
   ],
   "attestations": {
     "proof": {
-      "id": "not recorded for the template's own app; an instance records the UOR MCP server's attestation here",
-      "url": "https://github.com/UOR-Foundation/template/actions/workflows/bootstrap.yml"
+      "id": "printed by prismpm verify in every build run",
+      "url": "https://github.com/UOR-Foundation/uor-comms/actions/workflows/build.yml"
     },
     "build": {
-      "id": "printed by prismpm verify in every pages run; an instance records it here",
-      "url": "https://github.com/UOR-Foundation/template/actions/workflows/pages.yml"
+      "id": "printed by prismpm verify in every pages run",
+      "url": "https://github.com/UOR-Foundation/uor-comms/actions/workflows/pages.yml"
     }
   },
-  "repository": "https://github.com/UOR-Foundation/template",
-  "report": "https://github.com/UOR-Foundation/template/blob/main/TEMPLATE-VERIFICATION.md"
+  "repository": "https://github.com/UOR-Foundation/uor-comms",
+  "report": "https://github.com/UOR-Foundation/uor-comms/blob/main/docs/STATUS.md"
 }

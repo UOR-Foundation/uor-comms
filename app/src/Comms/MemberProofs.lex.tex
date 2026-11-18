@@ -5,6 +5,16 @@
 \importmodule{Comms.Rules}
 \title{Boolean}
 \begin{semanticmodule}
+definition{
+  name: statusAfter,
+  parameters: [actions : (List Nat), start : Nat],
+  result: Nat,
+  body: (match actions
+    | List.nil => start
+    | List.cons head rest => (Comms.Member::nextStatus head (statusAfter rest start))),
+  recursive_argument: actions
+}
+
 theorem{
   name: statusStaysInRange,
   parameters: [action : Nat, targetStatus : Nat],
@@ -48,8 +58,8 @@ theorem{
 theorem{
   name: newestBanDecides,
   parameters: [earlier : (List Nat), start : Nat],
-  statement: ((Comms.Member::statusAfter (cons 4 earlier) start) = 4),
-  proof: linear_arithmetic{definitions: [Comms.Member::nextStatus, Comms.Member::statusAfter]},
+  statement: ((statusAfter (cons 4 earlier) start) = 4),
+  proof: linear_arithmetic{definitions: [Comms.Member::nextStatus, statusAfter]},
   axioms: [Quot.sound, propext]
 }
 

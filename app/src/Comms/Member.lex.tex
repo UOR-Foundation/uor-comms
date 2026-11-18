@@ -23,15 +23,5 @@ definition{
   result: Nat,
   body: (if (permitted =? 1) then (nextStatus action targetStatus) else targetStatus)
 }
-
-definition{
-  name: statusAfter,
-  parameters: [actions : (List Nat), start : Nat],
-  result: Nat,
-  body: (match actions
-    | List.nil => start
-    | List.cons head rest => (nextStatus head (statusAfter rest start))),
-  recursive_argument: actions
-}
 \end{semanticmodule}
 \end{lexlean}
