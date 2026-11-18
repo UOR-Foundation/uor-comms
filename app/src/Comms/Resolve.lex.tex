@@ -14,9 +14,7 @@ definition{
   name: resolve,
   parameters: [events : (List Nat), seed : Nat],
   result: Nat,
-  body: (match events
-    | List.nil => seed
-    | List.cons head rest => (merge head (resolve rest seed))),
+  body: (match events | List.nil => seed | List.cons head rest => (merge head (resolve rest seed))),
   recursive_argument: events
 }
 
@@ -24,9 +22,7 @@ definition{
   name: joined,
   parameters: [left : (List Nat), right : (List Nat)],
   result: (List Nat),
-  body: (match left
-    | List.nil => right
-    | List.cons head rest => (cons head (joined rest right))),
+  body: (match left | List.nil => right | List.cons head rest => (cons head (joined rest right))),
   recursive_argument: left
 }
 
@@ -74,7 +70,17 @@ theorem{
   name: arrivalPositionChangesNothing,
   parameters: [before : (List Nat), event : Nat, after : (List Nat), seed : Nat],
   statement: ((resolve (joined before (cons event after)) seed) = (merge event (resolve (joined before after) seed))),
-  proof: induction{scrutinee: before, branches: [{constructor: nil, binders: [], proof: simplify{definitions: [joined, resolve]}}, {constructor: cons, binders: [head, rest, ih], proof: simplify{definitions: [ih, joined, mergeLeftComm, resolve]}}]},
+  proof: induction{
+    branches: [
+      {proof: simplify{definitions: [joined, resolve]}, binders: [], constructor: nil},
+      {
+        proof: simplify{definitions: [ih, joined, mergeLeftComm, resolve]},
+        binders: [head, rest, ih],
+        constructor: cons
+      }
+    ],
+    scrutinee: before
+  },
   axioms: [Quot.sound, propext]
 }
 \end{semanticmodule}
