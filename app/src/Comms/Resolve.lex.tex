@@ -83,5 +83,27 @@ theorem{
   },
   axioms: [Quot.sound, propext]
 }
+
+theorem{
+  name: neighboursSwapAnywhere,
+  parameters: [before : (List Nat), earlier : Nat, later : Nat, after : (List Nat), seed : Nat],
+  statement: ((resolve (joined before (cons earlier (cons later after))) seed) = (resolve (joined before (cons later (cons earlier after))) seed)),
+  proof: induction{
+    branches: [
+      {
+        proof: simplify{definitions: [joined, mergeLeftComm, resolve]},
+        binders: [],
+        constructor: nil
+      },
+      {
+        proof: simplify{definitions: [ih, joined, resolve]},
+        binders: [head, rest, ih],
+        constructor: cons
+      }
+    ],
+    scrutinee: before
+  },
+  axioms: [Quot.sound, propext]
+}
 \end{semanticmodule}
 \end{lexlean}

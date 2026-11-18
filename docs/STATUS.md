@@ -1,18 +1,20 @@
 # Status
 
-Last run: 2026-11-18, `lexlean verify --all` in the SDK image `ghcr.io/uor-foundation/prismpm-sdk-candidate@sha256:cd3b47d7…`, Lean 4.32.1, no network.
-Result: `verified 11 modules; attestation bf5155d2bc81615ad29cbc1311fd7c5681778f4e3c9234de3cb2b8c8b0112ee5`.
+Last run: 2026-11-18, the `build` workflow of this repository, `just app` in the SDK image `prismpm.lock` pins (`ghcr.io/afflom/prismpm-sdk-patched@sha256:3dfa5f72…`), Lean 4.32.1.
+Result: `10 modules are canonical`, `lexlean.lock is current`, `verified attestation: cdb77bf69fd79ee37ce24c372792698fe3e08f07b4221914d172b5bc03960612`, [run 44289959087](https://github.com/UOR-Foundation/uor-comms/actions/runs/44289959087). That run was of a throwaway commit holding these same model files; the run of the commit that carries this document is named in the pull request.
 
-"Proved" below means Lean accepted the theorem in that run. Each theorem declares the exact axioms Lean observed (`propext`, `Quot.sound`, or none).
+"Proved" below means Lean accepted the theorem in that run. Each theorem declares the exact axioms Lean observed (`propext`, `Quot.sound`, `Classical.choice`, or none).
 
-## Proved (42 theorems)
+## Proved (46 theorems)
 
 | Module | Theorem | What it says |
 |---|---|---|
 | `Comms.Resolve` | `mergeComm`, `mergeIdem`, `mergeAbsorb`, `mergeLeftComm` | Choosing between two candidates does not depend on their order or on repeats |
 | | `redeliveryChangesNothing` | An event delivered twice gives the same state as once |
 | | `arrivalPositionChangesNothing` | An event delivered at any position in any sequence gives the same state as if it had arrived first (by induction on the sequence) |
+| | `neighboursSwapAnywhere` | Exchanging two neighbouring events anywhere in a sequence gives the same state (by induction on what comes before them) |
 | `Comms.Order` | `orderIsTotal`, `orderNeverBothWays`, `orderNeverPrecedesItself`, `orderIsTransitive` | Rank then address is a strict total order |
+| | `earlierInOrderHasSmallerKey`, `smallerKeyIsEarlierInOrder`, `equalKeysAreTheSameEvent` | For addresses below 2^256, the resolver's ordering key (rank times 2^256 plus address) orders events exactly as rank then address does, and equal keys mean the same event |
 | `Comms.Admission` | `tamperedEventRefused` | An event whose bytes do not give its address is refused |
 | | `unsignedEventRefused`, `removedDeviceRefused`, `orphanEventRefused`, `unpermittedEventRefused` | Each of the other four conditions is necessary |
 | | `soundEventAdmitted` | An event that meets all five is accepted |
@@ -32,12 +34,12 @@ Result: `verified 11 modules; attestation bf5155d2bc81615ad29cbc1311fd7c5681778f
 | | `noConnectionFromIdle`, `callerConnectsOnlyWhenAnswered`, `calleeConnectsOnlyByAccepting` | A call connects only through an answer |
 | | `crossedCallsNeverBothYield`, `crossedCallsOneSideYields` | When both sides call at once, exactly one yields |
 
-Planted defect: removing the power comparison from the ban rule makes Lean reject `Comms.Rules`. The file was restored byte for byte.
+Planted defect, in the scaffold project before this repository existed: removing the power comparison from the ban rule made Lean reject `Comms.Rules`. The file was restored byte for byte. It has not been repeated through this repository's gate.
 
 ## Not proved
 
-- **Convergence for every reordering.** Lean proved that moving one event to any position, and repeating one, change nothing. That any two orderings of the same set agree follows from those two by ordinary mathematics; that last step is not stated in the model and not checked by Lean.
-- **The link between the modules.** `Comms.Resolve` works on ordering keys and `Comms.Order` on rank and address pairs. That one encodes the other is not proved.
+- **Convergence stated over permutations.** Lean proved that exchanging any two neighbours, moving one event to any position, and repeating one, change nothing. Neighbour exchanges generate every reordering, so any two orderings of the same events agree; that closing sentence is ordinary mathematics and is not itself a theorem in the model, which has no notion of permutation.
+- **That the resolver is fed ordering keys.** `orderingKey` is proved to match the order, but nothing yet builds the resolver's input from events, because there is no entry point.
 - **The ban race.** See `DESIGN.md`.
 - **A member list.** `Comms.Rules` judges one action against given statuses and powers. Deriving those from a room's events is not modelled.
 
@@ -55,6 +57,5 @@ Nothing yet. The model has no acceptance vectors of its own; the scaffold's samp
 
 ## Where this stands in the repository
 
-- The run above was made in a scaffold project before this repository existed, under the module prefix `PrismTextRequest`. Here the same seven files sit under `PrismTemplateContract`, so that attestation does not name this tree. This repository's own proof is the `build` workflow's run of `prismpm verify`.
 - The modules are entrypoints of the app's LexLean project and are not imported by `app/src/Contract.lex.tex`. A module the application imports is compiled into the guest, and a `linear_arithmetic` proof there makes that compile run past the build's ten-minute limit (`PP5007`, LexLean #465). When the entry point starts calling these definitions, each module splits into definitions and a separate proofs module, as Foundry's kernel does.
 - No capability is registered in `model/ids.toml`, so `CONFORMANCE.md` claims nothing about messaging. Each theorem group still needs its ID row, scenario and pinned test (R3).
