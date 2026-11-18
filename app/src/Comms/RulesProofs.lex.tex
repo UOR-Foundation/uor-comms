@@ -1,0 +1,146 @@
+\begin{lexlean}{Comms.RulesProofs}
+\useglossary{lexlean.std.bool@1.2.0}
+\useglossary{lexlean.std.nat@1.2.0}
+\importmodule{Comms.Rules}
+\title{Boolean}
+\begin{semanticmodule}
+theorem{
+  name: bannedMemberDoesNothing,
+  parameters: [
+    action : Nat,
+    senderPower : Nat,
+    targetStatus : Nat,
+    targetPower : Nat,
+    required : Nat,
+    open : Nat,
+    grantedPower : Nat
+  ],
+  statement: ((Comms.Rules::permitted action 4 senderPower targetStatus targetPower required open grantedPower) = false),
+  proof: linear_arithmetic{definitions: [Comms.Rules::permitted]},
+  axioms: [Quot.sound, propext]
+}
+
+theorem{
+  name: onlyJoinedMembersWrite,
+  parameters: [
+    action : Nat,
+    senderStatus : Nat,
+    senderPower : Nat,
+    targetStatus : Nat,
+    targetPower : Nat,
+    required : Nat,
+    open : Nat,
+    grantedPower : Nat
+  ],
+  statement: (((Comms.Rules::permitted action senderStatus senderPower targetStatus targetPower required open grantedPower) && ((2 <=? action) && ((senderStatus <? 2) || (2 <? senderStatus)))) = false),
+  proof: linear_arithmetic{definitions: [Comms.Rules::permitted]},
+  axioms: [Quot.sound, propext]
+}
+
+theorem{
+  name: belowRequiredPowerRefused,
+  parameters: [
+    action : Nat,
+    senderStatus : Nat,
+    senderPower : Nat,
+    targetStatus : Nat,
+    targetPower : Nat,
+    required : Nat,
+    open : Nat,
+    grantedPower : Nat
+  ],
+  statement: (((Comms.Rules::permitted action senderStatus senderPower targetStatus targetPower required open grantedPower) && ((2 <=? action) && (senderPower <? required))) = false),
+  proof: linear_arithmetic{definitions: [Comms.Rules::permitted]},
+  axioms: [Quot.sound, propext]
+}
+
+theorem{
+  name: cannotRemoveEqualOrHigher,
+  parameters: [
+    action : Nat,
+    senderStatus : Nat,
+    senderPower : Nat,
+    targetStatus : Nat,
+    targetPower : Nat,
+    required : Nat,
+    open : Nat,
+    grantedPower : Nat
+  ],
+  statement: (((Comms.Rules::permitted action senderStatus senderPower targetStatus targetPower required open grantedPower) && (((action =? 3) || (action =? 4)) && (senderPower <=? targetPower))) = false),
+  proof: linear_arithmetic{definitions: [Comms.Rules::permitted]},
+  axioms: [Quot.sound, propext]
+}
+
+theorem{
+  name: cannotGrantAboveOwnPower,
+  parameters: [
+    senderStatus : Nat,
+    senderPower : Nat,
+    targetStatus : Nat,
+    targetPower : Nat,
+    required : Nat,
+    open : Nat,
+    grantedPower : Nat
+  ],
+  statement: (((Comms.Rules::permitted 7 senderStatus senderPower targetStatus targetPower required open grantedPower) && (senderPower <? grantedPower)) = false),
+  proof: linear_arithmetic{definitions: [Comms.Rules::permitted]},
+  axioms: [Quot.sound, propext]
+}
+
+theorem{
+  name: cannotChangeEqualOrHigherPower,
+  parameters: [
+    senderStatus : Nat,
+    senderPower : Nat,
+    targetStatus : Nat,
+    targetPower : Nat,
+    required : Nat,
+    open : Nat,
+    grantedPower : Nat
+  ],
+  statement: (((Comms.Rules::permitted 7 senderStatus senderPower targetStatus targetPower required open grantedPower) && (senderPower <=? targetPower)) = false),
+  proof: linear_arithmetic{definitions: [Comms.Rules::permitted]},
+  axioms: [Quot.sound, propext]
+}
+
+theorem{
+  name: closedRoomNeedsInvite,
+  parameters: [
+    senderStatus : Nat,
+    senderPower : Nat,
+    targetStatus : Nat,
+    targetPower : Nat,
+    required : Nat,
+    grantedPower : Nat
+  ],
+  statement: (((Comms.Rules::permitted 0 senderStatus senderPower targetStatus targetPower required 0 grantedPower) && ((senderStatus <? 1) || (1 <? senderStatus))) = false),
+  proof: linear_arithmetic{definitions: [Comms.Rules::permitted]},
+  axioms: [Quot.sound, propext]
+}
+
+theorem{
+  name: unknownActionRefused,
+  parameters: [
+    action : Nat,
+    senderStatus : Nat,
+    senderPower : Nat,
+    targetStatus : Nat,
+    targetPower : Nat,
+    required : Nat,
+    open : Nat,
+    grantedPower : Nat
+  ],
+  statement: (((Comms.Rules::permitted action senderStatus senderPower targetStatus targetPower required open grantedPower) && (8 <=? action)) = false),
+  proof: linear_arithmetic{definitions: [Comms.Rules::permitted]},
+  axioms: [Quot.sound, propext]
+}
+
+theorem{
+  name: namedCodesMatch,
+  parameters: [],
+  statement: ((((Comms.Rules::joined) =? 2) && (((Comms.Rules::banned) =? 4) && (((Comms.Rules::invited) =? 1) && (((Comms.Rules::departed) =? 3) && (((Comms.Rules::absent) =? 0) && (((Comms.Rules::actJoin) =? 0) && (((Comms.Rules::actLeave) =? 1) && (((Comms.Rules::actInvite) =? 2) && (((Comms.Rules::actKick) =? 3) && (((Comms.Rules::actBan) =? 4) && (((Comms.Rules::actUnban) =? 5) && (((Comms.Rules::actSend) =? 6) && ((Comms.Rules::actSetPower) =? 7))))))))))))) = true),
+  proof: reflexivity{},
+  axioms: []
+}
+\end{semanticmodule}
+\end{lexlean}

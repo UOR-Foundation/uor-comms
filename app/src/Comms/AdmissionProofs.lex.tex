@@ -1,0 +1,86 @@
+\begin{lexlean}{Comms.AdmissionProofs}
+\useglossary{lexlean.std.bool@1.2.0}
+\useglossary{lexlean.std.nat@1.2.0}
+\importmodule{Comms.Admission}
+\title{Boolean}
+\begin{semanticmodule}
+theorem{
+  name: tamperedEventRefused,
+  parameters: [
+    claimedKappa : Nat,
+    derivedKappa : Nat,
+    signatureValid : Nat,
+    deviceMaySign : Nat,
+    parentsKnown : Nat,
+    permitted : Nat
+  ],
+  statement: (((Comms.Admission::admitted claimedKappa derivedKappa signatureValid deviceMaySign parentsKnown permitted) && ((claimedKappa <? derivedKappa) || (derivedKappa <? claimedKappa))) = false),
+  proof: linear_arithmetic{definitions: [Comms.Admission::admitted]},
+  axioms: [Quot.sound, propext]
+}
+
+theorem{
+  name: unsignedEventRefused,
+  parameters: [
+    claimedKappa : Nat,
+    derivedKappa : Nat,
+    deviceMaySign : Nat,
+    parentsKnown : Nat,
+    permitted : Nat
+  ],
+  statement: ((Comms.Admission::admitted claimedKappa derivedKappa 0 deviceMaySign parentsKnown permitted) = false),
+  proof: linear_arithmetic{definitions: [Comms.Admission::admitted]},
+  axioms: [Quot.sound, propext]
+}
+
+theorem{
+  name: removedDeviceRefused,
+  parameters: [
+    claimedKappa : Nat,
+    derivedKappa : Nat,
+    signatureValid : Nat,
+    parentsKnown : Nat,
+    permitted : Nat
+  ],
+  statement: ((Comms.Admission::admitted claimedKappa derivedKappa signatureValid 0 parentsKnown permitted) = false),
+  proof: linear_arithmetic{definitions: [Comms.Admission::admitted]},
+  axioms: [Quot.sound, propext]
+}
+
+theorem{
+  name: orphanEventRefused,
+  parameters: [
+    claimedKappa : Nat,
+    derivedKappa : Nat,
+    signatureValid : Nat,
+    deviceMaySign : Nat,
+    permitted : Nat
+  ],
+  statement: ((Comms.Admission::admitted claimedKappa derivedKappa signatureValid deviceMaySign 0 permitted) = false),
+  proof: linear_arithmetic{definitions: [Comms.Admission::admitted]},
+  axioms: [Quot.sound, propext]
+}
+
+theorem{
+  name: unpermittedEventRefused,
+  parameters: [
+    claimedKappa : Nat,
+    derivedKappa : Nat,
+    signatureValid : Nat,
+    deviceMaySign : Nat,
+    parentsKnown : Nat
+  ],
+  statement: ((Comms.Admission::admitted claimedKappa derivedKappa signatureValid deviceMaySign parentsKnown 0) = false),
+  proof: linear_arithmetic{definitions: [Comms.Admission::admitted]},
+  axioms: [Quot.sound, propext]
+}
+
+theorem{
+  name: soundEventAdmitted,
+  parameters: [kappa : Nat],
+  statement: ((Comms.Admission::admitted kappa kappa 1 1 1 1) = true),
+  proof: linear_arithmetic{definitions: [Comms.Admission::admitted]},
+  axioms: [propext]
+}
+\end{semanticmodule}
+\end{lexlean}

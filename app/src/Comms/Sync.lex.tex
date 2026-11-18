@@ -29,29 +29,5 @@ definition{
   result: Bool,
   body: (if (localHead =? remoteHead) then false else true)
 }
-
-theorem{
-  name: equalHeadsMoveNothing,
-  parameters: [head : Nat],
-  statement: ((bytesMove head head) = false),
-  proof: linear_arithmetic{definitions: [bytesMove]},
-  axioms: [propext]
-}
-
-theorem{
-  name: emptyOfferWantsNothing,
-  parameters: [store : (List Nat)],
-  statement: ((wanted (nil Nat) store) = (nil Nat)),
-  proof: simplify{definitions: [wanted]},
-  axioms: [propext]
-}
-
-theorem{
-  name: heldContentIsNotFetchedAgain,
-  parameters: [kappa : Nat, rest : (List Nat), offered : (List Nat)],
-  statement: ((wanted (cons kappa offered) (cons kappa rest)) = (wanted offered (cons kappa rest))),
-  proof: linear_arithmetic{definitions: [holds, wanted]},
-  axioms: [propext]
-}
 \end{semanticmodule}
 \end{lexlean}

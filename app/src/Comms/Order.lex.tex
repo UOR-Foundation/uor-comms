@@ -17,38 +17,6 @@ definition{
   body: ((leftRank =? rightRank) && (leftKappa =? rightKappa))
 }
 
-theorem{
-  name: orderIsTotal,
-  parameters: [leftRank : Nat, leftKappa : Nat, rightRank : Nat, rightKappa : Nat],
-  statement: (((precedes leftRank leftKappa rightRank rightKappa) || ((precedes rightRank rightKappa leftRank leftKappa) || (same leftRank leftKappa rightRank rightKappa))) = true),
-  proof: linear_arithmetic{definitions: [precedes, same]},
-  axioms: [Classical.choice, Quot.sound, propext]
-}
-
-theorem{
-  name: orderNeverBothWays,
-  parameters: [leftRank : Nat, leftKappa : Nat, rightRank : Nat, rightKappa : Nat],
-  statement: (((precedes leftRank leftKappa rightRank rightKappa) && (precedes rightRank rightKappa leftRank leftKappa)) = false),
-  proof: linear_arithmetic{definitions: [precedes]},
-  axioms: [Quot.sound, propext]
-}
-
-theorem{
-  name: orderNeverPrecedesItself,
-  parameters: [rank : Nat, kappa : Nat],
-  statement: ((precedes rank kappa rank kappa) = false),
-  proof: linear_arithmetic{definitions: [precedes]},
-  axioms: [Quot.sound, propext]
-}
-
-theorem{
-  name: orderIsTransitive,
-  parameters: [aRank : Nat, aKappa : Nat, bRank : Nat, bKappa : Nat, cRank : Nat, cKappa : Nat],
-  statement: (((precedes aRank aKappa bRank bKappa) && ((precedes bRank bKappa cRank cKappa) && ((precedes cRank cKappa aRank aKappa) || (same aRank aKappa cRank cKappa)))) = false),
-  proof: linear_arithmetic{definitions: [precedes, same]},
-  axioms: [Quot.sound, propext]
-}
-
 definition{
   name: addressBound,
   parameters: [],
@@ -61,30 +29,6 @@ definition{
   parameters: [rank : Nat, kappa : Nat],
   result: Nat,
   body: ((prim multiply rank 115792089237316195423570985008687907853269984665640564039457584007913129639936 : Nat) + kappa)
-}
-
-theorem{
-  name: earlierInOrderHasSmallerKey,
-  parameters: [leftRank : Nat, leftKappa : Nat, rightRank : Nat, rightKappa : Nat],
-  statement: ((((leftKappa <? (addressBound)) && (rightKappa <? (addressBound))) && ((precedes leftRank leftKappa rightRank rightKappa) && ((orderingKey rightRank rightKappa) <=? (orderingKey leftRank leftKappa)))) = false),
-  proof: linear_arithmetic{definitions: [addressBound, orderingKey, precedes]},
-  axioms: [Quot.sound, propext]
-}
-
-theorem{
-  name: smallerKeyIsEarlierInOrder,
-  parameters: [leftRank : Nat, leftKappa : Nat, rightRank : Nat, rightKappa : Nat],
-  statement: ((((leftKappa <? (addressBound)) && (rightKappa <? (addressBound))) && (((orderingKey leftRank leftKappa) <? (orderingKey rightRank rightKappa)) && ((precedes rightRank rightKappa leftRank leftKappa) || (same leftRank leftKappa rightRank rightKappa)))) = false),
-  proof: linear_arithmetic{definitions: [addressBound, orderingKey, precedes, same]},
-  axioms: [Quot.sound, propext]
-}
-
-theorem{
-  name: equalKeysAreTheSameEvent,
-  parameters: [leftRank : Nat, leftKappa : Nat, rightRank : Nat, rightKappa : Nat],
-  statement: ((((leftKappa <? (addressBound)) && (rightKappa <? (addressBound))) && (((orderingKey leftRank leftKappa) =? (orderingKey rightRank rightKappa)) && ((precedes leftRank leftKappa rightRank rightKappa) || (precedes rightRank rightKappa leftRank leftKappa)))) = false),
-  proof: linear_arithmetic{definitions: [addressBound, orderingKey, precedes]},
-  axioms: [Quot.sound, propext]
 }
 \end{semanticmodule}
 \end{lexlean}

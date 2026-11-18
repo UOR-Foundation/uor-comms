@@ -1,0 +1,79 @@
+\begin{lexlean}{Comms.CallProofs}
+\useglossary{lexlean.std.bool@1.2.0}
+\useglossary{lexlean.std.nat@1.2.0}
+\importmodule{Comms.Call}
+\title{Boolean}
+\begin{semanticmodule}
+theorem{
+  name: endedCallStaysEnded,
+  parameters: [signal : Nat],
+  statement: ((Comms.Call::step 4 signal) = 4),
+  proof: linear_arithmetic{definitions: [Comms.Call::step]},
+  axioms: [Quot.sound, propext]
+}
+
+theorem{
+  name: hangUpAlwaysEnds,
+  parameters: [state : Nat],
+  statement: ((Comms.Call::step state 4) = 4),
+  proof: linear_arithmetic{definitions: [Comms.Call::step]},
+  axioms: [Quot.sound, propext]
+}
+
+theorem{
+  name: noConnectionFromIdle,
+  parameters: [signal : Nat],
+  statement: (((Comms.Call::step 0 signal) =? 3) = false),
+  proof: linear_arithmetic{definitions: [Comms.Call::step]},
+  axioms: [Quot.sound, propext]
+}
+
+theorem{
+  name: callerConnectsOnlyWhenAnswered,
+  parameters: [signal : Nat],
+  statement: ((((Comms.Call::step 1 signal) =? 3) && ((signal <? 3) || (3 <? signal))) = false),
+  proof: linear_arithmetic{definitions: [Comms.Call::step]},
+  axioms: [Quot.sound, propext]
+}
+
+theorem{
+  name: calleeConnectsOnlyByAccepting,
+  parameters: [signal : Nat],
+  statement: ((((Comms.Call::step 2 signal) =? 3) && ((signal <? 2) || (2 <? signal))) = false),
+  proof: linear_arithmetic{definitions: [Comms.Call::step]},
+  axioms: [Quot.sound, propext]
+}
+
+theorem{
+  name: stateStaysInRange,
+  parameters: [state : Nat, signal : Nat],
+  statement: (((Comms.Call::step state signal) <=? 4) = true),
+  proof: linear_arithmetic{definitions: [Comms.Call::step]},
+  axioms: [Quot.sound, propext]
+}
+
+theorem{
+  name: crossedCallsNeverBothYield,
+  parameters: [ownOffer : Nat, otherOffer : Nat],
+  statement: (((Comms.Call::yields ownOffer otherOffer) && (Comms.Call::yields otherOffer ownOffer)) = false),
+  proof: linear_arithmetic{definitions: [Comms.Call::yields]},
+  axioms: [Quot.sound, propext]
+}
+
+theorem{
+  name: crossedCallsOneSideYields,
+  parameters: [ownOffer : Nat, otherOffer : Nat],
+  statement: (((ownOffer =? otherOffer) || ((Comms.Call::yields ownOffer otherOffer) || (Comms.Call::yields otherOffer ownOffer))) = true),
+  proof: linear_arithmetic{definitions: [Comms.Call::yields]},
+  axioms: [Quot.sound, propext]
+}
+
+theorem{
+  name: namedStatesMatch,
+  parameters: [],
+  statement: ((((Comms.Call::idle) =? 0) && (((Comms.Call::calling) =? 1) && (((Comms.Call::ringing) =? 2) && (((Comms.Call::connected) =? 3) && ((Comms.Call::ended) =? 4))))) = true),
+  proof: reflexivity{},
+  axioms: []
+}
+\end{semanticmodule}
+\end{lexlean}

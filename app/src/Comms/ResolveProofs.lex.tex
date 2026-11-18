@@ -1,0 +1,87 @@
+\begin{lexlean}{Comms.ResolveProofs}
+\useglossary{lexlean.std.bool@1.2.0}
+\useglossary{lexlean.std.nat@1.2.0}
+\importmodule{Comms.Resolve}
+\title{Boolean}
+\begin{semanticmodule}
+theorem{
+  name: mergeComm,
+  parameters: [a : Nat, b : Nat],
+  statement: ((Comms.Resolve::merge a b) = (Comms.Resolve::merge b a)),
+  proof: linear_arithmetic{definitions: [Comms.Resolve::merge]},
+  axioms: [Quot.sound, propext]
+}
+
+theorem{
+  name: mergeIdem,
+  parameters: [a : Nat],
+  statement: ((Comms.Resolve::merge a a) = a),
+  proof: linear_arithmetic{definitions: [Comms.Resolve::merge]},
+  axioms: [Quot.sound, propext]
+}
+
+theorem{
+  name: mergeAbsorb,
+  parameters: [a : Nat, b : Nat],
+  statement: ((Comms.Resolve::merge a (Comms.Resolve::merge a b)) = (Comms.Resolve::merge a b)),
+  proof: linear_arithmetic{definitions: [Comms.Resolve::merge]},
+  axioms: [Quot.sound, propext]
+}
+
+theorem{
+  name: mergeLeftComm,
+  parameters: [a : Nat, b : Nat, c : Nat],
+  statement: ((Comms.Resolve::merge a (Comms.Resolve::merge b c)) = (Comms.Resolve::merge b (Comms.Resolve::merge a c))),
+  proof: linear_arithmetic{definitions: [Comms.Resolve::merge]},
+  axioms: [Quot.sound, propext]
+}
+
+theorem{
+  name: redeliveryChangesNothing,
+  parameters: [event : Nat, rest : (List Nat), seed : Nat],
+  statement: ((Comms.Resolve::resolve (cons event (cons event rest)) seed) = (Comms.Resolve::resolve (cons event rest) seed)),
+  proof: linear_arithmetic{definitions: [Comms.Resolve::merge, Comms.Resolve::resolve]},
+  axioms: [Quot.sound, propext]
+}
+
+theorem{
+  name: arrivalPositionChangesNothing,
+  parameters: [before : (List Nat), event : Nat, after : (List Nat), seed : Nat],
+  statement: ((Comms.Resolve::resolve (Comms.Resolve::joined before (cons event after)) seed) = (Comms.Resolve::merge event (Comms.Resolve::resolve (Comms.Resolve::joined before after) seed))),
+  proof: induction{
+    branches: [
+      {proof: simplify{definitions: [Comms.Resolve::joined, Comms.Resolve::resolve]}, binders: [], constructor: nil},
+      {
+        proof: simplify{definitions: [ih, Comms.Resolve::joined, Comms.Resolve::resolve, mergeLeftComm]},
+        binders: [head, rest, ih],
+        constructor: cons
+      }
+    ],
+    scrutinee: before
+  },
+  axioms: [Quot.sound, propext]
+}
+
+theorem{
+  name: neighboursSwapAnywhere,
+  parameters: [before : (List Nat), earlier : Nat, later : Nat, after : (List Nat), seed : Nat],
+  statement: ((Comms.Resolve::resolve (Comms.Resolve::joined before (cons earlier (cons later after))) seed) = (Comms.Resolve::resolve (Comms.Resolve::joined before (cons later (cons earlier after))) seed)),
+  proof: induction{
+    branches: [
+      {
+        proof: simplify{definitions: [Comms.Resolve::joined, Comms.Resolve::resolve, mergeLeftComm]},
+        binders: [],
+        constructor: nil
+      },
+      {
+        proof: simplify{definitions: [ih, Comms.Resolve::joined, Comms.Resolve::resolve]},
+        binders: [head, rest, ih],
+        constructor: cons
+      }
+    ],
+    scrutinee: before
+  },
+  axioms: [Quot.sound, propext]
+}
+\end{semanticmodule}
+\end{lexlean}

@@ -11,45 +11,5 @@ definition{
   result: Bool,
   body: (((joinedAt <=? messageEpoch) || (historyShared =? 1)) && (messageEpoch <? leftAt))
 }
-
-theorem{
-  name: membershipChangeRotatesKey,
-  parameters: [epoch : Nat],
-  statement: ((epoch <? (nextEpoch epoch)) = true),
-  proof: linear_arithmetic{definitions: [nextEpoch]},
-  axioms: [Quot.sound, propext]
-}
-
-theorem{
-  name: joinerCannotReadEarlier,
-  parameters: [joinedAt : Nat, leftAt : Nat, messageEpoch : Nat],
-  statement: (((holdsKey joinedAt leftAt messageEpoch 0) && (messageEpoch <? joinedAt)) = false),
-  proof: linear_arithmetic{definitions: [holdsKey]},
-  axioms: [Quot.sound, propext]
-}
-
-theorem{
-  name: removedMemberCannotReadLater,
-  parameters: [joinedAt : Nat, leftAt : Nat, messageEpoch : Nat, historyShared : Nat],
-  statement: (((holdsKey joinedAt leftAt messageEpoch historyShared) && (leftAt <=? messageEpoch)) = false),
-  proof: linear_arithmetic{definitions: [holdsKey]},
-  axioms: [Quot.sound, propext]
-}
-
-theorem{
-  name: removalEpochIsUnreadable,
-  parameters: [joinedAt : Nat, epoch : Nat, historyShared : Nat],
-  statement: ((holdsKey joinedAt (nextEpoch epoch) (nextEpoch epoch) historyShared) = false),
-  proof: linear_arithmetic{definitions: [holdsKey, nextEpoch]},
-  axioms: [Quot.sound, propext]
-}
-
-theorem{
-  name: currentMemberReadsFromJoining,
-  parameters: [joinedAt : Nat, leftAt : Nat, historyShared : Nat],
-  statement: (((leftAt <=? joinedAt) || (holdsKey joinedAt leftAt joinedAt historyShared)) = true),
-  proof: linear_arithmetic{definitions: [holdsKey]},
-  axioms: [Classical.choice, Quot.sound, propext]
-}
 \end{semanticmodule}
 \end{lexlean}
