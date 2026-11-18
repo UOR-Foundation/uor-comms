@@ -50,9 +50,15 @@ theorem{
   statement: ((Comms.Resolve::resolve (Comms.Resolve::joined before (cons event after)) seed) = (Comms.Resolve::merge event (Comms.Resolve::resolve (Comms.Resolve::joined before after) seed))),
   proof: induction{
     branches: [
-      {proof: simplify{definitions: [Comms.Resolve::joined, Comms.Resolve::resolve]}, binders: [], constructor: nil},
       {
-        proof: simplify{definitions: [ih, mergeLeftComm, Comms.Resolve::joined, Comms.Resolve::resolve]},
+        proof: simplify{definitions: [Comms.Resolve::joined, Comms.Resolve::resolve]},
+        binders: [],
+        constructor: nil
+      },
+      {
+        proof: simplify{
+          definitions: [ih, mergeLeftComm, Comms.Resolve::joined, Comms.Resolve::resolve]
+        },
         binders: [head, rest, ih],
         constructor: cons
       }
@@ -69,7 +75,9 @@ theorem{
   proof: induction{
     branches: [
       {
-        proof: simplify{definitions: [mergeLeftComm, Comms.Resolve::joined, Comms.Resolve::resolve]},
+        proof: simplify{
+          definitions: [mergeLeftComm, Comms.Resolve::joined, Comms.Resolve::resolve]
+        },
         binders: [],
         constructor: nil
       },

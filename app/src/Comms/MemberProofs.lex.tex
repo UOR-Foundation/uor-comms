@@ -55,7 +55,15 @@ theorem{
 
 theorem{
   name: bannedMemberIsNotInvitedOrKicked,
-  parameters: [action : Nat, senderStatus : Nat, senderPower : Nat, targetPower : Nat, required : Nat, open : Nat, grantedPower : Nat],
+  parameters: [
+    action : Nat,
+    senderStatus : Nat,
+    senderPower : Nat,
+    targetPower : Nat,
+    required : Nat,
+    open : Nat,
+    grantedPower : Nat
+  ],
   statement: (((Comms.Rules::permitted action senderStatus senderPower 4 targetPower required open grantedPower) && ((action =? 2) || (action =? 3))) = false),
   proof: linear_arithmetic{definitions: [Comms.Rules::permitted]},
   axioms: [Quot.sound, propext]

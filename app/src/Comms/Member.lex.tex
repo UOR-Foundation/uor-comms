@@ -28,7 +28,9 @@ definition{
   name: statusAfter,
   parameters: [actions : (List Nat), start : Nat],
   result: Nat,
-  body: (match actions | List.nil => start | List.cons head rest => (nextStatus head (statusAfter rest start))),
+  body: (match actions
+    | List.nil => start
+    | List.cons head rest => (nextStatus head (statusAfter rest start))),
   recursive_argument: actions
 }
 \end{semanticmodule}

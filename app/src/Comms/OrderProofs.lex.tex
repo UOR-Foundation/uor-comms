@@ -40,7 +40,9 @@ theorem{
   name: earlierInOrderHasSmallerKey,
   parameters: [leftRank : Nat, leftKappa : Nat, rightRank : Nat, rightKappa : Nat],
   statement: ((((leftKappa <? (Comms.Order::addressBound)) && (rightKappa <? (Comms.Order::addressBound))) && ((Comms.Order::precedes leftRank leftKappa rightRank rightKappa) && ((Comms.Order::orderingKey rightRank rightKappa) <=? (Comms.Order::orderingKey leftRank leftKappa)))) = false),
-  proof: linear_arithmetic{definitions: [Comms.Order::addressBound, Comms.Order::orderingKey, Comms.Order::precedes]},
+  proof: linear_arithmetic{
+    definitions: [Comms.Order::addressBound, Comms.Order::orderingKey, Comms.Order::precedes]
+  },
   axioms: [Quot.sound, propext]
 }
 
@@ -48,7 +50,14 @@ theorem{
   name: smallerKeyIsEarlierInOrder,
   parameters: [leftRank : Nat, leftKappa : Nat, rightRank : Nat, rightKappa : Nat],
   statement: ((((leftKappa <? (Comms.Order::addressBound)) && (rightKappa <? (Comms.Order::addressBound))) && (((Comms.Order::orderingKey leftRank leftKappa) <? (Comms.Order::orderingKey rightRank rightKappa)) && ((Comms.Order::precedes rightRank rightKappa leftRank leftKappa) || (Comms.Order::same leftRank leftKappa rightRank rightKappa)))) = false),
-  proof: linear_arithmetic{definitions: [Comms.Order::addressBound, Comms.Order::orderingKey, Comms.Order::precedes, Comms.Order::same]},
+  proof: linear_arithmetic{
+    definitions: [
+      Comms.Order::addressBound,
+      Comms.Order::orderingKey,
+      Comms.Order::precedes,
+      Comms.Order::same
+    ]
+  },
   axioms: [Quot.sound, propext]
 }
 
@@ -56,7 +65,9 @@ theorem{
   name: equalKeysAreTheSameEvent,
   parameters: [leftRank : Nat, leftKappa : Nat, rightRank : Nat, rightKappa : Nat],
   statement: ((((leftKappa <? (Comms.Order::addressBound)) && (rightKappa <? (Comms.Order::addressBound))) && (((Comms.Order::orderingKey leftRank leftKappa) =? (Comms.Order::orderingKey rightRank rightKappa)) && ((Comms.Order::precedes leftRank leftKappa rightRank rightKappa) || (Comms.Order::precedes rightRank rightKappa leftRank leftKappa)))) = false),
-  proof: linear_arithmetic{definitions: [Comms.Order::addressBound, Comms.Order::orderingKey, Comms.Order::precedes]},
+  proof: linear_arithmetic{
+    definitions: [Comms.Order::addressBound, Comms.Order::orderingKey, Comms.Order::precedes]
+  },
   axioms: [Quot.sound, propext]
 }
 \end{semanticmodule}
