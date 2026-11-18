@@ -1,0 +1,52 @@
+\begin{lexlean}{Comms.Order}
+\useglossary{lexlean.std.bool@1.2.0}
+\useglossary{lexlean.std.nat@1.2.0}
+\title{Boolean}
+\begin{semanticmodule}
+definition{
+  name: precedes,
+  parameters: [leftRank : Nat, leftKappa : Nat, rightRank : Nat, rightKappa : Nat],
+  result: Bool,
+  body: ((leftRank <? rightRank) || ((leftRank =? rightRank) && (leftKappa <? rightKappa)))
+}
+
+definition{
+  name: same,
+  parameters: [leftRank : Nat, leftKappa : Nat, rightRank : Nat, rightKappa : Nat],
+  result: Bool,
+  body: ((leftRank =? rightRank) && (leftKappa =? rightKappa))
+}
+
+theorem{
+  name: orderIsTotal,
+  parameters: [leftRank : Nat, leftKappa : Nat, rightRank : Nat, rightKappa : Nat],
+  statement: (((precedes leftRank leftKappa rightRank rightKappa) || ((precedes rightRank rightKappa leftRank leftKappa) || (same leftRank leftKappa rightRank rightKappa))) = true),
+  proof: linear_arithmetic{definitions: [precedes, same]},
+  axioms: [Classical.choice, Quot.sound, propext]
+}
+
+theorem{
+  name: orderNeverBothWays,
+  parameters: [leftRank : Nat, leftKappa : Nat, rightRank : Nat, rightKappa : Nat],
+  statement: (((precedes leftRank leftKappa rightRank rightKappa) && (precedes rightRank rightKappa leftRank leftKappa)) = false),
+  proof: linear_arithmetic{definitions: [precedes]},
+  axioms: [Quot.sound, propext]
+}
+
+theorem{
+  name: orderNeverPrecedesItself,
+  parameters: [rank : Nat, kappa : Nat],
+  statement: ((precedes rank kappa rank kappa) = false),
+  proof: linear_arithmetic{definitions: [precedes]},
+  axioms: [Quot.sound, propext]
+}
+
+theorem{
+  name: orderIsTransitive,
+  parameters: [aRank : Nat, aKappa : Nat, bRank : Nat, bKappa : Nat, cRank : Nat, cKappa : Nat],
+  statement: (((precedes aRank aKappa bRank bKappa) && ((precedes bRank bKappa cRank cKappa) && ((precedes cRank cKappa aRank aKappa) || (same aRank aKappa cRank cKappa)))) = false),
+  proof: linear_arithmetic{definitions: [precedes, same]},
+  axioms: [Quot.sound, propext]
+}
+\end{semanticmodule}
+\end{lexlean}

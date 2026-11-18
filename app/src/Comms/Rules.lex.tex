@@ -1,0 +1,176 @@
+\begin{lexlean}{Comms.Rules}
+\useglossary{lexlean.std.bool@1.2.0}
+\useglossary{lexlean.std.nat@1.2.0}
+\title{Boolean}
+\begin{semanticmodule}
+definition{
+  name: absent,
+  parameters: [],
+  result: Nat,
+  body: 0
+}
+
+definition{
+  name: invited,
+  parameters: [],
+  result: Nat,
+  body: 1
+}
+
+definition{
+  name: joined,
+  parameters: [],
+  result: Nat,
+  body: 2
+}
+
+definition{
+  name: departed,
+  parameters: [],
+  result: Nat,
+  body: 3
+}
+
+definition{
+  name: banned,
+  parameters: [],
+  result: Nat,
+  body: 4
+}
+
+definition{
+  name: actJoin,
+  parameters: [],
+  result: Nat,
+  body: 0
+}
+
+definition{
+  name: actLeave,
+  parameters: [],
+  result: Nat,
+  body: 1
+}
+
+definition{
+  name: actInvite,
+  parameters: [],
+  result: Nat,
+  body: 2
+}
+
+definition{
+  name: actKick,
+  parameters: [],
+  result: Nat,
+  body: 3
+}
+
+definition{
+  name: actBan,
+  parameters: [],
+  result: Nat,
+  body: 4
+}
+
+definition{
+  name: actUnban,
+  parameters: [],
+  result: Nat,
+  body: 5
+}
+
+definition{
+  name: actSend,
+  parameters: [],
+  result: Nat,
+  body: 6
+}
+
+definition{
+  name: actSetPower,
+  parameters: [],
+  result: Nat,
+  body: 7
+}
+
+definition{
+  name: permitted,
+  parameters: [action : Nat, senderStatus : Nat, senderPower : Nat, targetStatus : Nat, targetPower : Nat, required : Nat, open : Nat, grantedPower : Nat],
+  result: Bool,
+  body: (((action =? 0) && ((senderStatus =? 1) || ((open =? 1) && ((senderStatus =? 0) || (senderStatus =? 3))))) || (((action =? 1) && ((senderStatus =? 1) || (senderStatus =? 2))) || ((senderStatus =? 2) && ((required <=? senderPower) && (((action =? 2) && ((targetStatus =? 0) || (targetStatus =? 3))) || (((action =? 3) && ((targetPower <? senderPower) && ((targetStatus =? 1) || (targetStatus =? 2)))) || (((action =? 4) && ((targetPower <? senderPower) && ((targetStatus <? 4) || (4 <? targetStatus)))) || (((action =? 5) && (targetStatus =? 4)) || ((action =? 6) || ((action =? 7) && ((targetPower <? senderPower) && (grantedPower <=? senderPower))))))))))))
+}
+
+theorem{
+  name: bannedMemberDoesNothing,
+  parameters: [action : Nat, senderPower : Nat, targetStatus : Nat, targetPower : Nat, required : Nat, open : Nat, grantedPower : Nat],
+  statement: ((permitted action 4 senderPower targetStatus targetPower required open grantedPower) = false),
+  proof: linear_arithmetic{definitions: [permitted]},
+  axioms: [Quot.sound, propext]
+}
+
+theorem{
+  name: onlyJoinedMembersWrite,
+  parameters: [action : Nat, senderStatus : Nat, senderPower : Nat, targetStatus : Nat, targetPower : Nat, required : Nat, open : Nat, grantedPower : Nat],
+  statement: (((permitted action senderStatus senderPower targetStatus targetPower required open grantedPower) && ((2 <=? action) && ((senderStatus <? 2) || (2 <? senderStatus)))) = false),
+  proof: linear_arithmetic{definitions: [permitted]},
+  axioms: [Quot.sound, propext]
+}
+
+theorem{
+  name: belowRequiredPowerRefused,
+  parameters: [action : Nat, senderStatus : Nat, senderPower : Nat, targetStatus : Nat, targetPower : Nat, required : Nat, open : Nat, grantedPower : Nat],
+  statement: (((permitted action senderStatus senderPower targetStatus targetPower required open grantedPower) && ((2 <=? action) && (senderPower <? required))) = false),
+  proof: linear_arithmetic{definitions: [permitted]},
+  axioms: [Quot.sound, propext]
+}
+
+theorem{
+  name: cannotRemoveEqualOrHigher,
+  parameters: [action : Nat, senderStatus : Nat, senderPower : Nat, targetStatus : Nat, targetPower : Nat, required : Nat, open : Nat, grantedPower : Nat],
+  statement: (((permitted action senderStatus senderPower targetStatus targetPower required open grantedPower) && (((action =? 3) || (action =? 4)) && (senderPower <=? targetPower))) = false),
+  proof: linear_arithmetic{definitions: [permitted]},
+  axioms: [Quot.sound, propext]
+}
+
+theorem{
+  name: cannotGrantAboveOwnPower,
+  parameters: [senderStatus : Nat, senderPower : Nat, targetStatus : Nat, targetPower : Nat, required : Nat, open : Nat, grantedPower : Nat],
+  statement: (((permitted 7 senderStatus senderPower targetStatus targetPower required open grantedPower) && (senderPower <? grantedPower)) = false),
+  proof: linear_arithmetic{definitions: [permitted]},
+  axioms: [Quot.sound, propext]
+}
+
+theorem{
+  name: cannotChangeEqualOrHigherPower,
+  parameters: [senderStatus : Nat, senderPower : Nat, targetStatus : Nat, targetPower : Nat, required : Nat, open : Nat, grantedPower : Nat],
+  statement: (((permitted 7 senderStatus senderPower targetStatus targetPower required open grantedPower) && (senderPower <=? targetPower)) = false),
+  proof: linear_arithmetic{definitions: [permitted]},
+  axioms: [Quot.sound, propext]
+}
+
+theorem{
+  name: closedRoomNeedsInvite,
+  parameters: [senderStatus : Nat, senderPower : Nat, targetStatus : Nat, targetPower : Nat, required : Nat, grantedPower : Nat],
+  statement: (((permitted 0 senderStatus senderPower targetStatus targetPower required 0 grantedPower) && ((senderStatus <? 1) || (1 <? senderStatus))) = false),
+  proof: linear_arithmetic{definitions: [permitted]},
+  axioms: [Quot.sound, propext]
+}
+
+theorem{
+  name: unknownActionRefused,
+  parameters: [action : Nat, senderStatus : Nat, senderPower : Nat, targetStatus : Nat, targetPower : Nat, required : Nat, open : Nat, grantedPower : Nat],
+  statement: (((permitted action senderStatus senderPower targetStatus targetPower required open grantedPower) && (8 <=? action)) = false),
+  proof: linear_arithmetic{definitions: [permitted]},
+  axioms: [Quot.sound, propext]
+}
+
+theorem{
+  name: namedCodesMatch,
+  parameters: [],
+  statement: ((((joined) =? 2) && (((banned) =? 4) && (((invited) =? 1) && (((departed) =? 3) && (((absent) =? 0) && (((actJoin) =? 0) && (((actLeave) =? 1) && (((actInvite) =? 2) && (((actKick) =? 3) && (((actBan) =? 4) && (((actUnban) =? 5) && (((actSend) =? 6) && ((actSetPower) =? 7))))))))))))) = true),
+  proof: reflexivity{},
+  axioms: []
+}
+\end{semanticmodule}
+\end{lexlean}

@@ -1,0 +1,81 @@
+\begin{lexlean}{Comms.Resolve}
+\useglossary{lexlean.std.bool@1.2.0}
+\useglossary{lexlean.std.nat@1.2.0}
+\title{Boolean}
+\begin{semanticmodule}
+definition{
+  name: merge,
+  parameters: [a : Nat, b : Nat],
+  result: Nat,
+  body: (if (a <=? b) then b else a)
+}
+
+definition{
+  name: resolve,
+  parameters: [events : (List Nat), seed : Nat],
+  result: Nat,
+  body: (match events
+    | List.nil => seed
+    | List.cons head rest => (merge head (resolve rest seed))),
+  recursive_argument: events
+}
+
+definition{
+  name: joined,
+  parameters: [left : (List Nat), right : (List Nat)],
+  result: (List Nat),
+  body: (match left
+    | List.nil => right
+    | List.cons head rest => (cons head (joined rest right))),
+  recursive_argument: left
+}
+
+theorem{
+  name: mergeComm,
+  parameters: [a : Nat, b : Nat],
+  statement: ((merge a b) = (merge b a)),
+  proof: linear_arithmetic{definitions: [merge]},
+  axioms: [Quot.sound, propext]
+}
+
+theorem{
+  name: mergeIdem,
+  parameters: [a : Nat],
+  statement: ((merge a a) = a),
+  proof: linear_arithmetic{definitions: [merge]},
+  axioms: [Quot.sound, propext]
+}
+
+theorem{
+  name: mergeAbsorb,
+  parameters: [a : Nat, b : Nat],
+  statement: ((merge a (merge a b)) = (merge a b)),
+  proof: linear_arithmetic{definitions: [merge]},
+  axioms: [Quot.sound, propext]
+}
+
+theorem{
+  name: mergeLeftComm,
+  parameters: [a : Nat, b : Nat, c : Nat],
+  statement: ((merge a (merge b c)) = (merge b (merge a c))),
+  proof: linear_arithmetic{definitions: [merge]},
+  axioms: [Quot.sound, propext]
+}
+
+theorem{
+  name: redeliveryChangesNothing,
+  parameters: [event : Nat, rest : (List Nat), seed : Nat],
+  statement: ((resolve (cons event (cons event rest)) seed) = (resolve (cons event rest) seed)),
+  proof: linear_arithmetic{definitions: [merge, resolve]},
+  axioms: [Quot.sound, propext]
+}
+
+theorem{
+  name: arrivalPositionChangesNothing,
+  parameters: [before : (List Nat), event : Nat, after : (List Nat), seed : Nat],
+  statement: ((resolve (joined before (cons event after)) seed) = (merge event (resolve (joined before after) seed))),
+  proof: induction{scrutinee: before, branches: [{constructor: nil, binders: [], proof: simplify{definitions: [joined, resolve]}}, {constructor: cons, binders: [head, rest, ih], proof: simplify{definitions: [ih, joined, mergeLeftComm, resolve]}}]},
+  axioms: [Quot.sound, propext]
+}
+\end{semanticmodule}
+\end{lexlean}
