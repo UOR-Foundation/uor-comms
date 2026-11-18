@@ -52,7 +52,7 @@ theorem{
     branches: [
       {proof: simplify{definitions: [Comms.Resolve::joined, Comms.Resolve::resolve]}, binders: [], constructor: nil},
       {
-        proof: simplify{definitions: [ih, Comms.Resolve::joined, Comms.Resolve::resolve, mergeLeftComm]},
+        proof: simplify{definitions: [ih, mergeLeftComm, Comms.Resolve::joined, Comms.Resolve::resolve]},
         binders: [head, rest, ih],
         constructor: cons
       }
@@ -69,7 +69,7 @@ theorem{
   proof: induction{
     branches: [
       {
-        proof: simplify{definitions: [Comms.Resolve::joined, Comms.Resolve::resolve, mergeLeftComm]},
+        proof: simplify{definitions: [mergeLeftComm, Comms.Resolve::joined, Comms.Resolve::resolve]},
         binders: [],
         constructor: nil
       },
