@@ -1,61 +1,60 @@
 # Status
 
-Last run: 2026-11-18, the `build` workflow of this repository, `just app` in the SDK image `prismpm.lock` pins (`ghcr.io/afflom/prismpm-sdk-patched@sha256:3dfa5f72…`), Lean 4.32.1.
-Result: `10 modules are canonical`, `lexlean.lock is current`, `verified attestation: cdb77bf69fd79ee37ce24c372792698fe3e08f07b4221914d172b5bc03960612`, [run 44289959087](https://github.com/UOR-Foundation/uor-comms/actions/runs/44289959087). That run was of a throwaway commit holding these same model files; the run of the commit that carries this document is named in the pull request.
+Last run: 2026-11-18, the `build` workflow of this repository, `just app` in the SDK image `prismpm.lock` pins, Lean 4.32.1.
+Result: `19 modules are canonical`, `verified attestation: a43e6052f386c4caddb0498f476e3856c2e3ffc733a5c94cb55fccdf834f7ed7`, provenance signed, [run 44301638095](https://github.com/UOR-Foundation/uor-comms/actions/runs/44301638095). That run was of a throwaway commit holding these same model files; the run of the commit that carries this document is named in the pull request.
 
-"Proved" below means Lean accepted the theorem in that run. Each theorem declares the exact axioms Lean observed (`propext`, `Quot.sound`, `Classical.choice`, or none).
+"Proved" means Lean accepted the theorem in that run. "Tested" means an acceptance vector was replayed in the compiled guest in that run. Each theorem declares the exact axioms Lean observed (`propext`, `Quot.sound`, `Classical.choice`, or none).
 
-## Proved (46 theorems)
+## Proved (58 theorems)
 
-| Module | Theorem | What it says |
+| Module | Theorems | What they say |
 |---|---|---|
-| `Comms.Resolve` | `mergeComm`, `mergeIdem`, `mergeAbsorb`, `mergeLeftComm` | Choosing between two candidates does not depend on their order or on repeats |
-| | `redeliveryChangesNothing` | An event delivered twice gives the same state as once |
-| | `arrivalPositionChangesNothing` | An event delivered at any position in any sequence gives the same state as if it had arrived first (by induction on the sequence) |
-| | `neighboursSwapAnywhere` | Exchanging two neighbouring events anywhere in a sequence gives the same state (by induction on what comes before them) |
-| `Comms.Order` | `orderIsTotal`, `orderNeverBothWays`, `orderNeverPrecedesItself`, `orderIsTransitive` | Rank then address is a strict total order |
-| | `earlierInOrderHasSmallerKey`, `smallerKeyIsEarlierInOrder`, `equalKeysAreTheSameEvent` | For addresses below 2^256, the resolver's ordering key (rank times 2^256 plus address) orders events exactly as rank then address does, and equal keys mean the same event |
-| `Comms.Admission` | `tamperedEventRefused` | An event whose bytes do not give its address is refused |
-| | `unsignedEventRefused`, `removedDeviceRefused`, `orphanEventRefused`, `unpermittedEventRefused` | Each of the other four conditions is necessary |
-| | `soundEventAdmitted` | An event that meets all five is accepted |
-| `Comms.Rules` | `bannedMemberDoesNothing` | A banned member is permitted no action |
-| | `onlyJoinedMembersWrite` | Invite, kick, ban, unban, send and power change need a joined sender |
-| | `belowRequiredPowerRefused` | Those actions need the required power |
-| | `cannotRemoveEqualOrHigher` | Nobody kicks or bans a member of equal or higher power |
-| | `cannotGrantAboveOwnPower`, `cannotChangeEqualOrHigherPower` | Power changes stay below the sender's own |
-| | `closedRoomNeedsInvite`, `unknownActionRefused`, `namedCodesMatch` | A closed room is joined only by invitation; an unknown action is refused |
-| `Comms.Epoch` | `membershipChangeRotatesKey` | Every membership change starts a later epoch |
-| | `joinerCannotReadEarlier` | Without shared history, a member holds no key from before joining |
-| | `removedMemberCannotReadLater`, `removalEpochIsUnreadable` | A removed member holds no key from the removal onward |
-| | `currentMemberReadsFromJoining` | A member holds the key of the epoch they joined |
-| `Comms.Sync` | `equalHeadsMoveNothing` | Equal heads send no bytes |
-| | `heldContentIsNotFetchedAgain`, `emptyOfferWantsNothing` | Content already held is never requested |
-| `Comms.Call` | `endedCallStaysEnded`, `hangUpAlwaysEnds`, `stateStaysInRange` | A call ends for good and never leaves its five states |
-| | `noConnectionFromIdle`, `callerConnectsOnlyWhenAnswered`, `calleeConnectsOnlyByAccepting` | A call connects only through an answer |
-| | `crossedCallsNeverBothYield`, `crossedCallsOneSideYields` | When both sides call at once, exactly one yields |
+| `Comms.AdmissionProofs` | `tamperedEventRefused`, `unsignedEventRefused`, `removedDeviceRefused`, `orphanEventRefused`, `unpermittedEventRefused`, `soundEventAdmitted` | An event failing any one of the five conditions is refused; one meeting all five is admitted |
+| `Comms.RulesProofs` | `bannedMemberDoesNothing`, `onlyJoinedMembersWrite`, `belowRequiredPowerRefused`, `cannotRemoveEqualOrHigher`, `cannotGrantAboveOwnPower`, `cannotChangeEqualOrHigherPower`, `closedRoomNeedsInvite`, `unknownActionRefused`, `namedCodesMatch` | Who may join, leave, invite, kick, ban, unban, send and change power |
+| `Comms.OrderProofs` | `orderIsTotal`, `orderNeverBothWays`, `orderNeverPrecedesItself`, `orderIsTransitive` | Rank then address is a strict total order |
+| | `earlierInOrderHasSmallerKey`, `smallerKeyIsEarlierInOrder`, `equalKeysAreTheSameEvent` | For addresses below 2^256 the resolver's ordering key orders events exactly as rank then address does |
+| | `wideOrderIsTotal`, `wideOrderNeverBothWays`, `wideOrderMatchesPackedAddress`, `packedAddressIsBelowTheBound` | The kernel's comparison of four 64-bit words agrees with rank then address on the packed 256-bit address |
+| `Comms.ResolveProofs` | `mergeComm`, `mergeIdem`, `mergeAbsorb`, `mergeLeftComm` | Choosing between two candidates does not depend on order or repeats |
+| | `redeliveryChangesNothing`, `arrivalPositionChangesNothing`, `neighboursSwapAnywhere` | Delivering an event twice, at any position, or exchanging any two neighbours gives the same state (the last two by induction) |
+| `Comms.EpochProofs` | `membershipChangeRotatesKey`, `joinerCannotReadEarlier`, `removedMemberCannotReadLater`, `removalEpochIsUnreadable`, `currentMemberReadsFromJoining` | Who holds the key of which epoch |
+| `Comms.MemberProofs` | `statusStaysInRange`, `banLeavesBanned`, `onlyJoiningMakesAMember`, `refusedEventChangesNothing`, `powerChangesOnlyByPowerChange`, `newestBanDecides`, `bannedMemberIsNotInvitedOrKicked`, `permittedBanTakesEffect` | What status and power a permitted action leaves behind |
+| `Comms.SyncProofs` | `equalHeadsMoveNothing`, `emptyOfferWantsNothing`, `heldContentIsNotFetchedAgain` | Equal heads send nothing; held content is never requested |
+| `Comms.CallProofs` | `endedCallStaysEnded`, `hangUpAlwaysEnds`, `stateStaysInRange`, `noConnectionFromIdle`, `callerConnectsOnlyWhenAnswered`, `calleeConnectsOnlyByAccepting`, `crossedCallsNeverBothYield`, `crossedCallsOneSideYields`, `namedStatesMatch` | A call connects only through an answer and ends for good; when calls cross exactly one side yields |
 
-Planted defect, in the scaffold project before this repository existed: removing the power comparison from the ban rule made Lean reject `Comms.Rules`. The file was restored byte for byte. It has not been repeated through this repository's gate.
+## Tested (29 acceptance vectors)
+
+The holo's entry point, `RoomKernel.dispatch`, answers six operations. The vectors are in the `application` record of `app/src/RoomKernel.lex.tex` and were replayed in the compiled guest.
+
+| Operation | Vectors | Covers |
+|---|---|---|
+| Admit | 4 | all conditions met; address mismatch; device may not sign; parent missing |
+| Permit | 7 | send; ban at equal power; ban of a lower member; banned sender; join of a closed room with and without an invitation; granting above own power |
+| Order | 3 | left earlier, same, left later |
+| Key | 4 | inside membership; before joining with and without shared history; at removal |
+| Call | 4 | answer connects; ended stays ended; idle ignores an answer; accepting connects |
+| Member | 3 | permitted ban; refused ban; accepted invitation |
+| Invalid | 4 | empty; unknown operation; wrong length; a request at the guest's allocation bound |
+
+The expected answers were computed by a script that restates the rules in JavaScript; the replay is what checks them against the model.
 
 ## Not proved
 
-- **Convergence stated over permutations.** Lean proved that exchanging any two neighbours, moving one event to any position, and repeating one, change nothing. Neighbour exchanges generate every reordering, so any two orderings of the same events agree; that closing sentence is ordinary mathematics and is not itself a theorem in the model, which has no notion of permutation.
-- **That the resolver is fed ordering keys.** `orderingKey` is proved to match the order, but nothing yet builds the resolver's input from events, because there is no entry point.
-- **The ban race.** See `DESIGN.md`.
-- **A member list.** `Comms.Rules` judges one action against given statuses and powers. Deriving those from a room's events is not modelled.
-
-## Tested only
-
-Nothing yet. The model has no acceptance vectors of its own; the scaffold's sample entry and its six vectors are unrelated to this model.
+- **Convergence stated over permutations.** Neighbour exchanges generate every reordering, so any two orderings of the same events agree; that closing sentence is ordinary mathematics and not a theorem in the model, which has no notion of permutation.
+- **That the kernel's answers are the modelled functions.** `RK-09` pins the text of the entry point and the vectors exercise it; no theorem relates `dispatch` to the decision functions, and none covers the byte reader `natAt`.
+- **Building room state from events.** The kernel decides one question against statuses and powers the host supplies. Nothing proves the host derived them correctly from a room's history.
+- **The ban race.** A ban and an event from the banned member that do not see each other are settled by rank; the security argument is not proved.
+- **The planted-defect check** was run in a scaffold before this repository existed, not through this gate.
 
 ## Assumed
 
-- BLAKE3 is collision resistant, and the host computes it correctly. The model receives the derived address as an input.
-- Signatures cannot be forged, and the host checks them correctly.
-- Prism ID's verdict on a device is correct. The model takes it as an input and restates none of stitch's model.
-- Encryption hides content from anyone without the epoch key. `Comms.Epoch` decides who holds a key, not what a key protects.
+- BLAKE3 is collision resistant and the host computes it correctly. The kernel is told two addresses to compare; it does not hash.
+- Signatures cannot be forged and the host checks them correctly.
+- Prism ID's verdict on a device is correct. The kernel takes it as a flag and restates none of stitch's model.
+- Encryption hides content from anyone without the epoch key.
 - The network eventually delivers every event to every member.
 
-## Where this stands in the repository
+## Not done
 
-- The modules are entrypoints of the app's LexLean project and are not imported by `app/src/Contract.lex.tex`. A module the application imports is compiled into the guest, and a `linear_arithmetic` proof there makes that compile run past the build's ten-minute limit (`PP5007`, LexLean #465). When the entry point starts calling these definitions, each module splits into definitions and a separate proofs module, as Foundry's kernel does.
-- No capability is registered in `model/ids.toml`, so `CONFORMANCE.md` claims nothing about messaging. Each theorem group still needs its ID row, scenario and pinned test (R3).
+- No host: nothing stores events, moves bytes, encrypts or draws a screen.
+- Knock, space-restricted joins, redaction, reporting, presence, per-user synced data and profiles are not in the model.
+- Hosted-prover runs made while developing are diagnostics; only the build workflow's run is cited above.

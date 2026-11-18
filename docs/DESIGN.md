@@ -68,7 +68,7 @@ Judging against cited evidence, and not against "current" state, is what makes a
 
 ## Not designed yet
 
-- The wire format and the dispatch entry point of the holo. The scaffold's sample entry is still in place.
+- Canonical event bytes. The kernel has an entry point and a first wire format (one operation byte, fixed big-endian fields, a 32-byte address as four 64-bit words; see the README), but what bytes an event is, and so what is hashed and signed, is not specified.
 - The ban race: a ban and an event from the banned member that do not see each other. Rank decides it; the security argument is not proved.
 - Group keys between users: how a room key is wrapped to each member's devices.
 - Confirming that a contact's Prism ID is theirs.
