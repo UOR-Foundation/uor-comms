@@ -81,7 +81,7 @@ jobs:
           set -euo pipefail
           if [[ -f app/lexlean.toml ]]; then
             project=app
-            command='just app'
+            command='(cd app && lexlean lock && lexlean fmt --all && lexlean lock) && just app'
           elif [[ -f prism/prism.toml ]]; then
             project=prism
             command='cd prism && lexlean lock && lexlean fmt --all && lexlean lock && prismpm verify'
@@ -140,6 +140,18 @@ jobs:
             --env HOME=/tmp/prismpm-home \
             --env PRISMPM_EPHEMERAL_HOME=1 \
             "$image" sh -c "$COMMAND"
+      - name: Hand back what the SDK formatter changed
+        if: always()
+        shell: bash
+        run: git diff -- app > "$RUNNER_TEMP/sdk-format.patch" || true
+      - name: Upload the formatter patch
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: sdk-format-patch
+          path: ${{ runner.temp }}/sdk-format.patch
+          if-no-files-found: warn
+          retention-days: 3
       - name: Collect the holo, its build directory and what this run knows about them
         id: collect
         shell: bash
