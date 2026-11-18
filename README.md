@@ -400,9 +400,9 @@ just app
 npx prism-code inspect app/.prism/build/*/*.holo
 ```
 
-The claims are registered as `RK-01` to `RK-09`, specified in
+The claims are registered as `RK-01` to `RK-10`, specified in
 `features/suites/room.feature`, and pinned by the tests in
-`crates/conformance/tests/room.rs`.
+`crates/conformance/tests/contract.rs`.
 
 To see a larger Prism application, the
 [Calculator](https://github.com/UOR-Foundation/PrismPM/tree/main/examples/Calculator)

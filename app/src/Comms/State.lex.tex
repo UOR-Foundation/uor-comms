@@ -1,0 +1,69 @@
+\begin{lexlean}{Comms.State}
+\useglossary{lexlean.std.bool@1.2.0}
+\useglossary{lexlean.std.nat@1.2.0}
+\importmodule{Comms.Member}
+\importmodule{Comms.Rules}
+\title{Boolean}
+\begin{semanticmodule}
+definition{
+  name: part,
+  parameters: [event : (List Nat), index : Nat],
+  result: Nat,
+  body: (match event
+    | List.nil => 0
+    | List.cons head rest => (match index
+      | Nat.zero => head
+      | Nat.succ before => (part rest before))),
+  recursive_argument: event
+}
+
+definition{name: actionOf, parameters: [event : (List Nat)], result: Nat, body: (part event 0)}
+
+definition{name: senderOf, parameters: [event : (List Nat)], result: Nat, body: (part event 1)}
+
+definition{name: grantedOf, parameters: [event : (List Nat)], result: Nat, body: (part event 3)}
+
+definition{
+  name: subjectOf,
+  parameters: [event : (List Nat)],
+  result: Nat,
+  body: (if ((part event 0) <? 2) then (part event 1) else (part event 2))
+}
+
+definition{
+  name: step,
+  parameters: [
+    field : Nat,
+    isSubject : Bool,
+    action : Nat,
+    senderStatus : Nat,
+    senderPower : Nat,
+    targetStatus : Nat,
+    targetPower : Nat,
+    required : Nat,
+    open : Nat,
+    grantedPower : Nat
+  ],
+  result: Nat,
+  body: (if (isSubject && (Comms.Rules::permitted action senderStatus senderPower targetStatus targetPower required open grantedPower)) then (if (field =? 0) then (Comms.Member::nextStatus action targetStatus) else (Comms.Member::nextPower action targetPower grantedPower)) else (if (field =? 0) then targetStatus else targetPower))
+}
+
+definition{
+  name: state,
+  parameters: [
+    field : Nat,
+    member : Nat,
+    creator : Nat,
+    creatorPower : Nat,
+    required : Nat,
+    open : Nat,
+    events : (List (List Nat))
+  ],
+  result: Nat,
+  body: (match events
+    | List.nil => (if (member =? creator) then (if (field =? 0) then 2 else creatorPower) else 0)
+    | List.cons head rest => (step field (member =? (subjectOf head)) (actionOf head) (state 0 (senderOf head) creator creatorPower required open rest) (state 1 (senderOf head) creator creatorPower required open rest) (state 0 member creator creatorPower required open rest) (state 1 member creator creatorPower required open rest) required open (grantedOf head))),
+  recursive_argument: events
+}
+\end{semanticmodule}
+\end{lexlean}

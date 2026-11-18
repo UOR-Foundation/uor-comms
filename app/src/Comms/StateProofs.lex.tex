@@ -1,0 +1,299 @@
+\begin{lexlean}{Comms.StateProofs}
+\useglossary{lexlean.std.bool@1.2.0}
+\useglossary{lexlean.std.nat@1.2.0}
+\importmodule{Comms.Member}
+\importmodule{Comms.Rules}
+\importmodule{Comms.State}
+\title{Boolean}
+\begin{semanticmodule}
+definition{
+  name: capped,
+  parameters: [limit : Nat, value : Nat],
+  result: Nat,
+  body: (if (limit <? value) then limit else value)
+}
+
+definition{
+  name: rawStatus,
+  parameters: [
+    member : Nat,
+    creator : Nat,
+    creatorPower : Nat,
+    required : Nat,
+    open : Nat,
+    events : (List (List Nat))
+  ],
+  result: Nat,
+  body: (match events
+    | List.nil => (if (member =? creator) then 2 else 0)
+    | List.cons head rest => (Comms.State::step 0 (member =? (Comms.State::subjectOf head)) (Comms.State::actionOf head) (Comms.State::state 0 (Comms.State::senderOf head) creator creatorPower required open rest) (Comms.State::state 1 (Comms.State::senderOf head) creator creatorPower required open rest) (capped 4 (rawStatus member creator creatorPower required open rest)) (Comms.State::state 1 member creator creatorPower required open rest) required open (Comms.State::grantedOf head))),
+  recursive_argument: events
+}
+
+definition{
+  name: rawPower,
+  parameters: [
+    member : Nat,
+    creator : Nat,
+    creatorPower : Nat,
+    required : Nat,
+    open : Nat,
+    events : (List (List Nat))
+  ],
+  result: Nat,
+  body: (match events
+    | List.nil => (if (member =? creator) then creatorPower else 0)
+    | List.cons head rest => (Comms.State::step 1 (member =? (Comms.State::subjectOf head)) (Comms.State::actionOf head) (Comms.State::state 0 (Comms.State::senderOf head) creator creatorPower required open rest) (capped creatorPower (rawPower (Comms.State::senderOf head) creator creatorPower required open rest)) (Comms.State::state 0 member creator creatorPower required open rest) (capped creatorPower (rawPower member creator creatorPower required open rest)) required open (Comms.State::grantedOf head))),
+  recursive_argument: events
+}
+
+theorem{
+  name: roomStartsWithItsCreator,
+  parameters: [member : Nat, creator : Nat, creatorPower : Nat, required : Nat, open : Nat],
+  statement: ((Comms.State::state 0 member creator creatorPower required open (nil (List Nat))) = (if (member =? creator) then 2 else 0)),
+  proof: linear_arithmetic{definitions: [Comms.State::state]},
+  axioms: [propext]
+}
+
+theorem{
+  name: statusStepIsTheKernelStep,
+  parameters: [
+    isSubject : Bool,
+    action : Nat,
+    senderStatus : Nat,
+    senderPower : Nat,
+    targetStatus : Nat,
+    targetPower : Nat,
+    required : Nat,
+    open : Nat,
+    grantedPower : Nat
+  ],
+  statement: ((Comms.State::step 0 isSubject action senderStatus senderPower targetStatus targetPower required open grantedPower) = (Comms.Member::applied (if (isSubject && (Comms.Rules::permitted action senderStatus senderPower targetStatus targetPower required open grantedPower)) then 1 else 0) action targetStatus)),
+  proof: linear_arithmetic{definitions: [Comms.Member::applied, Comms.State::step]},
+  axioms: [Quot.sound, propext]
+}
+
+theorem{
+  name: powerStepIsTheKernelStep,
+  parameters: [
+    isSubject : Bool,
+    action : Nat,
+    senderStatus : Nat,
+    senderPower : Nat,
+    targetStatus : Nat,
+    targetPower : Nat,
+    required : Nat,
+    open : Nat,
+    grantedPower : Nat
+  ],
+  statement: ((Comms.State::step 1 isSubject action senderStatus senderPower targetStatus targetPower required open grantedPower) = (if (isSubject && (Comms.Rules::permitted action senderStatus senderPower targetStatus targetPower required open grantedPower)) then (Comms.Member::nextPower action targetPower grantedPower) else targetPower)),
+  proof: linear_arithmetic{definitions: [Comms.State::step]},
+  axioms: [Quot.sound, propext]
+}
+
+theorem{
+  name: eventChangesOnlyItsSubjectsStatus,
+  parameters: [
+    member : Nat,
+    creator : Nat,
+    creatorPower : Nat,
+    required : Nat,
+    open : Nat,
+    event : (List Nat),
+    rest : (List (List Nat))
+  ],
+  statement: (((member =? (Comms.State::subjectOf event)) || ((Comms.State::state 0 member creator creatorPower required open (cons event rest)) =? (Comms.State::state 0 member creator creatorPower required open rest))) = true),
+  proof: linear_arithmetic{definitions: [Comms.State::state, Comms.State::step]},
+  axioms: [Quot.sound, propext]
+}
+
+theorem{
+  name: eventChangesOnlyItsSubjectsPower,
+  parameters: [
+    member : Nat,
+    creator : Nat,
+    creatorPower : Nat,
+    required : Nat,
+    open : Nat,
+    event : (List Nat),
+    rest : (List (List Nat))
+  ],
+  statement: (((member =? (Comms.State::subjectOf event)) || ((Comms.State::state 1 member creator creatorPower required open (cons event rest)) =? (Comms.State::state 1 member creator creatorPower required open rest))) = true),
+  proof: linear_arithmetic{definitions: [Comms.State::state, Comms.State::step]},
+  axioms: [Quot.sound, propext]
+}
+
+theorem{
+  name: bannedSenderChangesNothing,
+  parameters: [
+    field : Nat,
+    isSubject : Bool,
+    action : Nat,
+    senderPower : Nat,
+    targetStatus : Nat,
+    targetPower : Nat,
+    required : Nat,
+    open : Nat,
+    grantedPower : Nat
+  ],
+  statement: ((Comms.State::step field isSubject action 4 senderPower targetStatus targetPower required open grantedPower) = (if (field =? 0) then targetStatus else targetPower)),
+  proof: linear_arithmetic{definitions: [Comms.Rules::permitted, Comms.State::step]},
+  axioms: [Quot.sound, propext]
+}
+
+theorem{
+  name: onlyAnUnbanLiftsABan,
+  parameters: [
+    isSubject : Bool,
+    action : Nat,
+    senderStatus : Nat,
+    senderPower : Nat,
+    targetPower : Nat,
+    required : Nat,
+    open : Nat,
+    grantedPower : Nat
+  ],
+  statement: (((not (action =? 5)) && (not ((Comms.State::step 0 isSubject action (if (action <? 2) then 4 else senderStatus) senderPower 4 targetPower required open grantedPower) =? 4))) = false),
+  proof: linear_arithmetic{
+    definitions: [Comms.Member::nextStatus, Comms.Rules::permitted, Comms.State::step]
+  },
+  axioms: [Quot.sound, propext]
+}
+
+theorem{
+  name: cappedStatusStaysCapped,
+  parameters: [
+    isSubject : Bool,
+    action : Nat,
+    senderStatus : Nat,
+    senderPower : Nat,
+    targetStatus : Nat,
+    targetPower : Nat,
+    required : Nat,
+    open : Nat,
+    grantedPower : Nat
+  ],
+  statement: ((capped 4 (Comms.State::step 0 isSubject action senderStatus senderPower (capped 4 targetStatus) targetPower required open grantedPower)) = (Comms.State::step 0 isSubject action senderStatus senderPower (capped 4 targetStatus) targetPower required open grantedPower)),
+  proof: linear_arithmetic{definitions: [Comms.Member::nextStatus, Comms.State::step, capped]},
+  axioms: [Quot.sound, propext]
+}
+
+theorem{
+  name: cappedPowerStaysCapped,
+  parameters: [
+    limit : Nat,
+    isSubject : Bool,
+    action : Nat,
+    senderStatus : Nat,
+    senderPower : Nat,
+    targetStatus : Nat,
+    targetPower : Nat,
+    required : Nat,
+    open : Nat,
+    grantedPower : Nat
+  ],
+  statement: ((capped limit (Comms.State::step 1 isSubject action senderStatus (capped limit senderPower) targetStatus (capped limit targetPower) required open grantedPower)) = (Comms.State::step 1 isSubject action senderStatus (capped limit senderPower) targetStatus (capped limit targetPower) required open grantedPower)),
+  proof: linear_arithmetic{
+    definitions: [Comms.Member::nextPower, Comms.Rules::permitted, Comms.State::step, capped]
+  },
+  axioms: [Quot.sound, propext]
+}
+
+theorem{
+  name: cappedNeverExceedsItsLimit,
+  parameters: [limit : Nat, value : Nat],
+  statement: ((limit <? (capped limit value)) = false),
+  proof: linear_arithmetic{definitions: [capped]},
+  axioms: [Quot.sound, propext]
+}
+
+theorem{
+  name: statusIsCapped,
+  parameters: [
+    member : Nat,
+    creator : Nat,
+    creatorPower : Nat,
+    required : Nat,
+    open : Nat,
+    events : (List (List Nat))
+  ],
+  statement: ((Comms.State::state 0 member creator creatorPower required open events) = (capped 4 (rawStatus member creator creatorPower required open events))),
+  proof: induction{
+    branches: [
+      {
+        proof: linear_arithmetic{definitions: [Comms.State::state, capped, rawStatus]},
+        binders: [],
+        constructor: nil
+      },
+      {
+        proof: simplify{definitions: [cappedStatusStaysCapped, ih, rawStatus, Comms.State::state]},
+        binders: [head, rest, ih],
+        constructor: cons
+      }
+    ],
+    scrutinee: events
+  },
+  axioms: [Quot.sound, propext]
+}
+
+theorem{
+  name: powerIsCapped,
+  parameters: [
+    member : Nat,
+    creator : Nat,
+    creatorPower : Nat,
+    required : Nat,
+    open : Nat,
+    events : (List (List Nat))
+  ],
+  statement: ((Comms.State::state 1 member creator creatorPower required open events) = (capped creatorPower (rawPower member creator creatorPower required open events))),
+  proof: induction{
+    branches: [
+      {
+        proof: linear_arithmetic{definitions: [Comms.State::state, capped, rawPower]},
+        binders: [],
+        constructor: nil
+      },
+      {
+        proof: simplify{definitions: [cappedPowerStaysCapped, ih, rawPower, Comms.State::state]},
+        binders: [head, rest, ih],
+        constructor: cons
+      }
+    ],
+    generalizing: [member],
+    scrutinee: events
+  },
+  axioms: [Quot.sound, propext]
+}
+
+theorem{
+  name: statusStaysInRangeAfterAnyHistory,
+  parameters: [
+    member : Nat,
+    creator : Nat,
+    creatorPower : Nat,
+    required : Nat,
+    open : Nat,
+    events : (List (List Nat))
+  ],
+  statement: ((4 <? (Comms.State::state 0 member creator creatorPower required open events)) = false),
+  proof: simplify{definitions: [cappedNeverExceedsItsLimit, statusIsCapped]},
+  axioms: [Quot.sound, propext]
+}
+
+theorem{
+  name: noPowerAboveTheCreator,
+  parameters: [
+    member : Nat,
+    creator : Nat,
+    creatorPower : Nat,
+    required : Nat,
+    open : Nat,
+    events : (List (List Nat))
+  ],
+  statement: ((creatorPower <? (Comms.State::state 1 member creator creatorPower required open events)) = false),
+  proof: simplify{definitions: [cappedNeverExceedsItsLimit, powerIsCapped]},
+  axioms: [Quot.sound, propext]
+}
+\end{semanticmodule}
+\end{lexlean}

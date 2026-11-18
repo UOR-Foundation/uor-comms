@@ -58,11 +58,7 @@ fn scenario(id: &str) {
         let (file, name) = (words.next().unwrap(), words.nth(1).unwrap());
         let model = read(&format!("app/src/{file}"));
         let found = declaration(&model, name);
-        let wanted = if exact {
-            format!("statement: {text},")
-        } else {
-            text.to_string()
-        };
+        let wanted = [text.to_string(), format!("statement: {text},")][usize::from(exact)].clone();
         assert!(
             found.contains(&wanted),
             "{name} in {file} must hold `{text}`:\n{found}"
@@ -106,4 +102,6 @@ mod pins {
     fn room_rk_08() { scenario("RK-08") }
     #[test]
     fn room_rk_09() { scenario("RK-09") }
+    #[test]
+    fn room_rk_10() { scenario("RK-10") }
 }

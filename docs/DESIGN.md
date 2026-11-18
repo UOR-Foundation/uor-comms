@@ -48,6 +48,8 @@ Judging against cited evidence, and not against "current" state, is what makes a
 
 **Permissions.** `Comms.Rules` covers join, leave, invite, kick, ban, unban, send and change of power level, with five member statuses. It follows Matrix room version 12 in substance: only joined members write, a sender needs the required power, nobody removes or changes a member of equal or higher power, nobody grants more power than they hold, a banned member can do nothing.
 
+**State from history.** The status and power of every member are the room's events folded by one step, newest first (`Comms.State`). An event is four numbers: action, sender, target, granted power. The step asks the permission rule against the state the earlier events define, then applies the membership or power change to the event's subject and to nobody else. A join or a leave has its sender as subject. A room starts with its creator joined at the creator's power. The required power and whether the room is open are fixed for the fold; events that change them are not modelled.
+
 **Resolved state.** For each state key, every admitted candidate gets an ordering key built from its rank and its address (`Comms.Order`). Rank puts changes to membership and power ahead of everything else, then the sender's power. The address breaks ties, and addresses are unique, so the order is total. The resolved value is the greatest candidate (`Comms.Resolve`). Timestamps play no part.
 
 **Reading.** Every membership change starts a new key epoch. A member holds the keys from the epoch they joined until the epoch they left (`Comms.Epoch`). History before joining is readable only when the room shares it.
