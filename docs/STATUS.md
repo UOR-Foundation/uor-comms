@@ -56,6 +56,5 @@ Nothing yet. The model has no acceptance vectors of its own; the scaffold's samp
 ## Where this stands in the repository
 
 - The run above was made in a scaffold project before this repository existed, under the module prefix `PrismTextRequest`. Here the same seven files sit under `PrismTemplateContract`, so that attestation does not name this tree. This repository's own proof is the `build` workflow's run of `prismpm verify`.
-- The modules are imported by `app/src/Contract.lex.tex` so that the build proves them. They are not yet called by the app's entry point: there is no wire format or dispatch for this model.
+- The modules are entrypoints of the app's LexLean project and are not imported by `app/src/Contract.lex.tex`. A module the application imports is compiled into the guest, and a `linear_arithmetic` proof there makes that compile run past the build's ten-minute limit (`PP5007`, LexLean #465). When the entry point starts calling these definitions, each module splits into definitions and a separate proofs module, as Foundry's kernel does.
 - No capability is registered in `model/ids.toml`, so `CONFORMANCE.md` claims nothing about messaging. Each theorem group still needs its ID row, scenario and pinned test (R3).
-- The files have not been through `lexlean fmt`; the gate may refuse them as not canonical.
