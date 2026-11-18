@@ -71,12 +71,7 @@ theorem{
   axioms: [Quot.sound, propext]
 }
 
-definition{
-  name: wordBound,
-  parameters: [],
-  result: Nat,
-  body: 18446744073709551616
-}
+definition{name: wordBound, parameters: [], result: Nat, body: 18446744073709551616}
 
 definition{
   name: packed,
@@ -94,7 +89,18 @@ definition{
 
 theorem{
   name: wideOrderIsTotal,
-  parameters: [leftRank : Nat, l0 : Nat, l1 : Nat, l2 : Nat, l3 : Nat, rightRank : Nat, r0 : Nat, r1 : Nat, r2 : Nat, r3 : Nat],
+  parameters: [
+    leftRank : Nat,
+    l0 : Nat,
+    l1 : Nat,
+    l2 : Nat,
+    l3 : Nat,
+    rightRank : Nat,
+    r0 : Nat,
+    r1 : Nat,
+    r2 : Nat,
+    r3 : Nat
+  ],
   statement: (((Comms.Order::precedesWide leftRank l0 l1 l2 l3 rightRank r0 r1 r2 r3) || ((Comms.Order::precedesWide rightRank r0 r1 r2 r3 leftRank l0 l1 l2 l3) || (Comms.Order::sameWide leftRank l0 l1 l2 l3 rightRank r0 r1 r2 r3))) = true),
   proof: linear_arithmetic{definitions: [Comms.Order::precedesWide, Comms.Order::sameWide]},
   axioms: [Classical.choice, Quot.sound, propext]
@@ -102,7 +108,18 @@ theorem{
 
 theorem{
   name: wideOrderNeverBothWays,
-  parameters: [leftRank : Nat, l0 : Nat, l1 : Nat, l2 : Nat, l3 : Nat, rightRank : Nat, r0 : Nat, r1 : Nat, r2 : Nat, r3 : Nat],
+  parameters: [
+    leftRank : Nat,
+    l0 : Nat,
+    l1 : Nat,
+    l2 : Nat,
+    l3 : Nat,
+    rightRank : Nat,
+    r0 : Nat,
+    r1 : Nat,
+    r2 : Nat,
+    r3 : Nat
+  ],
   statement: (((Comms.Order::precedesWide leftRank l0 l1 l2 l3 rightRank r0 r1 r2 r3) && (Comms.Order::precedesWide rightRank r0 r1 r2 r3 leftRank l0 l1 l2 l3)) = false),
   proof: linear_arithmetic{definitions: [Comms.Order::precedesWide]},
   axioms: [Quot.sound, propext]
@@ -110,9 +127,28 @@ theorem{
 
 theorem{
   name: wideOrderMatchesPackedAddress,
-  parameters: [leftRank : Nat, l0 : Nat, l1 : Nat, l2 : Nat, l3 : Nat, rightRank : Nat, r0 : Nat, r1 : Nat, r2 : Nat, r3 : Nat],
+  parameters: [
+    leftRank : Nat,
+    l0 : Nat,
+    l1 : Nat,
+    l2 : Nat,
+    l3 : Nat,
+    rightRank : Nat,
+    r0 : Nat,
+    r1 : Nat,
+    r2 : Nat,
+    r3 : Nat
+  ],
   statement: ((((wordsBounded l0 l1 l2 l3) && (wordsBounded r0 r1 r2 r3)) && ((Comms.Order::precedesWide leftRank l0 l1 l2 l3 rightRank r0 r1 r2 r3) && ((Comms.Order::precedes rightRank (packed r0 r1 r2 r3) leftRank (packed l0 l1 l2 l3)) || (Comms.Order::same leftRank (packed l0 l1 l2 l3) rightRank (packed r0 r1 r2 r3))))) = false),
-  proof: linear_arithmetic{definitions: [Comms.Order::precedes, Comms.Order::precedesWide, Comms.Order::same, packed, wordsBounded]},
+  proof: linear_arithmetic{
+    definitions: [
+      Comms.Order::precedes,
+      Comms.Order::precedesWide,
+      Comms.Order::same,
+      packed,
+      wordsBounded
+    ]
+  },
   axioms: [Quot.sound, propext]
 }
 

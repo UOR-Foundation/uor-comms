@@ -5,7 +5,13 @@
 \begin{semanticmodule}
 definition{
   name: admitted,
-  parameters: [addressMatches : Nat, signatureValid : Nat, deviceMaySign : Nat, parentsKnown : Nat, permitted : Nat],
+  parameters: [
+    addressMatches : Nat,
+    signatureValid : Nat,
+    deviceMaySign : Nat,
+    parentsKnown : Nat,
+    permitted : Nat
+  ],
   result: Bool,
   body: ((addressMatches =? 1) && ((signatureValid =? 1) && ((deviceMaySign =? 1) && ((parentsKnown =? 1) && (permitted =? 1)))))
 }

@@ -33,14 +33,36 @@ definition{
 
 definition{
   name: precedesWide,
-  parameters: [leftRank : Nat, l0 : Nat, l1 : Nat, l2 : Nat, l3 : Nat, rightRank : Nat, r0 : Nat, r1 : Nat, r2 : Nat, r3 : Nat],
+  parameters: [
+    leftRank : Nat,
+    l0 : Nat,
+    l1 : Nat,
+    l2 : Nat,
+    l3 : Nat,
+    rightRank : Nat,
+    r0 : Nat,
+    r1 : Nat,
+    r2 : Nat,
+    r3 : Nat
+  ],
   result: Bool,
   body: ((leftRank <? rightRank) || ((leftRank =? rightRank) && ((l0 <? r0) || ((l0 =? r0) && ((l1 <? r1) || ((l1 =? r1) && ((l2 <? r2) || ((l2 =? r2) && (l3 <? r3)))))))))
 }
 
 definition{
   name: sameWide,
-  parameters: [leftRank : Nat, l0 : Nat, l1 : Nat, l2 : Nat, l3 : Nat, rightRank : Nat, r0 : Nat, r1 : Nat, r2 : Nat, r3 : Nat],
+  parameters: [
+    leftRank : Nat,
+    l0 : Nat,
+    l1 : Nat,
+    l2 : Nat,
+    l3 : Nat,
+    rightRank : Nat,
+    r0 : Nat,
+    r1 : Nat,
+    r2 : Nat,
+    r3 : Nat
+  ],
   result: Bool,
   body: ((leftRank =? rightRank) && ((l0 =? r0) && ((l1 =? r1) && ((l2 =? r2) && (l3 =? r3)))))
 }
