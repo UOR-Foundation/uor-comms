@@ -41,6 +41,7 @@ model does not sanction.
 | `RK-07` | `build` | A permitted ban leaves the member banned, a refused event changes nothing, and only joining makes a member |
 | `RK-08` | `build` | Equal heads move no bytes and content already held is not requested again |
 | `RK-09` | `build` | The kernel answers each of its six questions with the function the theorems are about, and invalid request for anything else |
+| `RK-10` | `build` | The membership and power of a room are its events folded by one step, the step is the one the kernel answers, and no history takes a status out of range or a power above the creator's |
 
 ## Cited authorities
 
