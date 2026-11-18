@@ -133,3 +133,23 @@ Feature: room
     And sendNeverStepsBack in Comms/SendProofs.lex.tex states (((Comms.Send::advance phase report) <? phase) = false)
     And wrongReportChangesNothing in Comms/SendProofs.lex.tex states (((not (report =? phase)) && (not ((Comms.Send::advance phase report) =? phase))) = false)
     And announceIsAskedOnlyOnceStored in Comms/SendProofs.lex.tex states ((((Comms.Send::instruction phase) =? 3) && (not (phase =? 3))) = false)
+
+  @RK-13 @build
+  Scenario: Only a joined member with the power to send redacts, their own event with that alone and another's only with the redaction power; a redacted event shows no content and is not fetched, in whatever order redactions arrive, and a redaction changes no member's status or power
+    Given the redaction rules in app/src/Comms/Redact.lex.tex
+    When the Lean kernel checks the theorems of RedactProofs during prismpm verify
+    Then allowed in Comms/Redact.lex.tex contains body: ((senderStatus =? 2) && ((required <=? senderPower) && ((own =? 1) || (redactPower <=? senderPower))))
+    And fetched in Comms/Redact.lex.tex contains body: (if (Comms.Sync::holds redacted event) then false else (if (Comms.Sync::holds store content) then false else true))
+    And onlyJoinedMembersRedact in Comms/RedactProofs.lex.tex states (((not (senderStatus =? 2)) && (Comms.Redact::allowed senderStatus senderPower required redactPower own)) = false)
+    And ownEventNeedsOnlySendingPower in Comms/RedactProofs.lex.tex states (((senderStatus =? 2) && ((required <=? senderPower) && ((own =? 1) && (not (Comms.Redact::allowed senderStatus senderPower required redactPower own))))) = false)
+    And anothersEventNeedsPower in Comms/RedactProofs.lex.tex states (((not (own =? 1)) && ((senderPower <? redactPower) && (Comms.Redact::allowed senderStatus senderPower required redactPower own))) = false)
+    And redactionNeedsSendingPower in Comms/RedactProofs.lex.tex states (((senderPower <? required) && (Comms.Redact::allowed senderStatus senderPower required redactPower own)) = false)
+    And redactionNeedsCanonicalForm in Comms/RedactProofs.lex.tex states ((Comms.Redact::mayCompose 2 senderStatus senderPower required redactPower own parents authorities) = false)
+    And bannedMemberRedactsNothing in Comms/RedactProofs.lex.tex states ((Comms.Redact::allowed 4 senderPower required redactPower own) = false)
+    And redactedContentIsGone in Comms/RedactProofs.lex.tex states ((Comms.Redact::shown (cons event rest) event content) = 0)
+    And laterRedactionUndoesNone in Comms/RedactProofs.lex.tex states ((Comms.Redact::shown (cons other (cons event rest)) event content) = 0)
+    And redeliveredRedactionChangesNothing in Comms/RedactProofs.lex.tex states ((Comms.Redact::shown (cons again (cons again rest)) event content) = (Comms.Redact::shown (cons again rest) event content))
+    And redactionOrderChangesNothing in Comms/RedactProofs.lex.tex states ((Comms.Redact::shown (cons earlier (cons later rest)) event content) = (Comms.Redact::shown (cons later (cons earlier rest)) event content))
+    And redactionTouchesOnlyItsEvent in Comms/RedactProofs.lex.tex states (((other =? event) || ((Comms.Redact::shown (cons other rest) event content) =? (Comms.Redact::shown rest event content))) = true)
+    And redactedContentIsNotFetched in Comms/RedactProofs.lex.tex states ((Comms.Redact::fetched (cons event rest) event content store) = false)
+    And redactionChangesNoMember in Comms/RedactProofs.lex.tex states ((Comms.State::step field isSubject 8 senderStatus senderPower targetStatus targetPower required open grantedPower) = (if (field =? 0) then targetStatus else targetPower))

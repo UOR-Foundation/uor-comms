@@ -134,7 +134,7 @@ definition{
   name: canonical,
   parameters: [version : Nat, action : Nat, parents : (List Nat), authorities : (List Nat)],
   result: Bool,
-  body: ((version =? 1) && ((action <? 8) && ((ascending parents) && ((ascending authorities) && (((count parents) <=? 80) && ((count authorities) <=? 80))))))
+  body: ((version =? 1) && ((action <? 9) && ((ascending parents) && ((ascending authorities) && (((count parents) <=? 80) && ((count authorities) <=? 80))))))
 }
 
 definition{
