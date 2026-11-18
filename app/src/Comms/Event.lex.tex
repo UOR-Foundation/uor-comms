@@ -154,5 +154,83 @@ definition{
   result: (List Nat),
   body: (cons version (cons action (joined room (joined sender (joined device (joined target (cons granted (joined content (cons (count parents) (cons (count authorities) (joined parents authorities)))))))))))
 }
+
+definition{
+  name: wordAt,
+  parameters: [words : (List Nat), index : Nat],
+  result: Nat,
+  body: (match words
+    | List.nil => 0
+    | List.cons head rest => (match index
+      | Nat.zero => head
+      | Nat.succ before => (wordAt rest before))),
+  recursive_argument: words
+}
+
+definition{
+  name: skip,
+  parameters: [words : (List Nat), dropped : Nat],
+  result: (List Nat),
+  body: (match dropped
+    | Nat.zero => words
+    | Nat.succ fewer => (match words
+      | List.nil => (nil Nat)
+      | List.cons head rest => (skip rest fewer))),
+  recursive_argument: dropped
+}
+
+definition{
+  name: take,
+  parameters: [words : (List Nat), kept : Nat],
+  result: (List Nat),
+  body: (match kept
+    | Nat.zero => (nil Nat)
+    | Nat.succ fewer => (match words
+      | List.nil => (nil Nat)
+      | List.cons head rest => (cons head (take rest fewer)))),
+  recursive_argument: kept
+}
+
+definition{
+  name: parentsOf,
+  parameters: [words : (List Nat)],
+  result: (List Nat),
+  body: (take (skip words 25) (wordAt words 23))
+}
+
+definition{
+  name: authoritiesOf,
+  parameters: [words : (List Nat)],
+  result: (List Nat),
+  body: (take (skip (skip words 25) (wordAt words 23)) (wordAt words 24))
+}
+
+definition{
+  name: leftoverOf,
+  parameters: [words : (List Nat)],
+  result: (List Nat),
+  body: (skip (skip (skip words 25) (wordAt words 23)) (wordAt words 24))
+}
+
+definition{
+  name: shaped,
+  parameters: [words : (List Nat)],
+  result: Bool,
+  body: ((25 <=? (count words)) && (((count (parentsOf words)) =? (wordAt words 23)) && (((count (authoritiesOf words)) =? (wordAt words 24)) && ((count (leftoverOf words)) =? 0))))
+}
+
+definition{
+  name: wholeWords,
+  parameters: [bytes : (List Nat)],
+  result: Bool,
+  body: ((prim remainder (count bytes) 8 0 : Nat) =? 0)
+}
+
+definition{
+  name: readable,
+  parameters: [bytes : (List Nat)],
+  result: Bool,
+  body: ((wholeWords bytes) && ((shaped (decode bytes)) && (canonical (wordAt (decode bytes) 0) (wordAt (decode bytes) 1) (parentsOf (decode bytes)) (authoritiesOf (decode bytes)))))
+}
 \end{semanticmodule}
 \end{lexlean}
