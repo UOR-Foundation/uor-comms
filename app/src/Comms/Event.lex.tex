@@ -1,0 +1,158 @@
+\begin{lexlean}{Comms.Event}
+\useglossary{lexlean.std.bool@1.2.0}
+\useglossary{lexlean.std.nat@1.2.0}
+\importmodule{Comms.Order}
+\title{Boolean}
+\begin{semanticmodule}
+definition{
+  name: low,
+  parameters: [value : Nat],
+  result: Nat,
+  body: (prim remainder value 256 0 : Nat)
+}
+
+definition{
+  name: wordOf,
+  parameters: [b0 : Nat, b1 : Nat, b2 : Nat, b3 : Nat, b4 : Nat, b5 : Nat, b6 : Nat, b7 : Nat],
+  result: Nat,
+  body: ((prim multiply b0 72057594037927936 : Nat) + ((prim multiply b1 281474976710656 : Nat) + ((prim multiply b2 1099511627776 : Nat) + ((prim multiply b3 4294967296 : Nat) + ((prim multiply b4 16777216 : Nat) + ((prim multiply b5 65536 : Nat) + ((prim multiply b6 256 : Nat) + b7)))))))
+}
+
+definition{
+  name: push,
+  parameters: [gathered : Nat, byte : Nat],
+  result: Nat,
+  body: ((prim multiply gathered 256 : Nat) + byte)
+}
+
+definition{
+  name: rebuilt,
+  parameters: [word : Nat],
+  result: Nat,
+  body: (push (push (push (push (push (push (push (push 0 (low (prim quotient word 72057594037927936 0 : Nat))) (low (prim quotient word 281474976710656 0 : Nat))) (low (prim quotient word 1099511627776 0 : Nat))) (low (prim quotient word 4294967296 0 : Nat))) (low (prim quotient word 16777216 0 : Nat))) (low (prim quotient word 65536 0 : Nat))) (low (prim quotient word 256 0 : Nat))) (low word))
+}
+
+definition{
+  name: reduced,
+  parameters: [word : Nat],
+  result: Nat,
+  body: (prim remainder word 18446744073709551616 0 : Nat)
+}
+
+definition{
+  name: encode,
+  parameters: [words : (List Nat)],
+  result: (List Nat),
+  body: (match words
+    | List.nil => (nil Nat)
+    | List.cons head rest => (cons (low (prim quotient head 72057594037927936 0 : Nat)) (cons (low (prim quotient head 281474976710656 0 : Nat)) (cons (low (prim quotient head 1099511627776 0 : Nat)) (cons (low (prim quotient head 4294967296 0 : Nat)) (cons (low (prim quotient head 16777216 0 : Nat)) (cons (low (prim quotient head 65536 0 : Nat)) (cons (low (prim quotient head 256 0 : Nat)) (cons (low head) (encode rest)))))))))),
+  recursive_argument: words
+}
+
+definition{
+  name: decodeFrom,
+  parameters: [bytes : (List Nat), remaining : Nat, gathered : Nat],
+  result: (List Nat),
+  body: (match bytes
+    | List.nil => (nil Nat)
+    | List.cons head rest => (match remaining
+      | Nat.zero => (cons (push gathered head) (decodeFrom rest 7 0))
+      | Nat.succ fewer => (decodeFrom rest fewer (push gathered head)))),
+  recursive_argument: bytes
+}
+
+definition{
+  name: decode,
+  parameters: [bytes : (List Nat)],
+  result: (List Nat),
+  body: (decodeFrom bytes 7 0)
+}
+
+definition{
+  name: normal,
+  parameters: [words : (List Nat)],
+  result: (List Nat),
+  body: (match words
+    | List.nil => (nil Nat)
+    | List.cons head rest => (cons (rebuilt head) (normal rest))),
+  recursive_argument: words
+}
+
+definition{
+  name: count,
+  parameters: [items : (List Nat)],
+  result: Nat,
+  body: (match items | List.nil => 0 | List.cons head rest => (1 + (count rest))),
+  recursive_argument: items
+}
+
+definition{
+  name: joined,
+  parameters: [left : (List Nat), right : (List Nat)],
+  result: (List Nat),
+  body: (match left | List.nil => right | List.cons head rest => (cons head (joined rest right))),
+  recursive_argument: left
+}
+
+definition{
+  name: climbs,
+  parameters: [
+    addresses : (List Nat),
+    remaining : Nat,
+    started : Nat,
+    p0 : Nat,
+    p1 : Nat,
+    p2 : Nat,
+    p3 : Nat,
+    c0 : Nat,
+    c1 : Nat,
+    c2 : Nat
+  ],
+  result: Bool,
+  body: (match addresses
+    | List.nil => (match remaining
+      | Nat.zero => false
+      | Nat.succ two => (match two
+        | Nat.zero => false
+        | Nat.succ one => (match one | Nat.zero => false | Nat.succ spare => true)))
+    | List.cons head rest => (match remaining
+      | Nat.zero => ((match started
+        | Nat.zero => true
+        | Nat.succ earlier => (Comms.Order::precedesWide 0 p0 p1 p2 p3 0 c0 c1 c2 head)) && (climbs rest 3 1 c0 c1 c2 head c0 c1 c2))
+      | Nat.succ fewer => (climbs rest fewer started p0 p1 p2 p3 c1 c2 head))),
+  recursive_argument: addresses
+}
+
+definition{
+  name: ascending,
+  parameters: [addresses : (List Nat)],
+  result: Bool,
+  body: (climbs addresses 3 0 0 0 0 0 0 0 0)
+}
+
+definition{
+  name: canonical,
+  parameters: [version : Nat, action : Nat, parents : (List Nat), authorities : (List Nat)],
+  result: Bool,
+  body: ((version =? 1) && ((action <? 8) && ((ascending parents) && ((ascending authorities) && (((count parents) <=? 80) && ((count authorities) <=? 80))))))
+}
+
+definition{
+  name: layout,
+  parameters: [
+    version : Nat,
+    action : Nat,
+    room : (List Nat),
+    sender : (List Nat),
+    device : (List Nat),
+    target : (List Nat),
+    granted : Nat,
+    content : (List Nat),
+    parents : (List Nat),
+    authorities : (List Nat)
+  ],
+  result: (List Nat),
+  body: (cons version (cons action (joined room (joined sender (joined device (joined target (cons granted (joined content (cons (count parents) (cons (count authorities) (joined parents authorities)))))))))))
+}
+\end{semanticmodule}
+\end{lexlean}

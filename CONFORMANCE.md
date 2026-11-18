@@ -42,6 +42,8 @@ model does not sanction.
 | `RK-08` | `build` | Equal heads move no bytes and content already held is not requested again |
 | `RK-09` | `build` | The kernel answers each of its six questions with the function the theorems are about, and invalid request for anything else |
 | `RK-10` | `build` | The membership and power of a room are its events folded by one step, the step is the one the kernel answers, and no history takes a status out of range or a power above the creator's |
+| `RK-11` | `build` | An event's bytes are its words at eight bytes each, decoding returns every word below 2^64 unchanged, and a list of addresses has one accepted order with no address twice |
+| `RK-12` | `build` | An event is composed only when its action is permitted and its form is canonical, the sent event replaces the head it cites, and a send is stored only once signed and announced only once stored |
 
 ## Cited authorities
 

@@ -18,10 +18,8 @@
 //! admits no new non-Prism file, and the pins live in the scenarios so that
 //! this file only shrinks.
 
-use std::path::PathBuf;
-
 fn read(path: &str) -> String {
-    let root = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../..");
+    let root = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../..");
     std::fs::read_to_string(root.join(path)).unwrap_or_else(|e| panic!("{path}: {e}"))
 }
 
@@ -64,15 +62,12 @@ fn scenario(id: &str) {
             "{name} in {file} must hold `{text}`:\n{found}"
         );
         let axioms = found
-            .split("axioms: [")
-            .nth(1)
-            .and_then(|rest| rest.split(']').next());
+            .split_once("axioms: [")
+            .and_then(|(_, rest)| rest.split(']').next());
+        assert!(!exact || axioms.is_some(), "{name} declares no axioms");
         for axiom in axioms.unwrap_or("").split(',').map(str::trim) {
             let known = ["", "Classical.choice", "Quot.sound", "propext"].contains(&axiom);
-            assert!(
-                known && (!exact || axioms.is_some()),
-                "{name} rests on `{axiom}`"
-            );
+            assert!(known, "{name} rests on `{axiom}`");
         }
         pins += 1;
     }
@@ -104,4 +99,8 @@ mod pins {
     fn room_rk_09() { scenario("RK-09") }
     #[test]
     fn room_rk_10() { scenario("RK-10") }
+    #[test]
+    fn room_rk_11() { scenario("RK-11") }
+    #[test]
+    fn room_rk_12() { scenario("RK-12") }
 }

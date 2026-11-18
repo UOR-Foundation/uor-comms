@@ -25,7 +25,7 @@
 # `Result` only when a row here declares it and the negative test exists. A type
 # is declared once. Nothing else sanctions a type: there is no list in the gate.
 #
-# The first rows are this repository's Prism application in `app/`, the room kernel (RK-01 to RK-10).
+# The first rows are this repository's Prism application in `app/`, the room kernel (RK-01 to RK-12).
 # A capability starts with a row here; `just new-capability` writes the row,
 # its scenario and its failing test in the order `AGENTS.md` sets out.
 
@@ -90,6 +90,18 @@ id = "RK-10"
 level = "build"
 suite = "room"
 statement = "The membership and power of a room are its events folded by one step, the step is the one the kernel answers, and no history takes a status out of range or a power above the creator's"
+
+[[id]]
+id = "RK-11"
+level = "build"
+suite = "room"
+statement = "An event's bytes are its words at eight bytes each, decoding returns every word below 2^64 unchanged, and a list of addresses has one accepted order with no address twice"
+
+[[id]]
+id = "RK-12"
+level = "build"
+suite = "room"
+statement = "An event is composed only when its action is permitted and its form is canonical, the sent event replaces the head it cites, and a send is stored only once signed and announced only once stored"
 
 [[id]]
 id = "FR-01"

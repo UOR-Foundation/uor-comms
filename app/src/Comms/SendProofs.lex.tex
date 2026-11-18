@@ -1,0 +1,126 @@
+\begin{lexlean}{Comms.SendProofs}
+\useglossary{lexlean.std.bool@1.2.0}
+\useglossary{lexlean.std.nat@1.2.0}
+\importmodule{Comms.Event}
+\importmodule{Comms.Rules}
+\importmodule{Comms.Send}
+\importmodule{Comms.Sync}
+\title{Boolean}
+\begin{semanticmodule}
+theorem{
+  name: composedExactlyWhenPermittedAndCanonical,
+  parameters: [
+    version : Nat,
+    action : Nat,
+    senderStatus : Nat,
+    senderPower : Nat,
+    targetStatus : Nat,
+    targetPower : Nat,
+    required : Nat,
+    open : Nat,
+    grantedPower : Nat,
+    parents : (List Nat),
+    authorities : (List Nat)
+  ],
+  statement: ((Comms.Send::mayCompose version action senderStatus senderPower targetStatus targetPower required open grantedPower parents authorities) = ((Comms.Rules::permitted action senderStatus senderPower targetStatus targetPower required open grantedPower) && (Comms.Event::canonical version action parents authorities))),
+  proof: simplify{definitions: [Comms.Send::mayCompose]},
+  axioms: [propext]
+}
+
+theorem{
+  name: bannedSenderComposesNothing,
+  parameters: [
+    version : Nat,
+    action : Nat,
+    senderPower : Nat,
+    targetStatus : Nat,
+    targetPower : Nat,
+    required : Nat,
+    open : Nat,
+    grantedPower : Nat,
+    parents : (List Nat),
+    authorities : (List Nat)
+  ],
+  statement: ((Comms.Send::mayCompose version action 4 senderPower targetStatus targetPower required open grantedPower parents authorities) = false),
+  proof: linear_arithmetic{definitions: [Comms.Rules::permitted, Comms.Send::mayCompose]},
+  axioms: [Quot.sound, propext]
+}
+
+theorem{
+  name: wrongVersionComposesNothing,
+  parameters: [
+    action : Nat,
+    senderStatus : Nat,
+    senderPower : Nat,
+    targetStatus : Nat,
+    targetPower : Nat,
+    required : Nat,
+    open : Nat,
+    grantedPower : Nat,
+    parents : (List Nat),
+    authorities : (List Nat)
+  ],
+  statement: ((Comms.Send::mayCompose 2 action senderStatus senderPower targetStatus targetPower required open grantedPower parents authorities) = false),
+  proof: linear_arithmetic{definitions: [Comms.Event::canonical, Comms.Send::mayCompose]},
+  axioms: [Quot.sound, propext]
+}
+
+theorem{
+  name: sentEventBecomesAHead,
+  parameters: [heads : (List Nat), cited : (List Nat), kappa : Nat],
+  statement: ((Comms.Sync::holds (Comms.Send::headsAfter heads cited kappa) kappa) = true),
+  proof: linear_arithmetic{definitions: [Comms.Send::headsAfter, Comms.Sync::holds]},
+  axioms: [propext]
+}
+
+theorem{
+  name: soleHeadIsReplaced,
+  parameters: [head : Nat, kappa : Nat],
+  statement: ((Comms.Send::headsAfter (cons head (nil Nat)) (cons head (nil Nat)) kappa) = (cons kappa (nil Nat))),
+  proof: linear_arithmetic{
+    definitions: [Comms.Send::headsAfter, Comms.Send::without, Comms.Sync::holds]
+  },
+  axioms: [propext]
+}
+
+theorem{
+  name: announcedOnlyAfterStored,
+  parameters: [phase : Nat, report : Nat],
+  statement: ((((Comms.Send::advance phase report) =? 4) && (not ((phase =? 3) || (phase =? 4)))) = false),
+  proof: linear_arithmetic{definitions: [Comms.Send::advance]},
+  axioms: [Quot.sound, propext]
+}
+
+theorem{
+  name: storedOnlyAfterSigned,
+  parameters: [phase : Nat, report : Nat],
+  statement: ((((Comms.Send::advance phase report) =? 3) && (not ((phase =? 2) || (phase =? 3)))) = false),
+  proof: linear_arithmetic{definitions: [Comms.Send::advance]},
+  axioms: [Quot.sound, propext]
+}
+
+theorem{
+  name: sendNeverStepsBack,
+  parameters: [phase : Nat, report : Nat],
+  statement: (((Comms.Send::advance phase report) <? phase) = false),
+  proof: linear_arithmetic{definitions: [Comms.Send::advance]},
+  axioms: [Quot.sound, propext]
+}
+
+theorem{
+  name: wrongReportChangesNothing,
+  parameters: [phase : Nat, report : Nat],
+  statement: (((not (report =? phase)) && (not ((Comms.Send::advance phase report) =? phase))) = false),
+  proof: linear_arithmetic{definitions: [Comms.Send::advance]},
+  axioms: [Quot.sound, propext]
+}
+
+theorem{
+  name: announceIsAskedOnlyOnceStored,
+  parameters: [phase : Nat],
+  statement: ((((Comms.Send::instruction phase) =? 3) && (not (phase =? 3))) = false),
+  proof: linear_arithmetic{definitions: [Comms.Send::instruction]},
+  axioms: [Quot.sound, propext]
+}
+\end{semanticmodule}
+\end{lexlean}

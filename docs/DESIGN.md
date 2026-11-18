@@ -50,6 +50,26 @@ Judging against cited evidence, and not against "current" state, is what makes a
 
 **State from history.** The status and power of every member are the room's events folded by one step, newest first (`Comms.State`). An event is four numbers: action, sender, target, granted power. The step asks the permission rule against the state the earlier events define, then applies the membership or power change to the event's subject and to nobody else. A join or a leave has its sender as subject. A room starts with its creator joined at the creator's power. The required power and whether the room is open are fixed for the fold; events that change them are not modelled.
 
+**Event bytes.** An event is a list of 64-bit words, and its bytes are those words at eight bytes each, most significant byte first (`Comms.Event`). An address is four words. The order is fixed by `layout`:
+
+| Words | Field |
+|---|---|
+| 0 | version, 1 |
+| 1 | action, 0 to 7 as in `Comms.Rules` |
+| 2 to 5 | room |
+| 6 to 9 | sender |
+| 10 to 13 | device |
+| 14 to 17 | target |
+| 18 | granted power |
+| 19 to 22 | address of the encrypted content |
+| 23 | number of parent words |
+| 24 | number of authority words |
+| then | parents, then authorities |
+
+An event has one byte form. Parents and authorities are each in ascending order of address, which also refuses an address named twice and a list that is not whole addresses; each list holds at most 20 addresses. The version must be 1 and the action below 8. Decoding the bytes returns every word below 2^64 unchanged.
+
+**Sending.** `Comms.Send` composes an event only when `Comms.Rules` permits the action against the sender's state and the form is canonical; otherwise it returns no bytes. The host then reports three steps in order: signed, stored, announced. The core asks for one step at a time, a report for any other step changes nothing, and so an address is announced only after its bytes are stored. The sent event becomes a head of the room and the heads it cites stop being heads.
+
 **Resolved state.** For each state key, every admitted candidate gets an ordering key built from its rank and its address (`Comms.Order`). Rank puts changes to membership and power ahead of everything else, then the sender's power. The address breaks ties, and addresses are unique, so the order is total. The resolved value is the greatest candidate (`Comms.Resolve`). Timestamps play no part.
 
 **Reading.** Every membership change starts a new key epoch. A member holds the keys from the epoch they joined until the epoch they left (`Comms.Epoch`). History before joining is readable only when the room shares it.
@@ -70,7 +90,10 @@ Judging against cited evidence, and not against "current" state, is what makes a
 
 ## Not designed yet
 
-- Canonical event bytes. The kernel has an entry point and a first wire format (one operation byte, fixed big-endian fields, a 32-byte address as four 64-bit words; see the README), but what bytes an event is, and so what is hashed and signed, is not specified.
+- Whether the address covers the signature. `Comms.Event` fixes the bytes that are signed; the signature's own bytes and where they travel are not specified.
+- The creating event: it has no parents and cannot name its own address as its room.
+- Reading an event back into fields, and refusing a byte length that is not whole words. `decode` returns words and drops up to seven trailing bytes.
+- The kernel does not yet answer compose or decode; `Comms.Event` and `Comms.Send` are model and theorems only.
 - The ban race: a ban and an event from the banned member that do not see each other. Rank decides it; the security argument is not proved.
 - Group keys between users: how a room key is wrapped to each member's devices.
 - Confirming that a contact's Prism ID is theirs.
