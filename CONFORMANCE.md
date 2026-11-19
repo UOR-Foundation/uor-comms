@@ -33,14 +33,14 @@ model does not sanction.
 | ID | Level | Statement |
 | --- | --- | --- |
 | `RK-01` | `build` | An event is admitted only when its address matches, it is signed, its device may sign, its parents are known and it is permitted |
-| `RK-02` | `build` | Only a joined member with the required power writes, and nobody removes a member of equal or higher power |
+| `RK-02` | `build` | Only a joined member with the required power writes, and nobody removes a member of equal or higher power; a refused action is named by its cause, and a name is given only for its cause |
 | `RK-03` | `build` | Candidates for a state key are in a strict total order by rank then address, and the word-by-word comparison of the kernel is that order |
 | `RK-04` | `build` | The resolved state does not depend on the order or repetition of delivery, and neither does the place of an event in the order |
 | `RK-05` | `build` | A member holds no key from before joining unless history is shared, and none from removal onward |
 | `RK-06` | `build` | A call connects only through an answer, an ended call stays ended, and the two sides never both yield when calls cross |
 | `RK-07` | `build` | A permitted ban leaves the member banned, a refused event changes nothing, and only joining makes a member |
 | `RK-08` | `build` | Equal heads move no bytes and content already held is not requested again |
-| `RK-09` | `build` | The kernel answers each of its twenty questions with the function the theorems are about, and invalid request for anything else |
+| `RK-09` | `build` | The kernel answers each of its twenty-one questions with the function the theorems are about, and invalid request for anything else |
 | `RK-10` | `build` | The membership and power of a room are its events folded by one step, the step is the one the kernel answers, and no history takes a status out of range or a power above the creator's |
 | `RK-11` | `build` | An event's bytes are its words at eight bytes each, decoding returns every word below 2^64 unchanged, a list of addresses has one accepted order with no address twice, and the fields of a laid-out event are read back from its words with nothing left over |
 | `RK-12` | `build` | An event is composed only when its action is permitted and its form is canonical, the sent event replaces the head it cites, and a send is stored only once signed and announced only once stored |

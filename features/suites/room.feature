@@ -18,12 +18,20 @@ Feature: room
     And soundEventAdmitted in Comms/AdmissionProofs.lex.tex states ((Comms.Admission::admitted 1 1 1 1 1) = true)
 
   @RK-02 @build
-  Scenario: Only a joined member with the required power writes, and nobody removes a member of equal or higher power
+  Scenario: Only a joined member with the required power writes, and nobody removes a member of equal or higher power; a refused action is named by its cause, and a name is given only for its cause
     Given the permission rule in app/src/Comms/Rules.lex.tex
     When the Lean kernel checks the theorems of RulesProofs during prismpm verify
     Then bannedMemberDoesNothing in Comms/RulesProofs.lex.tex states ((Comms.Rules::permitted action 4 senderPower targetStatus targetPower required open grantedPower) = false)
     And onlyJoinedMembersWrite in Comms/RulesProofs.lex.tex states (((Comms.Rules::permitted action senderStatus senderPower targetStatus targetPower required open grantedPower) && ((2 <=? action) && ((senderStatus <? 2) || (2 <? senderStatus)))) = false)
     And cannotRemoveEqualOrHigher in Comms/RulesProofs.lex.tex states (((Comms.Rules::permitted action senderStatus senderPower targetStatus targetPower required open grantedPower) && (((action =? 3) || (action =? 4)) && (senderPower <=? targetPower))) = false)
+    And refusalOf in Comms/Reason.lex.tex contains body: (if (senderStatus =? 4) then 1 else (if (8 <=? action) then 6 else (if (action =? 0) then 5 else (if ((action =? 1) || (not (senderStatus =? 2))) then 2 else (if (senderPower <? required) then 3 else 4)))))
+    And aBannedSenderIsToldBanned in Comms/ReasonProofs.lex.tex states (((senderStatus =? 4) && (not ((Comms.Reason::refusalOf action senderStatus senderPower required) =? 1))) = false)
+    And onlyABannedSenderIsToldBanned in Comms/ReasonProofs.lex.tex states ((((Comms.Reason::refusalOf action senderStatus senderPower required) =? 1) && (not (senderStatus =? 4))) = false)
+    And needsPowerOnlyBelowTheRequiredPower in Comms/ReasonProofs.lex.tex states ((((Comms.Reason::refusalOf action senderStatus senderPower required) =? 3) && (required <=? senderPower)) = false)
+    And aJoinedMemberIsNeverToldNotJoined in Comms/ReasonProofs.lex.tex states (((((Comms.Reason::refusalOf action senderStatus senderPower required) =? 2) && (senderStatus =? 2)) && (not (action =? 1))) = false)
+    And closedOnlyForJoining in Comms/ReasonProofs.lex.tex states ((((Comms.Reason::refusalOf action senderStatus senderPower required) =? 5) && (not (action =? 0))) = false)
+    And unknownActionOnlyPastTheLast in Comms/ReasonProofs.lex.tex states ((((Comms.Reason::refusalOf action senderStatus senderPower required) =? 6) && (action <? 8)) = false)
+    And everyRefusalHasAName in Comms/ReasonProofs.lex.tex states ((((Comms.Reason::refusalOf action senderStatus senderPower required) =? 0) || (6 <? (Comms.Reason::refusalOf action senderStatus senderPower required))) = false)
 
   @RK-03 @build
   Scenario: Candidates for a state key are in a strict total order by rank then address, and the word-by-word comparison of the kernel is that order
@@ -77,7 +85,7 @@ Feature: room
     And heldContentIsNotFetchedAgain in Comms/SyncProofs.lex.tex states ((Comms.Sync::wanted (cons kappa offered) (cons kappa rest)) = (Comms.Sync::wanted offered (cons kappa rest)))
 
   @RK-09 @build
-  Scenario: The kernel answers each of its twenty questions with the function the theorems are about, and invalid request for anything else
+  Scenario: The kernel answers each of its twenty-one questions with the function the theorems are about, and invalid request for anything else
     Given the kernel in app/src/RoomKernel.lex.tex
     When prismpm verify replays the acceptance vectors in the compiled guest
     Then admitAnswer in RoomKernel.lex.tex contains (if ((Comms.Admission::verdict (flag (sameAddress value 1 33))
@@ -118,6 +126,8 @@ Feature: room
     And route in RoomKernel.lex.tex contains (if ((operation =? 19) && (length =? 5)) then (forwardAnswer value)
     And mailAnswer in RoomKernel.lex.tex contains (Comms.Reach::mayHoldMail (natAt value 1 1 0) (natAt value 2 1 0) (natAt value 3 1 0) (natAt value 4 1 0))
     And route in RoomKernel.lex.tex contains (if ((operation =? 20) && (length =? 5)) then (mailAnswer value)
+    And reasonAnswer in RoomKernel.lex.tex contains (Comms.Reason::refusalOf (natAt value 1 1 0) (natAt value 2 1 0) (natAt value 3 8 0) (natAt value 20 8 0))
+    And route in RoomKernel.lex.tex contains (if ((operation =? 21) && (length =? 37)) then (reasonAnswer value)
     And route in RoomKernel.lex.tex contains else (prim utf8_encode "invalid request" : Bytes)
     And dispatch in RoomKernel.lex.tex contains (route (natAt value 0 1 0) (Foundation.Bytes::byteLength value) value)
     And application in RoomKernel.lex.tex contains response := 0x61646d6974746564})

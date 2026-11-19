@@ -47,6 +47,10 @@ identity, no keys and no network of its own:
 - `verdict(sender, device)` is Prism ID's answer on a device. The tests use a table.
 - `transport` has `announce(message)` and `fetch(address)`. The tests hand messages across directly.
 
+## Refusals
+
+A refused call rejects with an error whose `reason` names the cause. From the kernel (`Comms.Reason`): `banned`, `closed`, `not joined`, `needs power`, `not allowed`, `unknown action`, and `direct` for an invitation in a direct room. From the host's own checks: `unknown room`, `malformed`, `content` (the kernel refused the content), and on receipt `tampered` (the address does not match the bytes), `signature`, `device`, or `not allowed`. A received event whose parents have not arrived is held, not refused: `{ held: true, reason: "parents unknown" }`.
+
 ## Not done
 
 - **Restoring re-verifies.** `engine.restore()` rebuilds every room by admitting each kept event again, so a reload costs one signature check and one kernel answer per event. A page passes `browserStore(hash, { name })` to `open` and calls `restore` once.

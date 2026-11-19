@@ -62,6 +62,13 @@ export function kernel(dispatch) {
       ask(0x03, [[leftRank, 8], leftAddress, [rightRank, 8], rightAddress]),
     /** What message content is: `message`, `edit`, `reaction` or `refused` (`Comms.Content::valid`). */
     content: (contentBytes) => ask(0x0d, [contentBytes]),
+    /**
+     * Why the permission rule refuses an action, by name (`Comms.Reason::refusalOf`): `banned`, `closed`,
+     * `not joined`, `needs power`, `not allowed` or `unknown action`; `permitted` when it does not.
+     */
+    reason: (action, sender, target, room, granted) =>
+      ask(0x15, [[action, 1], [sender.status, 1], [sender.power, 8], [target.status, 1], [target.power, 8],
+        [room.required, 8], flag(room.open), [granted, 8]]),
     /** Whether an action may happen in a direct room (`Comms.Create::directAllows`): no third member. */
     direct: async (action, isDirect) => (await ask(0x0e, [[action, 1], flag(isDirect)])) === "permitted",
     /** The actions a member may take, by action number (`Comms.Queue::offered`): exactly what the door admits. */
