@@ -42,5 +42,15 @@ definition{
     | List.cons head rest => ((ahead key head) + (place key rest))),
   recursive_argument: arrivals
 }
+
+definition{
+  name: copies,
+  parameters: [key : Nat, arrivals : (List Nat)],
+  result: Nat,
+  body: (match arrivals
+    | List.nil => 0
+    | List.cons head rest => ((if (head =? key) then 1 else 0) + (copies key rest))),
+  recursive_argument: arrivals
+}
 \end{semanticmodule}
 \end{lexlean}

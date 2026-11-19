@@ -44,6 +44,7 @@ Feature: room
     And earlierEventIsNeverPlacedLater in Comms/ResolveProofs.lex.tex states (((a <? b) && ((Comms.Resolve::place b arrivals) <? (Comms.Resolve::place a arrivals))) = false)
     And eventIsNotAheadOfItself in Comms/ResolveProofs.lex.tex states ((Comms.Resolve::ahead key key) = 0)
     And earlierEventIsAheadOfALater in Comms/ResolveProofs.lex.tex states (((a <? b) && ((Comms.Resolve::ahead b a) =? 0)) = false)
+    And heldEarlierEventIsPlacedFirst in Comms/ResolveProofs.lex.tex states (((a <? b) && ((Comms.Resolve::place b arrivals) <? ((Comms.Resolve::place a arrivals) + (Comms.Resolve::copies a arrivals)))) = false)
 
   @RK-05 @build
   Scenario: A member holds no key from before joining unless history is shared, and none from removal onward
@@ -210,3 +211,14 @@ Feature: room
     And strangerJoinsOnlyAnOpenRoom in Comms/CreateProofs.lex.tex states ((Comms.Rules::permitted 0 (Comms.Create::statusAtCreation 0 0 isDirect) senderPower targetStatus targetPower required 0 grantedPower) = false)
     And creationIsTheEmptyHistoryStatus in Comms/CreateProofs.lex.tex states ((Comms.State::state 0 member creator creatorPower required open (nil (List Nat))) = (Comms.Create::statusAtCreation (if (member =? creator) then 1 else 0) 0 0))
     And creationIsTheEmptyHistoryPower in Comms/CreateProofs.lex.tex states ((Comms.State::state 1 member creator creatorPower required open (nil (List Nat))) = (Comms.Create::powerAtCreation (if (member =? creator) then 1 else 0) creatorPower))
+
+  @RK-15 @build
+  Scenario: An event is folded after every parent: its depth is one more than its deepest parent's, a shallower event precedes a deeper one and has the smaller ordering key, and of two held events the one with the smaller key is placed first
+    Given the fold order in app/src/Comms/Fold.lex.tex
+    When the Lean kernel checks the theorems of FoldProofs during prismpm verify
+    Then depthOf in Comms/Fold.lex.tex contains | List.cons head rest => (Comms.Resolve::merge (head + 1) (depthOf rest))
+    And eventWithoutParentsHasDepthZero in Comms/FoldProofs.lex.tex states ((Comms.Fold::depthOf (nil Nat)) = 0)
+    And parentIsShallower in Comms/FoldProofs.lex.tex states ((parent <? (Comms.Fold::depthOf (Comms.Resolve::joined before (cons parent after)))) = true)
+    And shallowerEventPrecedes in Comms/FoldProofs.lex.tex states (((shallow <? deep) && (not (Comms.Order::precedes shallow shallowKappa deep deepKappa))) = false)
+    And shallowerEventHasSmallerKey in Comms/FoldProofs.lex.tex states (((shallow <? deep) && ((shallowKappa <? (Comms.Order::addressBound)) && ((deepKappa <? (Comms.Order::addressBound)) && ((Comms.Order::orderingKey deep deepKappa) <=? (Comms.Order::orderingKey shallow shallowKappa))))) = false)
+    And heldEarlierEventIsPlacedFirst in Comms/ResolveProofs.lex.tex states (((a <? b) && ((Comms.Resolve::place b arrivals) <? ((Comms.Resolve::place a arrivals) + (Comms.Resolve::copies a arrivals)))) = false)

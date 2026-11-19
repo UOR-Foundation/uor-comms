@@ -25,7 +25,7 @@
 # `Result` only when a row here declares it and the negative test exists. A type
 # is declared once. Nothing else sanctions a type: there is no list in the gate.
 #
-# The first rows are this repository's Prism application in `app/`, the room kernel (RK-01 to RK-14).
+# The first rows are this repository's Prism application in `app/`, the room kernel (RK-01 to RK-15).
 # A capability starts with a row here; `just new-capability` writes the row,
 # its scenario and its failing test in the order `AGENTS.md` sets out.
 
@@ -114,6 +114,12 @@ id = "RK-14"
 level = "build"
 suite = "room"
 statement = "A room is created by one event that cites nothing and names no room; its creator starts joined with the creator's power, a named target starts invited and may join, and nobody else is a member"
+
+[[id]]
+id = "RK-15"
+level = "build"
+suite = "room"
+statement = "An event is folded after every parent: its depth is one more than its deepest parent's, a shallower event precedes a deeper one and has the smaller ordering key, and of two held events the one with the smaller key is placed first"
 
 [[id]]
 id = "FR-01"
