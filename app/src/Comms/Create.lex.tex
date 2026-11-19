@@ -45,9 +45,16 @@ definition{
 
 definition{
   name: powerAtCreation,
-  parameters: [isCreator : Nat, creatorPower : Nat],
+  parameters: [isCreator : Nat, isInvitee : Nat, isDirect : Nat, creatorPower : Nat],
   result: Nat,
-  body: (if (isCreator =? 1) then creatorPower else 0)
+  body: (if (isCreator =? 1) then creatorPower else (if ((isDirect =? 1) && (isInvitee =? 1)) then creatorPower else 0))
+}
+
+definition{
+  name: directAllows,
+  parameters: [action : Nat, isDirect : Nat],
+  result: Bool,
+  body: (not ((isDirect =? 1) && (action =? 2)))
 }
 \end{semanticmodule}
 \end{lexlean}

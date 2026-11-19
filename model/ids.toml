@@ -83,7 +83,7 @@ statement = "Equal heads move no bytes and content already held is not requested
 id = "RK-09"
 level = "build"
 suite = "room"
-statement = "The kernel answers each of its thirteen questions with the function the theorems are about, and invalid request for anything else"
+statement = "The kernel answers each of its fourteen questions with the function the theorems are about, and invalid request for anything else"
 
 [[id]]
 id = "RK-10"
@@ -113,7 +113,7 @@ statement = "Only a joined member with the power to send redacts, their own even
 id = "RK-14"
 level = "build"
 suite = "room"
-statement = "A room is created by one event that cites nothing and names no room; its creator starts joined with the creator's power, a named target starts invited and may join, and nobody else is a member"
+statement = "A room is created by one event that cites nothing and names no room; its creator starts joined with the creator's power, a named target makes the room direct and starts invited with the same power and may join, nobody else is a member, and a direct room never invites a third member"
 
 [[id]]
 id = "RK-15"

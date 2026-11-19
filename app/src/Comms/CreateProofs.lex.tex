@@ -107,10 +107,42 @@ theorem{
 }
 
 theorem{
-  name: onlyTheCreatorHoldsPower,
-  parameters: [isCreator : Nat, creatorPower : Nat],
-  statement: (((isCreator =? 1) || ((Comms.Create::powerAtCreation isCreator creatorPower) =? 0)) = true),
+  name: onlyTheTwoPartiesHoldPower,
+  parameters: [isCreator : Nat, isInvitee : Nat, isDirect : Nat, creatorPower : Nat],
+  statement: (((isCreator =? 1) || (((isDirect =? 1) && (isInvitee =? 1)) || ((Comms.Create::powerAtCreation isCreator isInvitee isDirect creatorPower) =? 0))) = true),
   proof: linear_arithmetic{definitions: [Comms.Create::powerAtCreation]},
+  axioms: [Classical.choice, Quot.sound, propext]
+}
+
+theorem{
+  name: directPartiesHaveEqualPower,
+  parameters: [isInvitee : Nat, isDirect : Nat, creatorPower : Nat],
+  statement: ((Comms.Create::powerAtCreation 0 1 1 creatorPower) = (Comms.Create::powerAtCreation 1 isInvitee isDirect creatorPower)),
+  proof: linear_arithmetic{definitions: [Comms.Create::powerAtCreation]},
+  axioms: [Quot.sound, propext]
+}
+
+theorem{
+  name: directRoomInvitesNoThirdMember,
+  parameters: [],
+  statement: ((Comms.Create::directAllows 2 1) = false),
+  proof: reflexivity{},
+  axioms: []
+}
+
+theorem{
+  name: directRoomAllowsEveryOtherAction,
+  parameters: [action : Nat],
+  statement: (((action =? 2) || (Comms.Create::directAllows action 1)) = true),
+  proof: linear_arithmetic{definitions: [Comms.Create::directAllows]},
+  axioms: [Classical.choice, Quot.sound, propext]
+}
+
+theorem{
+  name: ordinaryRoomIsUnaffected,
+  parameters: [action : Nat],
+  statement: ((Comms.Create::directAllows action 0) = true),
+  proof: linear_arithmetic{definitions: [Comms.Create::directAllows]},
   axioms: [Quot.sound, propext]
 }
 
@@ -163,9 +195,9 @@ theorem{
 theorem{
   name: creationIsTheEmptyHistoryPower,
   parameters: [member : Nat, creator : Nat, creatorPower : Nat, required : Nat, open : Nat],
-  statement: ((Comms.State::state 1 member creator creatorPower required open (nil (List Nat))) = (Comms.Create::powerAtCreation (if (member =? creator) then 1 else 0) creatorPower)),
+  statement: ((Comms.State::state 1 member creator creatorPower required open (nil (List Nat))) = (Comms.Create::powerAtCreation (if (member =? creator) then 1 else 0) 0 0 creatorPower)),
   proof: linear_arithmetic{definitions: [Comms.Create::powerAtCreation, Comms.State::state]},
-  axioms: [Quot.sound, propext]
+  axioms: [Classical.choice, Quot.sound, propext]
 }
 \end{semanticmodule}
 \end{lexlean}

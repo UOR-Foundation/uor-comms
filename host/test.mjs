@@ -73,7 +73,9 @@ test("a direct chat: create, join, and a message each way reach both peers in on
   const room = await ada.engine.createDirect(ben.identity, { onStep: (step) => steps.push(step) });
   assert.deepEqual(steps, ["sign", "store", "announce"]);
   assert.deepEqual(standing(ben.engine, room, ada.identity), { member: hex(ada.identity), status: 2, power: 100 });
-  assert.equal(standing(ben.engine, room, ben.identity).status, 1);
+  assert.deepEqual(standing(ben.engine, room, ben.identity), { member: hex(ben.identity), status: 1, power: 100 });
+  assert.equal(hex(ada.engine.findDirect(ben.identity)), hex(room));
+  assert.equal(hex(ben.engine.findDirect(ada.identity)), hex(room));
 
   await ben.engine.join(room);
   assert.equal(standing(ada.engine, room, ben.identity).status, 2);
@@ -169,7 +171,8 @@ test("moderation: the creator bans a member, whose later event every peer refuse
   const wire = direct();
   const ada = await peer("ada", wire);
   const ben = await peer("ben", wire);
-  const room = await ada.engine.createDirect(ben.identity);
+  const room = await ada.engine.createRoom();
+  await ada.engine.invite(room, ben.identity);
   await ben.engine.join(room);
   await ada.engine.ban(room, ben.identity);
   assert.equal(standing(ben.engine, room, ben.identity).status, 4);
@@ -216,4 +219,21 @@ test("publishing names a version by its files and carries forward only versions 
   assert.deepEqual(kept.map((v) => v.manifest.version), [first.version]);
   live.set(`engine/${first.version}/a.mjs`, text("tampered"));
   assert.deepEqual(await carried(async (path) => live.get(path) ?? null, "0".repeat(64)), []);
+});
+
+test("a direct room: equal power, no third member, and neither party can remove the other", async () => {
+  const wire = direct();
+  const ada = await peer("ada", wire);
+  const ben = await peer("ben", wire);
+  const eve = await peer("eve", wire);
+  const room = await ada.engine.createDirect(ben.identity);
+  await ben.engine.join(room);
+  assert.equal(standing(ada.engine, room, ben.identity).power, standing(ada.engine, room, ada.identity).power);
+  await assert.rejects(ada.engine.invite(room, eve.identity), { reason: "direct" });
+  await assert.rejects(ada.engine.kick(room, ben.identity), { reason: "refused" });
+  await assert.rejects(ben.engine.ban(room, ada.identity), { reason: "refused" });
+  assert.equal(ada.engine.findDirect(eve.identity), null);
+  const open = await ada.engine.createRoom();
+  await ada.engine.invite(open, eve.identity);
+  assert.equal(standing(ada.engine, open, eve.identity).status, 1);
 });

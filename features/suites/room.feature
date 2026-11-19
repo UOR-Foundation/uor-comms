@@ -77,7 +77,7 @@ Feature: room
     And heldContentIsNotFetchedAgain in Comms/SyncProofs.lex.tex states ((Comms.Sync::wanted (cons kappa offered) (cons kappa rest)) = (Comms.Sync::wanted offered (cons kappa rest)))
 
   @RK-09 @build
-  Scenario: The kernel answers each of its thirteen questions with the function the theorems are about, and invalid request for anything else
+  Scenario: The kernel answers each of its fourteen questions with the function the theorems are about, and invalid request for anything else
     Given the kernel in app/src/RoomKernel.lex.tex
     When prismpm verify replays the acceptance vectors in the compiled guest
     Then admitAnswer in RoomKernel.lex.tex contains (if (Comms.Admission::admitted (flag (sameAddress value 1 33))
@@ -104,6 +104,8 @@ Feature: room
     And route in RoomKernel.lex.tex contains (if ((operation =? 12) && (201 <=? length)) then (createAnswer value length)
     And contentAnswer in RoomKernel.lex.tex contains (Comms.Content::kindOf (project (contentBytes value 1 (prim subtract length 1 : Nat)) items))
     And route in RoomKernel.lex.tex contains (if ((operation =? 13) && (2 <=? length)) then (contentAnswer value length)
+    And directAnswer in RoomKernel.lex.tex contains (Comms.Create::directAllows (natAt value 1 1 0) (natAt value 2 1 0))
+    And route in RoomKernel.lex.tex contains (if ((operation =? 14) && (length =? 3)) then (directAnswer value)
     And route in RoomKernel.lex.tex contains else (prim utf8_encode "invalid request" : Bytes)
     And dispatch in RoomKernel.lex.tex contains (route (natAt value 0 1 0) (Foundation.Bytes::byteLength value) value)
     And application in RoomKernel.lex.tex contains response := 0x61646d6974746564})
@@ -192,12 +194,13 @@ Feature: room
     And composedRedactionIsAllowed in Comms/RedactProofs.lex.tex states (((Comms.Redact::composes action version senderStatus senderPower required redactPower own parents authorities) && (not (Comms.Redact::allowed senderStatus senderPower required redactPower own))) = false)
 
   @RK-14 @build
-  Scenario: A room is created by one event that cites nothing and names no room; its creator starts joined with the creator's power, a named target starts invited and may join, and nobody else is a member
+  Scenario: A room is created by one event that cites nothing and names no room; its creator starts joined with the creator's power, a named target makes the room direct and starts invited with the same power and may join, nobody else is a member, and a direct room never invites a third member
     Given the creation rules in app/src/Comms/Create.lex.tex
     When the Lean kernel checks the theorems of CreateProofs during prismpm verify
     Then mayCreate in Comms/Create.lex.tex contains body: ((version =? 1) && ((action =? 9) && ((unnamed r0 r1 r2 r3) && (((Comms.Event::count parents) =? 0) && ((Comms.Event::count authorities) =? 0)))))
     And statusAtCreation in Comms/Create.lex.tex contains body: (if (isCreator =? 1) then 2 else (if ((isDirect =? 1) && (isInvitee =? 1)) then 1 else 0))
-    And powerAtCreation in Comms/Create.lex.tex contains body: (if (isCreator =? 1) then creatorPower else 0)
+    And powerAtCreation in Comms/Create.lex.tex contains body: (if (isCreator =? 1) then creatorPower else (if ((isDirect =? 1) && (isInvitee =? 1)) then creatorPower else 0))
+    And directAllows in Comms/Create.lex.tex contains body: (not ((isDirect =? 1) && (action =? 2)))
     And direct in Comms/Create.lex.tex contains body: (if (unnamed t0 t1 t2 t3) then 0 else 1)
     And creationCitesNothing in Comms/CreateProofs.lex.tex states (((Comms.Create::mayCreate version action r0 r1 r2 r3 parents authorities) && (not (((Comms.Event::count parents) + (Comms.Event::count authorities)) =? 0))) = false)
     And creationNamesNoRoom in Comms/CreateProofs.lex.tex states (((Comms.Create::mayCreate version action r0 r1 r2 r3 parents authorities) && (not (Comms.Create::unnamed r0 r1 r2 r3))) = false)
@@ -207,12 +210,16 @@ Feature: room
     And directInviteeIsInvited in Comms/CreateProofs.lex.tex states (((isCreator =? 1) || ((Comms.Create::statusAtCreation isCreator 1 1) =? 1)) = true)
     And nobodyElseIsAMember in Comms/CreateProofs.lex.tex states (((isCreator =? 1) || ((isInvitee =? 1) || ((Comms.Create::statusAtCreation isCreator isInvitee isDirect) =? 0))) = true)
     And roomWithoutInviteeHasOnlyItsCreator in Comms/CreateProofs.lex.tex states (((isCreator =? 1) || ((isDirect =? 1) || ((Comms.Create::statusAtCreation isCreator isInvitee isDirect) =? 0))) = true)
-    And onlyTheCreatorHoldsPower in Comms/CreateProofs.lex.tex states (((isCreator =? 1) || ((Comms.Create::powerAtCreation isCreator creatorPower) =? 0)) = true)
+    And onlyTheTwoPartiesHoldPower in Comms/CreateProofs.lex.tex states (((isCreator =? 1) || (((isDirect =? 1) && (isInvitee =? 1)) || ((Comms.Create::powerAtCreation isCreator isInvitee isDirect creatorPower) =? 0))) = true)
+    And directPartiesHaveEqualPower in Comms/CreateProofs.lex.tex states ((Comms.Create::powerAtCreation 0 1 1 creatorPower) = (Comms.Create::powerAtCreation 1 isInvitee isDirect creatorPower))
+    And directRoomInvitesNoThirdMember in Comms/CreateProofs.lex.tex states ((Comms.Create::directAllows 2 1) = false)
+    And directRoomAllowsEveryOtherAction in Comms/CreateProofs.lex.tex states (((action =? 2) || (Comms.Create::directAllows action 1)) = true)
+    And ordinaryRoomIsUnaffected in Comms/CreateProofs.lex.tex states ((Comms.Create::directAllows action 0) = true)
     And namedTargetMakesARoomDirect in Comms/CreateProofs.lex.tex states (((Comms.Create::unnamed t0 t1 t2 t3) || ((Comms.Create::direct t0 t1 t2 t3) =? 1)) = true)
     And directInviteeMayJoin in Comms/CreateProofs.lex.tex states ((Comms.Rules::permitted 0 (Comms.Create::statusAtCreation 0 1 1) senderPower targetStatus targetPower required open grantedPower) = true)
     And strangerJoinsOnlyAnOpenRoom in Comms/CreateProofs.lex.tex states ((Comms.Rules::permitted 0 (Comms.Create::statusAtCreation 0 0 isDirect) senderPower targetStatus targetPower required 0 grantedPower) = false)
     And creationIsTheEmptyHistoryStatus in Comms/CreateProofs.lex.tex states ((Comms.State::state 0 member creator creatorPower required open (nil (List Nat))) = (Comms.Create::statusAtCreation (if (member =? creator) then 1 else 0) 0 0))
-    And creationIsTheEmptyHistoryPower in Comms/CreateProofs.lex.tex states ((Comms.State::state 1 member creator creatorPower required open (nil (List Nat))) = (Comms.Create::powerAtCreation (if (member =? creator) then 1 else 0) creatorPower))
+    And creationIsTheEmptyHistoryPower in Comms/CreateProofs.lex.tex states ((Comms.State::state 1 member creator creatorPower required open (nil (List Nat))) = (Comms.Create::powerAtCreation (if (member =? creator) then 1 else 0) 0 0 creatorPower))
 
   @RK-15 @build
   Scenario: An event is folded after every parent: its depth is one more than its deepest parent's, a shallower event precedes a deeper one and has the smaller ordering key, and of two held events the one with the smaller key is placed first
