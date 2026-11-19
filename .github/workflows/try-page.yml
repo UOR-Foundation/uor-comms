@@ -44,6 +44,8 @@ jobs:
         run: node --test site/worker-browser.test.mjs
       - name: The engine's browser store keeps events across a reload and reports an eviction
         run: node --test host/browser.test.mjs
+      - name: Two browsers meet, prove their identities and sync events over WebRTC
+        run: node --test host/transport.test.mjs
       - name: Prism ids - the pinned stitch copy matches its lock, every session check refuses, and two apps share one id
         run: npm run test:identity
       - name: Build the canonical frame every Prism app loads

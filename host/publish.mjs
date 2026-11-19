@@ -16,7 +16,7 @@ import { fileURLToPath } from "node:url";
 
 import { blake3Hex } from "../try/vendor/prism-code/src/blake3.mjs";
 
-export const MODULES = ["content.mjs", "engine.mjs", "event.mjs", "kernel.mjs", "store.mjs"];
+export const MODULES = ["content.mjs", "engine.mjs", "event.mjs", "kernel.mjs", "store.mjs", "transport.mjs"];
 const HOLO = "room-kernel.holo";
 
 /** The manifest of a set of files: each file's BLAKE3, and the version those name. */

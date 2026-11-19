@@ -193,7 +193,7 @@ export function open({ identity, device, kernel, hash, store, signer, verdict, t
     return publish(bytes, onStep);
   }
 
-  return {
+  const api = {
     Refused,
     /** Creates a room and returns its address. With `target` the room is direct and the target invited. */
     async createRoom({ target = ZERO, onStep } = {}) {
@@ -237,12 +237,16 @@ export function open({ identity, device, kernel, hash, store, signer, verdict, t
       return fetched;
     },
     rooms: () => [...rooms.values()].map((room) => room.id),
-    /** What this identity may do in a room, toward `target` (itself when absent), as the kernel offers it. */
-    async offered(roomId, target = identity) {
+    /**
+     * What this identity may do in a room, toward `target` (itself when absent), as the kernel offers it.
+     * `setPower` is answered for granting `granted` (0 when absent): ask once per level the page offers.
+     * Room settings are the same for every room until they become events; then this reads the room's.
+     */
+    async offered(roomId, target = identity, { granted = 0 } = {}) {
       const room = rooms.get(hex(roomId));
       if (!room) return [];
       const names = Object.keys(ACTION);
-      const actions = await kernel.queue(standing(room.state, identity), standing(room.state, target), SETTINGS, Boolean(room.direct));
+      const actions = await kernel.queue(standing(room.state, identity), standing(room.state, target), SETTINGS, Boolean(room.direct), granted);
       return actions.map((action) => names[action]);
     },
     /** The direct room this identity shares with `target`, or null, so one is reused, not duplicated. */
@@ -255,6 +259,14 @@ export function open({ identity, device, kernel, hash, store, signer, verdict, t
       const room = rooms.get(hex(roomId));
       return room ? [...room.state].map(([member, { status, power }]) => ({ member, status, power })) : [];
     },
+    /** Every admitted event of a room as it travels (address, bytes, signature), in the fold order. */
+    eventsOf(roomId) {
+      const room = rooms.get(hex(roomId));
+      return room ? room.order.map(({ address, bytes, signature }) => ({ address, bytes, signature })) : [];
+    },
+    /** This engine's identity and device. */
+    identity,
+    device,
     timeline(roomId) {
       const room = rooms.get(hex(roomId));
       return room ? room.order.map(({ address, fields, depth }) => ({ address, depth, ...fields })) : [];
@@ -264,4 +276,7 @@ export function open({ identity, device, kernel, hash, store, signer, verdict, t
       return () => listeners.delete(listener);
     },
   };
+  // A transport that needs the engine (to hand on what it receives, and to know who may see a room) binds here.
+  transport.bind?.(api);
+  return api;
 }

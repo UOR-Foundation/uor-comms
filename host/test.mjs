@@ -252,6 +252,10 @@ test("the engine offers exactly what the kernel admits, and holds an event whose
   assert.deepEqual(await eve.engine.offered(room), []);
   const open = await ada.engine.createRoom();
   assert.ok((await ada.engine.offered(open, eve.identity)).includes("invite"));
+  await ada.engine.invite(open, eve.identity);
+  await eve.engine.join(open);
+  assert.ok((await ada.engine.offered(open, eve.identity, { granted: 50 })).includes("setPower"));
+  assert.ok(!(await ada.engine.offered(open, eve.identity, { granted: 101 })).includes("setPower"));
   const sent = [];
   wire.deliver = async (_other, message) => { sent.push(message); };
   await ada.engine.send(room, message("first"));
