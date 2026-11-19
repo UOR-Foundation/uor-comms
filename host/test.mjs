@@ -260,3 +260,20 @@ test("the engine offers exactly what the kernel admits, and holds an event whose
   assert.equal((await ben.engine.receive(sent[0])).admitted, true);
   assert.equal(ben.engine.timeline(room).length, 4);
 });
+
+test("an event whose parent list was tampered with is refused, not held", async () => {
+  const wire = direct();
+  const sent = [];
+  wire.deliver = async (_other, message) => { sent.push(message); };
+  const ada = await peer("ada", wire);
+  const ben = await peer("ben", wire);
+  const room = await ada.engine.createDirect(ben.identity);
+  await ada.engine.send(room, message("hello"));
+  await ben.engine.receive(sent[0]);
+  const tampered = sent[1].bytes.slice();
+  tampered[tampered.length - 1] ^= 1;
+  const result = await ben.engine.receive({ ...sent[1], bytes: tampered });
+  assert.equal(result.admitted, false);
+  assert.notEqual(result.held, true);
+  assert.equal(result.reason, "refused");
+});

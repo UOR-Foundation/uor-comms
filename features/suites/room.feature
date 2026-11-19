@@ -271,7 +271,7 @@ Feature: room
   Scenario: The engine offers a member exactly the actions it admits, holds an event whose parents have not arrived, places every member in one relay tree of fan-out four that every peer computes alike, picks each sender's layer within the receiver's share, and lets only a consenting member forward or an always-on member node hold mail
     Given the queue, the relay tree, the media rules and the reach rules in app/src/Comms
     When the Lean kernel checks the theorems of AdmissionProofs, QueueProofs, TreeProofs, MediaProofs and ReachProofs during prismpm verify
-    Then verdict in Comms/Admission.lex.tex contains body: (if (parentsKnown =? 0) then 1 else (if ((addressMatches =? 1) && ((signatureValid =? 1) && ((deviceMaySign =? 1) && (permitted =? 1)))) then 2 else 0))
+    Then verdict in Comms/Admission.lex.tex contains body: (if ((addressMatches =? 1) && ((signatureValid =? 1) && (deviceMaySign =? 1))) then (if (parentsKnown =? 0) then 1 else (if (permitted =? 1) then 2 else 0)) else 0)
     And offered in Comms/Queue.lex.tex contains body: ((Comms.Rules::permitted action senderStatus senderPower targetStatus targetPower required open grantedPower) && (Comms.Create::directAllows action isDirect))
     And parentOf in Comms/Tree.lex.tex contains body: (if (index =? 0) then 0 else (prim quotient (prim subtract index 1 : Nat) 4 0 : Nat))
     And isParent in Comms/Tree.lex.tex contains body: ((0 <? index) && ((parentOf index) =? candidate))
@@ -280,7 +280,8 @@ Feature: room
     And holdsTopic in Comms/Reach.lex.tex contains body: (Comms.Epoch::holdsKey joinedAt leftAt topicEpoch 0)
     And mayForward in Comms/Reach.lex.tex contains body: ((directPath =? 0) && ((consented =? 1) && ((forwarderStatus =? 2) || (ownedByMember =? 1))))
     And mayHoldMail in Comms/Reach.lex.tex contains body: ((isPhone =? 0) && ((alwaysOn =? 1) && ((holderStatus =? 2) || (ownedByMember =? 1))))
-    And missingParentsAreHeld in Comms/AdmissionProofs.lex.tex states (((parentsKnown =? 0) && (not ((Comms.Admission::verdict addressMatches signatureValid deviceMaySign parentsKnown permitted) =? 1))) = false)
+    And missingParentsAreHeld in Comms/AdmissionProofs.lex.tex states (((addressMatches =? 1) && ((signatureValid =? 1) && ((deviceMaySign =? 1) && ((parentsKnown =? 0) && (not ((Comms.Admission::verdict addressMatches signatureValid deviceMaySign parentsKnown permitted) =? 1)))))) = false)
+    And badEventIsNeverHeld in Comms/AdmissionProofs.lex.tex states ((((not (addressMatches =? 1)) || ((not (signatureValid =? 1)) || (not (deviceMaySign =? 1)))) && ((Comms.Admission::verdict addressMatches signatureValid deviceMaySign parentsKnown permitted) =? 1)) = false)
     And heldIsNeverAdmitted in Comms/AdmissionProofs.lex.tex states ((((Comms.Admission::verdict addressMatches signatureValid deviceMaySign parentsKnown permitted) =? 2) && (parentsKnown =? 0)) = false)
     And verdictAdmitsOnlyWhatAdmissionAdmits in Comms/AdmissionProofs.lex.tex states (((parentsKnown <=? 1) && (((Comms.Admission::verdict addressMatches signatureValid deviceMaySign parentsKnown permitted) =? 2) && (not (Comms.Admission::admitted addressMatches signatureValid deviceMaySign parentsKnown permitted)))) = false)
     And verdictAdmitsWhatAdmissionAdmits in Comms/AdmissionProofs.lex.tex states (((Comms.Admission::admitted addressMatches signatureValid deviceMaySign parentsKnown permitted) && (not ((Comms.Admission::verdict addressMatches signatureValid deviceMaySign parentsKnown permitted) =? 2))) = false)

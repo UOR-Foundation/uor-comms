@@ -61,7 +61,7 @@ theorem{
     parentsKnown : Nat,
     permitted : Nat
   ],
-  statement: (((parentsKnown =? 0) && (not ((Comms.Admission::verdict addressMatches signatureValid deviceMaySign parentsKnown permitted) =? 1))) = false),
+  statement: (((addressMatches =? 1) && ((signatureValid =? 1) && ((deviceMaySign =? 1) && ((parentsKnown =? 0) && (not ((Comms.Admission::verdict addressMatches signatureValid deviceMaySign parentsKnown permitted) =? 1)))))) = false),
   proof: linear_arithmetic{definitions: [Comms.Admission::verdict]},
   axioms: [Classical.choice, Quot.sound, propext]
 }
@@ -106,6 +106,20 @@ theorem{
   statement: (((Comms.Admission::admitted addressMatches signatureValid deviceMaySign parentsKnown permitted) && (not ((Comms.Admission::verdict addressMatches signatureValid deviceMaySign parentsKnown permitted) =? 2))) = false),
   proof: linear_arithmetic{definitions: [Comms.Admission::admitted, Comms.Admission::verdict]},
   axioms: [Classical.choice, Quot.sound, propext]
+}
+
+theorem{
+  name: badEventIsNeverHeld,
+  parameters: [
+    addressMatches : Nat,
+    signatureValid : Nat,
+    deviceMaySign : Nat,
+    parentsKnown : Nat,
+    permitted : Nat
+  ],
+  statement: ((((not (addressMatches =? 1)) || ((not (signatureValid =? 1)) || (not (deviceMaySign =? 1)))) && ((Comms.Admission::verdict addressMatches signatureValid deviceMaySign parentsKnown permitted) =? 1)) = false),
+  proof: linear_arithmetic{definitions: [Comms.Admission::verdict]},
+  axioms: [Quot.sound, propext]
 }
 \end{semanticmodule}
 \end{lexlean}

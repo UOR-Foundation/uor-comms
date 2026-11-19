@@ -15,6 +15,8 @@ import { ACTION, ZERO, decode, encode, hex, isZero } from "./event.mjs";
 const ABSENT = Object.freeze({ status: 0, power: 0 });
 const SETTINGS = Object.freeze({ required: 0, open: false });
 const CREATOR_POWER = 100;
+// Events held for a missing parent, at most; the oldest is dropped first. Not a model rule.
+const HELD_LIMIT = 1000;
 const CREATED = new Set(["created", "created direct"]);
 const PHASE = Object.freeze({ sign: 1, store: 2, announce: 3 });
 const changesNoMember = (action) => action === ACTION.send || action === ACTION.redact || action === ACTION.create;
@@ -129,6 +131,7 @@ export function open({ identity, device, kernel, hash, store, signer, verdict, t
     const answer = await kernel.admit(claimed, address, checks);
     if (answer === "held") {
       orphans.set(hex(address), { address: claimed, bytes, signature });
+      if (orphans.size > HELD_LIMIT) orphans.delete(orphans.keys().next().value);
       return { admitted: false, reason: "parents unknown", held: true };
     }
     if (answer !== "admitted") {
