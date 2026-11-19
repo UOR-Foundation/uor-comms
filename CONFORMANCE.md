@@ -40,11 +40,12 @@ model does not sanction.
 | `RK-06` | `build` | A call connects only through an answer, an ended call stays ended, and the two sides never both yield when calls cross |
 | `RK-07` | `build` | A permitted ban leaves the member banned, a refused event changes nothing, and only joining makes a member |
 | `RK-08` | `build` | Equal heads move no bytes and content already held is not requested again |
-| `RK-09` | `build` | The kernel answers each of its eleven questions with the function the theorems are about, and invalid request for anything else |
+| `RK-09` | `build` | The kernel answers each of its twelve questions with the function the theorems are about, and invalid request for anything else |
 | `RK-10` | `build` | The membership and power of a room are its events folded by one step, the step is the one the kernel answers, and no history takes a status out of range or a power above the creator's |
 | `RK-11` | `build` | An event's bytes are its words at eight bytes each, decoding returns every word below 2^64 unchanged, a list of addresses has one accepted order with no address twice, and the fields of a laid-out event are read back from its words with nothing left over |
 | `RK-12` | `build` | An event is composed only when its action is permitted and its form is canonical, the sent event replaces the head it cites, and a send is stored only once signed and announced only once stored |
 | `RK-13` | `build` | Only a joined member with the power to send redacts, their own event with that alone and another's only with the redaction power; a redacted event shows no content and is not fetched, in whatever order redactions arrive, a redaction changes no member's status or power, and only an allowed event of action 8 is composed as a redaction |
+| `RK-14` | `build` | A room is created by one event that cites nothing and names no room; its creator starts joined with the creator's power, a named target starts invited and may join, and nobody else is a member |
 
 ## Cited authorities
 
