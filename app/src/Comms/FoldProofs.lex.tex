@@ -1,0 +1,59 @@
+\begin{lexlean}{Comms.FoldProofs}
+\useglossary{lexlean.std.bool@1.2.0}
+\useglossary{lexlean.std.nat@1.2.0}
+\importmodule{Comms.Fold}
+\importmodule{Comms.Order}
+\importmodule{Comms.Resolve}
+\title{Boolean}
+\begin{semanticmodule}
+theorem{
+  name: eventWithoutParentsHasDepthZero,
+  parameters: [],
+  statement: ((Comms.Fold::depthOf (nil Nat)) = 0),
+  proof: linear_arithmetic{definitions: [Comms.Fold::depthOf]},
+  axioms: [propext]
+}
+
+theorem{
+  name: parentIsShallower,
+  parameters: [parent : Nat, before : (List Nat), after : (List Nat)],
+  statement: ((parent <? (Comms.Fold::depthOf (Comms.Resolve::joined before (cons parent after)))) = true),
+  proof: induction{
+    branches: [
+      {
+        proof: linear_arithmetic{
+          definitions: [Comms.Fold::depthOf, Comms.Resolve::joined, Comms.Resolve::merge]
+        },
+        binders: [],
+        constructor: nil
+      },
+      {
+        proof: linear_arithmetic{
+          definitions: [Comms.Fold::depthOf, Comms.Resolve::joined, Comms.Resolve::merge]
+        },
+        binders: [head, rest, ih],
+        constructor: cons
+      }
+    ],
+    scrutinee: before
+  },
+  axioms: [Quot.sound, propext]
+}
+
+theorem{
+  name: shallowerEventPrecedes,
+  parameters: [shallow : Nat, shallowKappa : Nat, deep : Nat, deepKappa : Nat],
+  statement: (((shallow <? deep) && (not (Comms.Order::precedes shallow shallowKappa deep deepKappa))) = false),
+  proof: linear_arithmetic{definitions: [Comms.Order::precedes]},
+  axioms: [Quot.sound, propext]
+}
+
+theorem{
+  name: shallowerEventHasSmallerKey,
+  parameters: [shallow : Nat, shallowKappa : Nat, deep : Nat, deepKappa : Nat],
+  statement: (((shallow <? deep) && ((shallowKappa <? (Comms.Order::addressBound)) && ((deepKappa <? (Comms.Order::addressBound)) && ((Comms.Order::orderingKey deep deepKappa) <=? (Comms.Order::orderingKey shallow shallowKappa))))) = false),
+  proof: linear_arithmetic{definitions: [Comms.Order::addressBound, Comms.Order::orderingKey]},
+  axioms: [Quot.sound, propext]
+}
+\end{semanticmodule}
+\end{lexlean}

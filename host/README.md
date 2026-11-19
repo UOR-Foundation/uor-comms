@@ -43,9 +43,9 @@ identity, no keys and no network of its own:
 - **No transport.** How two browsers reach each other is not decided.
 - **No Prism ID.** The signer and the device verdict are supplied by the caller.
 - **No encryption.** Content is stored and fetched as given.
-- **Three rules are restated here, not asked.** The order events are folded in (depth, then address,
-  compared by the kernel); a member's standing at creation; the power a change of power leaves. The
-  first is not in the model at all. Each is marked in `engine.mjs`.
+- **Three rules are computed here, not asked.** An event's depth (`Comms.Fold::depthOf`, proved in
+  the model; that this code matches it is tested, not proved); a member's standing at creation; the
+  power a change of power leaves. Each is marked in `engine.mjs`.
 - **Room settings are fixed:** required power 0, not open.
 - **Redactions are refused** on receipt: not wired.
 - **Authorising events are never cited.** State is the fold of an event's ancestors.

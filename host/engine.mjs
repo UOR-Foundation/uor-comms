@@ -8,8 +8,8 @@
 //   verdict    (sender, device) => whether Prism ID says that device may sign for that identity
 //   transport  { announce(message), fetch(address) }; `receive` is what a peer's announce reaches
 //
-// Three things here are not kernel answers yet and are named where they occur: the order events are
-// folded in, a member's standing at creation, and the power a change of power leaves.
+// Three things here are computed, not asked: an event's depth (the rule is `Comms.Fold::depthOf`),
+// a member's standing at creation, and the power a change of power leaves. Each is named where it occurs.
 import { ACTION, ZERO, decode, encode, hex, isZero } from "./event.mjs";
 
 const ABSENT = Object.freeze({ status: 0, power: 0 });
@@ -34,7 +34,10 @@ export function open({ identity, device, kernel, hash, store, signer, verdict, t
 
   const standing = (state, member) => state.get(hex(member)) ?? ABSENT;
 
-  /** Whether `left` is folded before `right`. Rank is depth, so an event follows its parents. */
+  /**
+   * Whether `left` is folded before `right`: by depth, then address, compared by the kernel.
+   * Depth is `Comms.Fold::depthOf`; `parentPrecedesItsEvent` proves a parent is folded first.
+   */
   async function before(left, right) {
     return (await kernel.order(left.depth, left.address, right.depth, right.address)) === "right";
   }
@@ -131,6 +134,7 @@ export function open({ identity, device, kernel, hash, store, signer, verdict, t
     await store.put(bytes, address);
     const target = room ?? { id: address, events: new Map(), order: [], heads: new Set(), state: new Map() };
     rooms.set(roomKey, target);
+    // `Comms.Fold::depthOf`: one more than the deepest parent, 0 with none.
     const depth = fields.parents.reduce((most, a) => Math.max(most, target.events.get(hex(a)).depth + 1), 0);
     const event = { address, bytes, signature, fields, depth };
     target.events.set(hex(address), event);

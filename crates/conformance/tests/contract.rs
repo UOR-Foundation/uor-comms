@@ -25,10 +25,7 @@ fn read(path: &str) -> String {
 
 /// The declaration named `name`, from its name to the next declaration.
 fn declaration<'a>(text: &'a str, name: &str) -> &'a str {
-    let start = text
-        .find(&format!("name: {name},"))
-        .unwrap_or_else(|| panic!("{name} is not declared"));
-    let rest = &text[start..];
+    let (_, rest) = text.split_once(&format!("name: {name},")).expect(name);
     let end = ["\ntheorem{", "\ndefinition{", "\n\\end{semanticmodule}"]
         .iter()
         .filter_map(|mark| rest.find(mark))
@@ -102,4 +99,6 @@ mod pins {
     fn room_rk_13() { scenario("RK-13") }
     #[test]
     fn room_rk_14() { scenario("RK-14") }
+    #[test]
+    fn room_rk_15() { scenario("RK-15") }
 }

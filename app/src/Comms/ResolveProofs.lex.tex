@@ -169,5 +169,31 @@ theorem{
   proof: linear_arithmetic{definitions: [Comms.Resolve::ahead]},
   axioms: [Quot.sound, propext]
 }
+
+theorem{
+  name: heldEarlierEventIsPlacedFirst,
+  parameters: [a : Nat, b : Nat, arrivals : (List Nat)],
+  statement: (((a <? b) && ((Comms.Resolve::place b arrivals) <? ((Comms.Resolve::place a arrivals) + (Comms.Resolve::copies a arrivals)))) = false),
+  proof: induction{
+    branches: [
+      {
+        proof: linear_arithmetic{
+          definitions: [Comms.Resolve::ahead, Comms.Resolve::copies, Comms.Resolve::place]
+        },
+        binders: [],
+        constructor: nil
+      },
+      {
+        proof: linear_arithmetic{
+          definitions: [Comms.Resolve::ahead, Comms.Resolve::copies, Comms.Resolve::place]
+        },
+        binders: [head, rest, ih],
+        constructor: cons
+      }
+    ],
+    scrutinee: arrivals
+  },
+  axioms: [Classical.choice, Quot.sound, propext]
+}
 \end{semanticmodule}
 \end{lexlean}

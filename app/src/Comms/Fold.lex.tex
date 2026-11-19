@@ -1,0 +1,17 @@
+\begin{lexlean}{Comms.Fold}
+\useglossary{lexlean.std.bool@1.2.0}
+\useglossary{lexlean.std.nat@1.2.0}
+\importmodule{Comms.Resolve}
+\title{Boolean}
+\begin{semanticmodule}
+definition{
+  name: depthOf,
+  parameters: [parentDepths : (List Nat)],
+  result: Nat,
+  body: (match parentDepths
+    | List.nil => 0
+    | List.cons head rest => (Comms.Resolve::merge (head + 1) (depthOf rest))),
+  recursive_argument: parentDepths
+}
+\end{semanticmodule}
+\end{lexlean}

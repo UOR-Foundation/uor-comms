@@ -406,7 +406,7 @@ just app
 npx prism-code inspect app/.prism/build/*/*.holo
 ```
 
-The claims are registered as `RK-01` to `RK-14`, specified in
+The claims are registered as `RK-01` to `RK-15`, specified in
 `features/suites/room.feature`, and pinned by the tests in
 `crates/conformance/tests/contract.rs`.
 
