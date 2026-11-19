@@ -99,7 +99,7 @@ An event has one byte form. Parents and authorities are each in ascending order 
 - Whether the address covers the signature. `Comms.Event` fixes the bytes that are signed; the signature's own bytes and where they travel are not specified.
 - The creating event: it has no parents and cannot name its own address as its room.
 - Whether a redaction is applied before the event it names arrives, and how a peer learns that the redactor sent that event. `Comms.Redact` takes "own" as an input.
-- The kernel says whether an event may be composed; it does not return the bytes, and it does not route a redaction.
+- The kernel says whether an event may be composed; it does not return the bytes. A redaction is asked through its own operation.
 - The ban race: a ban and an event from the banned member that do not see each other. Rank decides it; the security argument is not proved.
 - Group keys between users: how a room key is wrapped to each member's devices.
 - Confirming that a contact's Prism ID is theirs.

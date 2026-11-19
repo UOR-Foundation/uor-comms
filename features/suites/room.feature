@@ -76,7 +76,7 @@ Feature: room
     And heldContentIsNotFetchedAgain in Comms/SyncProofs.lex.tex states ((Comms.Sync::wanted (cons kappa offered) (cons kappa rest)) = (Comms.Sync::wanted offered (cons kappa rest)))
 
   @RK-09 @build
-  Scenario: The kernel answers each of its ten questions with the function the theorems are about, and invalid request for anything else
+  Scenario: The kernel answers each of its eleven questions with the function the theorems are about, and invalid request for anything else
     Given the kernel in app/src/RoomKernel.lex.tex
     When prismpm verify replays the acceptance vectors in the compiled guest
     Then admitAnswer in RoomKernel.lex.tex contains (if (Comms.Admission::admitted (flag (sameAddress value 1 33))
@@ -95,8 +95,10 @@ Feature: room
     And route in RoomKernel.lex.tex contains (if ((operation =? 8) && (length =? 3)) then (sendName (Comms.Send::instruction (Comms.Send::advance (natAt value 1 1 0) (natAt value 2 1 0))))
     And route in RoomKernel.lex.tex contains (if ((operation =? 9) && (length =? 65)) then (headsAnswer value)
     And composeAnswer in RoomKernel.lex.tex contains ((Comms.Event::readable words) && (Comms.Send::mayCompose (Comms.Event::wordAt words 0) (Comms.Event::wordAt words 1)
-    And eventWords in RoomKernel.lex.tex contains (wordsFrom value 28 (prim quotient (prim subtract length 28 : Nat) 8 0 : Nat))
+    And eventWords in RoomKernel.lex.tex contains (wordsFrom value header (prim quotient (prim subtract length header : Nat) 8 0 : Nat))
     And route in RoomKernel.lex.tex contains (if ((operation =? 10) && (28 <=? length)) then (composeAnswer value length)
+    And redactionAnswer in RoomKernel.lex.tex contains ((Comms.Event::readable words) && (Comms.Redact::composes (Comms.Event::wordAt words 1) (Comms.Event::wordAt words 0)
+    And route in RoomKernel.lex.tex contains (if ((operation =? 11) && (27 <=? length)) then (redactionAnswer value length)
     And route in RoomKernel.lex.tex contains else (prim utf8_encode "invalid request" : Bytes)
     And dispatch in RoomKernel.lex.tex contains (route (natAt value 0 1 0) (Foundation.Bytes::byteLength value) value)
     And application in RoomKernel.lex.tex contains response := 0x61646d6974746564})
@@ -162,7 +164,7 @@ Feature: room
     And announceIsAskedOnlyOnceStored in Comms/SendProofs.lex.tex states ((((Comms.Send::instruction phase) =? 3) && (not (phase =? 3))) = false)
 
   @RK-13 @build
-  Scenario: Only a joined member with the power to send redacts, their own event with that alone and another's only with the redaction power; a redacted event shows no content and is not fetched, in whatever order redactions arrive, and a redaction changes no member's status or power
+  Scenario: Only a joined member with the power to send redacts, their own event with that alone and another's only with the redaction power; a redacted event shows no content and is not fetched, in whatever order redactions arrive, a redaction changes no member's status or power, and only an allowed event of action 8 is composed as a redaction
     Given the redaction rules in app/src/Comms/Redact.lex.tex
     When the Lean kernel checks the theorems of RedactProofs during prismpm verify
     Then allowed in Comms/Redact.lex.tex contains body: ((senderStatus =? 2) && ((required <=? senderPower) && ((own =? 1) || (redactPower <=? senderPower))))
@@ -171,7 +173,7 @@ Feature: room
     And ownEventNeedsOnlySendingPower in Comms/RedactProofs.lex.tex states (((senderStatus =? 2) && ((required <=? senderPower) && ((own =? 1) && (not (Comms.Redact::allowed senderStatus senderPower required redactPower own))))) = false)
     And anothersEventNeedsPower in Comms/RedactProofs.lex.tex states (((not (own =? 1)) && ((senderPower <? redactPower) && (Comms.Redact::allowed senderStatus senderPower required redactPower own))) = false)
     And redactionNeedsSendingPower in Comms/RedactProofs.lex.tex states (((senderPower <? required) && (Comms.Redact::allowed senderStatus senderPower required redactPower own)) = false)
-    And redactionNeedsCanonicalForm in Comms/RedactProofs.lex.tex states ((Comms.Redact::mayCompose 2 senderStatus senderPower required redactPower own parents authorities) = false)
+    And redactionNeedsCanonicalForm in Comms/RedactProofs.lex.tex states ((Comms.Redact::mayRedact 2 senderStatus senderPower required redactPower own parents authorities) = false)
     And bannedMemberRedactsNothing in Comms/RedactProofs.lex.tex states ((Comms.Redact::allowed 4 senderPower required redactPower own) = false)
     And redactedContentIsGone in Comms/RedactProofs.lex.tex states ((Comms.Redact::shown (cons event rest) event content) = 0)
     And laterRedactionUndoesNone in Comms/RedactProofs.lex.tex states ((Comms.Redact::shown (cons other (cons event rest)) event content) = 0)
@@ -180,3 +182,6 @@ Feature: room
     And redactionTouchesOnlyItsEvent in Comms/RedactProofs.lex.tex states (((other =? event) || ((Comms.Redact::shown (cons other rest) event content) =? (Comms.Redact::shown rest event content))) = true)
     And redactedContentIsNotFetched in Comms/RedactProofs.lex.tex states ((Comms.Redact::fetched (cons event rest) event content store) = false)
     And redactionChangesNoMember in Comms/RedactProofs.lex.tex states ((Comms.State::step field isSubject 8 senderStatus senderPower targetStatus targetPower required open grantedPower) = (if (field =? 0) then targetStatus else targetPower))
+    And composes in Comms/Redact.lex.tex contains body: ((action =? 8) && (mayRedact version senderStatus senderPower required redactPower own parents authorities))
+    And onlyARedactionIsComposedAsOne in Comms/RedactProofs.lex.tex states (((Comms.Redact::composes action version senderStatus senderPower required redactPower own parents authorities) && (not (action =? 8))) = false)
+    And composedRedactionIsAllowed in Comms/RedactProofs.lex.tex states (((Comms.Redact::composes action version senderStatus senderPower required redactPower own parents authorities) && (not (Comms.Redact::allowed senderStatus senderPower required redactPower own))) = false)
