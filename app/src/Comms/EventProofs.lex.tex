@@ -128,5 +128,332 @@ theorem{
   proof: linear_arithmetic{definitions: [Comms.Event::canonical]},
   axioms: [Quot.sound, propext]
 }
+
+theorem{
+  name: oneMoreIsTheNext,
+  parameters: [total : Nat],
+  statement: ((1 + total) = (total + 1)),
+  proof: linear_arithmetic{definitions: [Comms.Event::push]},
+  axioms: [Quot.sound, propext]
+}
+
+theorem{
+  name: takeReturnsTheFront,
+  parameters: [front : (List Nat), back : (List Nat)],
+  statement: ((project (Comms.Event::take (Comms.Event::joined front back) (Comms.Event::count front)) items) = front),
+  proof: induction{
+    branches: [
+      {
+        proof: simplify{definitions: [Comms.Event::count, Comms.Event::joined, Comms.Event::take]},
+        binders: [],
+        constructor: nil
+      },
+      {
+        proof: simplify{
+          definitions: [
+            ih,
+            oneMoreIsTheNext,
+            Comms.Event::count,
+            Comms.Event::joined,
+            Comms.Event::take
+          ]
+        },
+        binders: [head, rest, ih],
+        constructor: cons
+      }
+    ],
+    scrutinee: front
+  },
+  axioms: [Quot.sound, propext]
+}
+
+theorem{
+  name: skipReturnsTheRest,
+  parameters: [front : (List Nat), back : (List Nat)],
+  statement: ((project (Comms.Event::skip (Comms.Event::joined front back) (Comms.Event::count front)) items) = back),
+  proof: induction{
+    branches: [
+      {
+        proof: simplify{definitions: [Comms.Event::count, Comms.Event::joined, Comms.Event::skip]},
+        binders: [],
+        constructor: nil
+      },
+      {
+        proof: simplify{
+          definitions: [
+            ih,
+            oneMoreIsTheNext,
+            Comms.Event::count,
+            Comms.Event::joined,
+            Comms.Event::skip
+          ]
+        },
+        binders: [head, rest, ih],
+        constructor: cons
+      }
+    ],
+    scrutinee: front
+  },
+  axioms: [Quot.sound, propext]
+}
+
+theorem{
+  name: takeReturnsAll,
+  parameters: [words : (List Nat)],
+  statement: ((project (Comms.Event::take words (Comms.Event::count words)) items) = words),
+  proof: induction{
+    branches: [
+      {
+        proof: simplify{definitions: [Comms.Event::count, Comms.Event::take]},
+        binders: [],
+        constructor: nil
+      },
+      {
+        proof: simplify{definitions: [ih, oneMoreIsTheNext, Comms.Event::count, Comms.Event::take]},
+        binders: [head, rest, ih],
+        constructor: cons
+      }
+    ],
+    scrutinee: words
+  },
+  axioms: [Quot.sound, propext]
+}
+
+theorem{
+  name: skipLeavesNothing,
+  parameters: [words : (List Nat)],
+  statement: ((project (Comms.Event::skip words (Comms.Event::count words)) items) = (nil Nat)),
+  proof: induction{
+    branches: [
+      {
+        proof: simplify{definitions: [Comms.Event::count, Comms.Event::skip]},
+        binders: [],
+        constructor: nil
+      },
+      {
+        proof: simplify{definitions: [ih, oneMoreIsTheNext, Comms.Event::count, Comms.Event::skip]},
+        binders: [head, rest, ih],
+        constructor: cons
+      }
+    ],
+    scrutinee: words
+  },
+  axioms: [Quot.sound, propext]
+}
+
+theorem{
+  name: versionIsReadBack,
+  parameters: [version : Nat, rest : (List Nat)],
+  statement: ((Comms.Event::wordAt (cons version rest) 0) = version),
+  proof: simplify{definitions: [Comms.Event::wordAt]},
+  axioms: [propext]
+}
+
+theorem{
+  name: parentsAreReadBack,
+  parameters: [
+    version : Nat,
+    action : Nat,
+    r0 : Nat,
+    r1 : Nat,
+    r2 : Nat,
+    r3 : Nat,
+    s0 : Nat,
+    s1 : Nat,
+    s2 : Nat,
+    s3 : Nat,
+    d0 : Nat,
+    d1 : Nat,
+    d2 : Nat,
+    d3 : Nat,
+    t0 : Nat,
+    t1 : Nat,
+    t2 : Nat,
+    t3 : Nat,
+    granted : Nat,
+    c0 : Nat,
+    c1 : Nat,
+    c2 : Nat,
+    c3 : Nat,
+    parents : (List Nat),
+    authorities : (List Nat)
+  ],
+  statement: ((project (Comms.Event::parentsOf (Comms.Event::layout version action (cons r0 (cons r1 (cons r2 (cons r3 (nil Nat))))) (cons s0 (cons s1 (cons s2 (cons s3 (nil Nat))))) (cons d0 (cons d1 (cons d2 (cons d3 (nil Nat))))) (cons t0 (cons t1 (cons t2 (cons t3 (nil Nat))))) granted (cons c0 (cons c1 (cons c2 (cons c3 (nil Nat))))) parents authorities)) items) = parents),
+  proof: simplify{
+    definitions: [
+      takeReturnsTheFront,
+      Comms.Event::joined,
+      Comms.Event::layout,
+      Comms.Event::parentsOf,
+      Comms.Event::skip,
+      Comms.Event::wordAt
+    ]
+  },
+  axioms: [Quot.sound, propext]
+}
+
+theorem{
+  name: authoritiesAreReadBack,
+  parameters: [
+    version : Nat,
+    action : Nat,
+    r0 : Nat,
+    r1 : Nat,
+    r2 : Nat,
+    r3 : Nat,
+    s0 : Nat,
+    s1 : Nat,
+    s2 : Nat,
+    s3 : Nat,
+    d0 : Nat,
+    d1 : Nat,
+    d2 : Nat,
+    d3 : Nat,
+    t0 : Nat,
+    t1 : Nat,
+    t2 : Nat,
+    t3 : Nat,
+    granted : Nat,
+    c0 : Nat,
+    c1 : Nat,
+    c2 : Nat,
+    c3 : Nat,
+    parents : (List Nat),
+    authorities : (List Nat)
+  ],
+  statement: ((project (Comms.Event::authoritiesOf (Comms.Event::layout version action (cons r0 (cons r1 (cons r2 (cons r3 (nil Nat))))) (cons s0 (cons s1 (cons s2 (cons s3 (nil Nat))))) (cons d0 (cons d1 (cons d2 (cons d3 (nil Nat))))) (cons t0 (cons t1 (cons t2 (cons t3 (nil Nat))))) granted (cons c0 (cons c1 (cons c2 (cons c3 (nil Nat))))) parents authorities)) items) = authorities),
+  proof: simplify{
+    definitions: [
+      skipReturnsTheRest,
+      takeReturnsAll,
+      Comms.Event::authoritiesOf,
+      Comms.Event::joined,
+      Comms.Event::layout,
+      Comms.Event::skip,
+      Comms.Event::wordAt
+    ]
+  },
+  axioms: [Quot.sound, propext]
+}
+
+theorem{
+  name: actionIsReadBack,
+  parameters: [
+    version : Nat,
+    action : Nat,
+    r0 : Nat,
+    r1 : Nat,
+    r2 : Nat,
+    r3 : Nat,
+    s0 : Nat,
+    s1 : Nat,
+    s2 : Nat,
+    s3 : Nat,
+    d0 : Nat,
+    d1 : Nat,
+    d2 : Nat,
+    d3 : Nat,
+    t0 : Nat,
+    t1 : Nat,
+    t2 : Nat,
+    t3 : Nat,
+    granted : Nat,
+    c0 : Nat,
+    c1 : Nat,
+    c2 : Nat,
+    c3 : Nat,
+    parents : (List Nat),
+    authorities : (List Nat)
+  ],
+  statement: ((Comms.Event::wordAt (Comms.Event::layout version action (cons r0 (cons r1 (cons r2 (cons r3 (nil Nat))))) (cons s0 (cons s1 (cons s2 (cons s3 (nil Nat))))) (cons d0 (cons d1 (cons d2 (cons d3 (nil Nat))))) (cons t0 (cons t1 (cons t2 (cons t3 (nil Nat))))) granted (cons c0 (cons c1 (cons c2 (cons c3 (nil Nat))))) parents authorities) 1) = action),
+  proof: simplify{definitions: [Comms.Event::layout, Comms.Event::wordAt]},
+  axioms: [propext]
+}
+
+theorem{
+  name: grantedPowerIsReadBack,
+  parameters: [
+    version : Nat,
+    action : Nat,
+    r0 : Nat,
+    r1 : Nat,
+    r2 : Nat,
+    r3 : Nat,
+    s0 : Nat,
+    s1 : Nat,
+    s2 : Nat,
+    s3 : Nat,
+    d0 : Nat,
+    d1 : Nat,
+    d2 : Nat,
+    d3 : Nat,
+    t0 : Nat,
+    t1 : Nat,
+    t2 : Nat,
+    t3 : Nat,
+    granted : Nat,
+    c0 : Nat,
+    c1 : Nat,
+    c2 : Nat,
+    c3 : Nat,
+    parents : (List Nat),
+    authorities : (List Nat)
+  ],
+  statement: ((Comms.Event::wordAt (Comms.Event::layout version action (cons r0 (cons r1 (cons r2 (cons r3 (nil Nat))))) (cons s0 (cons s1 (cons s2 (cons s3 (nil Nat))))) (cons d0 (cons d1 (cons d2 (cons d3 (nil Nat))))) (cons t0 (cons t1 (cons t2 (cons t3 (nil Nat))))) granted (cons c0 (cons c1 (cons c2 (cons c3 (nil Nat))))) parents authorities) 18) = granted),
+  proof: simplify{definitions: [Comms.Event::joined, Comms.Event::layout, Comms.Event::wordAt]},
+  axioms: [propext]
+}
+
+theorem{
+  name: nothingIsLeftOver,
+  parameters: [
+    version : Nat,
+    action : Nat,
+    r0 : Nat,
+    r1 : Nat,
+    r2 : Nat,
+    r3 : Nat,
+    s0 : Nat,
+    s1 : Nat,
+    s2 : Nat,
+    s3 : Nat,
+    d0 : Nat,
+    d1 : Nat,
+    d2 : Nat,
+    d3 : Nat,
+    t0 : Nat,
+    t1 : Nat,
+    t2 : Nat,
+    t3 : Nat,
+    granted : Nat,
+    c0 : Nat,
+    c1 : Nat,
+    c2 : Nat,
+    c3 : Nat,
+    parents : (List Nat),
+    authorities : (List Nat)
+  ],
+  statement: ((project (Comms.Event::leftoverOf (Comms.Event::layout version action (cons r0 (cons r1 (cons r2 (cons r3 (nil Nat))))) (cons s0 (cons s1 (cons s2 (cons s3 (nil Nat))))) (cons d0 (cons d1 (cons d2 (cons d3 (nil Nat))))) (cons t0 (cons t1 (cons t2 (cons t3 (nil Nat))))) granted (cons c0 (cons c1 (cons c2 (cons c3 (nil Nat))))) parents authorities)) items) = (nil Nat)),
+  proof: simplify{
+    definitions: [
+      skipLeavesNothing,
+      skipReturnsTheRest,
+      Comms.Event::joined,
+      Comms.Event::layout,
+      Comms.Event::leftoverOf,
+      Comms.Event::skip,
+      Comms.Event::wordAt
+    ]
+  },
+  axioms: [Quot.sound, propext]
+}
+
+theorem{
+  name: shortEventIsRefused,
+  parameters: [],
+  statement: ((Comms.Event::shaped (nil Nat)) = false),
+  proof: linear_arithmetic{definitions: [Comms.Event::count, Comms.Event::shaped]},
+  axioms: [Quot.sound, propext]
+}
 \end{semanticmodule}
 \end{lexlean}
