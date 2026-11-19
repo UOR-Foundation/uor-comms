@@ -30,7 +30,7 @@ async function peer(name, wire) {
   devices.set(hex(device), { identity: hex(identity), key: keys.publicKey });
   const algorithm = { name: "ECDSA", hash: "SHA-256" };
   const store = memoryStore(hash);
-  const engine = open({
+  const options = {
     identity, device, kernel, hash, store,
     signer: {
       sign: async (bytes) => new Uint8Array(await crypto.subtle.sign(algorithm, keys.privateKey, bytes)),
@@ -44,10 +44,11 @@ async function peer(name, wire) {
       announce: async (message) => { for (const other of wire.peers) if (other !== engine) await wire.deliver(other, message); },
       fetch: async (address) => { for (const other of wire.stores) { const held = await other.get(address); if (held) return held; } return null; },
     },
-  });
+  };
+  const engine = open(options);
   wire.peers.push(engine);
   wire.stores.push(store);
-  return { engine, identity, device, store };
+  return { engine, identity, device, store, reopen: () => open(options) };
 }
 
 const direct = () => {
@@ -287,4 +288,22 @@ test("the kernel reads the largest valid content and refuses one byte more, with
   assert.equal(await kernel.content(largest), "message");
   assert.equal(await kernel.content(encodeContent({ text: "x".repeat(16385), sent: 1_800_000_000_000 })), "refused");
   assert.equal(await kernel.content(encodeContent({ text: "y".repeat(2000), sent: 1_800_000_000_000 })), "message");
+});
+
+test("an engine reopened on the same store rebuilds every room as it was", async () => {
+  const wire = direct();
+  const ada = await peer("ada", wire);
+  const ben = await peer("ben", wire);
+  const room = await ada.engine.createDirect(ben.identity);
+  await ben.engine.join(room);
+  await ada.engine.send(room, message("one"));
+  await ben.engine.send(room, message("two"));
+  const again = ben.reopen();
+  assert.equal(again.rooms().length, 0);
+  assert.equal(await again.restore(), 1);
+  assert.equal(again.evicted, false);
+  const order = (engine) => engine.timeline(room).map((e) => hex(e.address));
+  assert.deepEqual(order(again), order(ben.engine));
+  assert.deepEqual(again.members(room), ben.engine.members(room));
+  assert.equal(decodeContent(await again.content(again.timeline(room)[2].content)).text, "one");
 });

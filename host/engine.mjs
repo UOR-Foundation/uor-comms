@@ -139,6 +139,7 @@ export function open({ identity, device, kernel, hash, store, signer, verdict, t
       return { admitted: false, reason: "refused", checks };
     }
     await store.put(bytes, address);
+    await store.putEvent?.({ address, bytes, signature });
     const target = room ?? { id: address, events: new Map(), order: [], heads: new Set(), state: new Map(),
       direct: creates && !isZero(fields.target) ? [fields.sender, fields.target] : null };
     rooms.set(roomKey, target);
@@ -213,6 +214,13 @@ export function open({ identity, device, kernel, hash, store, signer, verdict, t
     },
     /** What a peer's announce reaches. */
     receive: admit,
+    /** Rebuilds every room from the events the store kept, admitting each again. Returns the number of rooms. */
+    async restore() {
+      for (const message of (await store.events?.()) ?? []) await admit(message);
+      return rooms.size;
+    },
+    /** True when the browser cleared the store this engine was opened on. */
+    evicted: Boolean(store.evicted),
     /** The content behind an address: from the store, else fetched and checked against the address. */
     async content(address) {
       const held = await store.get(address);

@@ -6,7 +6,7 @@ A messenger with the features of Matrix and no server. Every decision about a ro
 
 ## Decisions taken
 
-These were open in the map. Decisions 1 to 4 and 10 to 15 are the owner's instructions or rulings; 5 to 8 are assumptions made to start Phase 2 and can be reversed.
+These were open in the map. Decisions 1 to 4 and 10 to 18 are the owner's instructions or rulings; 5 to 8 are assumptions made to start Phase 2 and can be reversed.
 
 | # | Decision | Status |
 |---|---|---|
@@ -25,6 +25,9 @@ These were open in the map. Decisions 1 to 4 and 10 to 15 are the owner's instru
 | 13 | A direct chat is exactly two people with equal power: a third invitation is refused, and an existing direct room is reused | ruled 2026-11-19 |
 | 14 | This repository is the canonical reference for the engine. Holo Messenger is a client; where the two disagree on the engine's design, phases, behaviour or status, this repository is right | ruled 2026-11-19 |
 | 15 | The proposals of `docs/CEWP-INSIGHTS.md` D1 to D5 and D7 are adopted: the actions offered are the actions admitted; a missing parent holds an event; a relay tree every member computes alike; per-sender call streams with layers; derived, rotating meeting topics and member-only forwarders; mailboxes only on always-on member nodes | approved 2026-11-19 |
+| 16 | Encryption is post-quantum from the first key: room keys are wrapped to member devices with X-Wing (X25519 + ML-KEM-768). The browser library that provides it is to be pinned; it is not built | ruled 2026-11-19 |
+| 17 | Per-user data synced across one's own devices (notification levels, mutes, pinned chats) lives in a private room per identity that only its devices join | ruled 2026-11-19 |
+| 18 | A person's profile (name, picture by content address) lives in a public room per identity that only its devices write | ruled 2026-11-19 |
 
 ## Phases
 
