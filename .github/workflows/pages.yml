@@ -167,6 +167,11 @@ jobs:
           ' "$FINGERPRINT" "$ATTESTATION_URL"
           node bootstrap/page.mjs site
           node bootstrap/precache.mjs site
+          # The host and this holo under a path named by their content (host/publish.mjs), with
+          # every version already live carried forward once its files check out. After the
+          # precache list, so a first visit downloads none of it.
+          live="https://${GITHUB_REPOSITORY_OWNER,,}.github.io/${GITHUB_REPOSITORY#*/}/"
+          node host/publish.mjs site "$HOLO" "$live" "$GITHUB_SHA"
       - name: Lighthouse at 100 on mobile, before anything is deployed
         shell: bash
         run: |
