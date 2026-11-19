@@ -142,23 +142,21 @@ definition{
 }
 
 definition{
-  name: bytesFrom,
+  name: wordsFrom,
   parameters: [value : Bytes, offset : Nat, remaining : Nat],
-  result: (List Nat),
+  result: Comms.Event::Words,
   body: (match remaining
-    | Nat.zero => (nil Nat)
-    | Nat.succ rest => (match (Foundation.Bytes::byteAt value offset)
-      | Option.none => (nil Nat)
-      | Option.some byte => (cons (prim to_nat byte : Nat) (bytesFrom value (offset + 1) rest)))),
+    | Nat.zero => (record Comms.Event::Words {items := (nil Nat)})
+    | Nat.succ rest => (record Comms.Event::Words {items := (cons (natAt value offset 8 0) (project (wordsFrom value (offset + 8) rest) items))})),
   axioms: [Quot.sound, propext],
   recursive_argument: remaining
 }
 
 definition{
-  name: eventBytes,
+  name: eventWords,
   parameters: [value : Bytes, length : Nat],
-  result: (List Nat),
-  body: (bytesFrom value 28 (prim subtract length 28 : Nat)),
+  result: Comms.Event::Words,
+  body: (wordsFrom value 28 (prim quotient (prim subtract length 28 : Nat) 8 0 : Nat)),
   axioms: [Quot.sound, propext]
 }
 
@@ -166,7 +164,7 @@ definition{
   name: composeAnswer,
   parameters: [value : Bytes, length : Nat],
   result: Bytes,
-  body: (if ((Comms.Event::readable (eventBytes value length)) && (Comms.Send::mayCompose (Comms.Event::wordAt (Comms.Event::decode (eventBytes value length)) 0) (Comms.Event::wordAt (Comms.Event::decode (eventBytes value length)) 1) (natAt value 1 1 0) (natAt value 2 8 0) (natAt value 10 1 0) (natAt value 11 8 0) (natAt value 19 8 0) (natAt value 27 1 0) (Comms.Event::wordAt (Comms.Event::decode (eventBytes value length)) 18) (Comms.Event::parentsOf (Comms.Event::decode (eventBytes value length))) (Comms.Event::authoritiesOf (Comms.Event::decode (eventBytes value length))))) then (prim utf8_encode "composed" : Bytes) else (prim utf8_encode "refused" : Bytes)),
+  body: (let words : (List Nat) := (project (eventWords value length) items); (if (((prim remainder (prim subtract length 28 : Nat) 8 0 : Nat) =? 0) && ((Comms.Event::readable words) && (Comms.Send::mayCompose (Comms.Event::wordAt words 0) (Comms.Event::wordAt words 1) (natAt value 1 1 0) (natAt value 2 8 0) (natAt value 10 1 0) (natAt value 11 8 0) (natAt value 19 8 0) (natAt value 27 1 0) (Comms.Event::wordAt words 18) (project (Comms.Event::parentsOf words) items) (project (Comms.Event::authoritiesOf words) items)))) then (prim utf8_encode "composed" : Bytes) else (prim utf8_encode "refused" : Bytes))),
   axioms: [Quot.sound, propext]
 }
 

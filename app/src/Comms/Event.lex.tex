@@ -167,14 +167,21 @@ definition{
   recursive_argument: words
 }
 
+structure{
+  name: Words,
+  type_parameters: [],
+  parameters: [],
+  fields: [{name: items, type: (List Nat)}]
+}
+
 definition{
   name: skip,
   parameters: [words : (List Nat), dropped : Nat],
-  result: (List Nat),
+  result: Words,
   body: (match dropped
-    | Nat.zero => words
+    | Nat.zero => (record Words {items := words})
     | Nat.succ fewer => (match words
-      | List.nil => (nil Nat)
+      | List.nil => (record Words {items := (nil Nat)})
       | List.cons head rest => (skip rest fewer))),
   recursive_argument: dropped
 }
@@ -182,55 +189,48 @@ definition{
 definition{
   name: take,
   parameters: [words : (List Nat), kept : Nat],
-  result: (List Nat),
+  result: Words,
   body: (match kept
-    | Nat.zero => (nil Nat)
+    | Nat.zero => (record Words {items := (nil Nat)})
     | Nat.succ fewer => (match words
-      | List.nil => (nil Nat)
-      | List.cons head rest => (cons head (take rest fewer)))),
+      | List.nil => (record Words {items := (nil Nat)})
+      | List.cons head rest => (record Words {items := (cons head (project (take rest fewer) items))}))),
   recursive_argument: kept
 }
 
 definition{
   name: parentsOf,
   parameters: [words : (List Nat)],
-  result: (List Nat),
-  body: (take (skip words 25) (wordAt words 23))
+  result: Words,
+  body: (take (project (skip words 25) items) (wordAt words 23))
 }
 
 definition{
   name: authoritiesOf,
   parameters: [words : (List Nat)],
-  result: (List Nat),
-  body: (take (skip (skip words 25) (wordAt words 23)) (wordAt words 24))
+  result: Words,
+  body: (take (project (skip (project (skip words 25) items) (wordAt words 23)) items) (wordAt words 24))
 }
 
 definition{
   name: leftoverOf,
   parameters: [words : (List Nat)],
-  result: (List Nat),
-  body: (skip (skip (skip words 25) (wordAt words 23)) (wordAt words 24))
+  result: Words,
+  body: (skip (project (skip (project (skip words 25) items) (wordAt words 23)) items) (wordAt words 24))
 }
 
 definition{
   name: shaped,
   parameters: [words : (List Nat)],
   result: Bool,
-  body: ((25 <=? (count words)) && (((count (parentsOf words)) =? (wordAt words 23)) && (((count (authoritiesOf words)) =? (wordAt words 24)) && ((count (leftoverOf words)) =? 0))))
-}
-
-definition{
-  name: wholeWords,
-  parameters: [bytes : (List Nat)],
-  result: Bool,
-  body: ((prim remainder (count bytes) 8 0 : Nat) =? 0)
+  body: ((25 <=? (count words)) && (((count (project (parentsOf words) items)) =? (wordAt words 23)) && (((count (project (authoritiesOf words) items)) =? (wordAt words 24)) && ((count (project (leftoverOf words) items)) =? 0))))
 }
 
 definition{
   name: readable,
-  parameters: [bytes : (List Nat)],
+  parameters: [words : (List Nat)],
   result: Bool,
-  body: ((wholeWords bytes) && ((shaped (decode bytes)) && (canonical (wordAt (decode bytes) 0) (wordAt (decode bytes) 1) (parentsOf (decode bytes)) (authoritiesOf (decode bytes)))))
+  body: ((shaped words) && (canonical (wordAt words 0) (wordAt words 1) (project (parentsOf words) items) (project (authoritiesOf words) items)))
 }
 \end{semanticmodule}
 \end{lexlean}

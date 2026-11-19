@@ -140,7 +140,7 @@ theorem{
 theorem{
   name: takeReturnsTheFront,
   parameters: [front : (List Nat), back : (List Nat)],
-  statement: ((Comms.Event::take (Comms.Event::joined front back) (Comms.Event::count front)) = front),
+  statement: ((project (Comms.Event::take (Comms.Event::joined front back) (Comms.Event::count front)) items) = front),
   proof: induction{
     branches: [
       {
@@ -170,7 +170,7 @@ theorem{
 theorem{
   name: skipReturnsTheRest,
   parameters: [front : (List Nat), back : (List Nat)],
-  statement: ((Comms.Event::skip (Comms.Event::joined front back) (Comms.Event::count front)) = back),
+  statement: ((project (Comms.Event::skip (Comms.Event::joined front back) (Comms.Event::count front)) items) = back),
   proof: induction{
     branches: [
       {
@@ -200,7 +200,7 @@ theorem{
 theorem{
   name: takeReturnsAll,
   parameters: [words : (List Nat)],
-  statement: ((Comms.Event::take words (Comms.Event::count words)) = words),
+  statement: ((project (Comms.Event::take words (Comms.Event::count words)) items) = words),
   proof: induction{
     branches: [
       {
@@ -222,7 +222,7 @@ theorem{
 theorem{
   name: skipLeavesNothing,
   parameters: [words : (List Nat)],
-  statement: ((Comms.Event::skip words (Comms.Event::count words)) = (nil Nat)),
+  statement: ((project (Comms.Event::skip words (Comms.Event::count words)) items) = (nil Nat)),
   proof: induction{
     branches: [
       {
@@ -278,7 +278,7 @@ theorem{
     parents : (List Nat),
     authorities : (List Nat)
   ],
-  statement: ((Comms.Event::parentsOf (Comms.Event::layout version action (cons r0 (cons r1 (cons r2 (cons r3 (nil Nat))))) (cons s0 (cons s1 (cons s2 (cons s3 (nil Nat))))) (cons d0 (cons d1 (cons d2 (cons d3 (nil Nat))))) (cons t0 (cons t1 (cons t2 (cons t3 (nil Nat))))) granted (cons c0 (cons c1 (cons c2 (cons c3 (nil Nat))))) parents authorities)) = parents),
+  statement: ((project (Comms.Event::parentsOf (Comms.Event::layout version action (cons r0 (cons r1 (cons r2 (cons r3 (nil Nat))))) (cons s0 (cons s1 (cons s2 (cons s3 (nil Nat))))) (cons d0 (cons d1 (cons d2 (cons d3 (nil Nat))))) (cons t0 (cons t1 (cons t2 (cons t3 (nil Nat))))) granted (cons c0 (cons c1 (cons c2 (cons c3 (nil Nat))))) parents authorities)) items) = parents),
   proof: simplify{
     definitions: [
       takeReturnsTheFront,
@@ -321,7 +321,7 @@ theorem{
     parents : (List Nat),
     authorities : (List Nat)
   ],
-  statement: ((Comms.Event::authoritiesOf (Comms.Event::layout version action (cons r0 (cons r1 (cons r2 (cons r3 (nil Nat))))) (cons s0 (cons s1 (cons s2 (cons s3 (nil Nat))))) (cons d0 (cons d1 (cons d2 (cons d3 (nil Nat))))) (cons t0 (cons t1 (cons t2 (cons t3 (nil Nat))))) granted (cons c0 (cons c1 (cons c2 (cons c3 (nil Nat))))) parents authorities)) = authorities),
+  statement: ((project (Comms.Event::authoritiesOf (Comms.Event::layout version action (cons r0 (cons r1 (cons r2 (cons r3 (nil Nat))))) (cons s0 (cons s1 (cons s2 (cons s3 (nil Nat))))) (cons d0 (cons d1 (cons d2 (cons d3 (nil Nat))))) (cons t0 (cons t1 (cons t2 (cons t3 (nil Nat))))) granted (cons c0 (cons c1 (cons c2 (cons c3 (nil Nat))))) parents authorities)) items) = authorities),
   proof: simplify{
     definitions: [
       skipReturnsTheRest,
@@ -433,7 +433,7 @@ theorem{
     parents : (List Nat),
     authorities : (List Nat)
   ],
-  statement: ((Comms.Event::leftoverOf (Comms.Event::layout version action (cons r0 (cons r1 (cons r2 (cons r3 (nil Nat))))) (cons s0 (cons s1 (cons s2 (cons s3 (nil Nat))))) (cons d0 (cons d1 (cons d2 (cons d3 (nil Nat))))) (cons t0 (cons t1 (cons t2 (cons t3 (nil Nat))))) granted (cons c0 (cons c1 (cons c2 (cons c3 (nil Nat))))) parents authorities)) = (nil Nat)),
+  statement: ((project (Comms.Event::leftoverOf (Comms.Event::layout version action (cons r0 (cons r1 (cons r2 (cons r3 (nil Nat))))) (cons s0 (cons s1 (cons s2 (cons s3 (nil Nat))))) (cons d0 (cons d1 (cons d2 (cons d3 (nil Nat))))) (cons t0 (cons t1 (cons t2 (cons t3 (nil Nat))))) granted (cons c0 (cons c1 (cons c2 (cons c3 (nil Nat))))) parents authorities)) items) = (nil Nat)),
   proof: simplify{
     definitions: [
       skipLeavesNothing,
@@ -453,32 +453,6 @@ theorem{
   parameters: [],
   statement: ((Comms.Event::shaped (nil Nat)) = false),
   proof: linear_arithmetic{definitions: [Comms.Event::count, Comms.Event::shaped]},
-  axioms: [Quot.sound, propext]
-}
-
-theorem{
-  name: eightBytesAreAWholeWord,
-  parameters: [b0 : Nat, b1 : Nat, b2 : Nat, b3 : Nat, b4 : Nat, b5 : Nat, b6 : Nat, b7 : Nat],
-  statement: ((Comms.Event::wholeWords (cons b0 (cons b1 (cons b2 (cons b3 (cons b4 (cons b5 (cons b6 (cons b7 (nil Nat)))))))))) = true),
-  proof: linear_arithmetic{definitions: [Comms.Event::count, Comms.Event::wholeWords]},
-  axioms: [Quot.sound, propext]
-}
-
-theorem{
-  name: ninthByteIsRefused,
-  parameters: [
-    b0 : Nat,
-    b1 : Nat,
-    b2 : Nat,
-    b3 : Nat,
-    b4 : Nat,
-    b5 : Nat,
-    b6 : Nat,
-    b7 : Nat,
-    b8 : Nat
-  ],
-  statement: ((Comms.Event::wholeWords (cons b0 (cons b1 (cons b2 (cons b3 (cons b4 (cons b5 (cons b6 (cons b7 (cons b8 (nil Nat))))))))))) = false),
-  proof: linear_arithmetic{definitions: [Comms.Event::count, Comms.Event::wholeWords]},
   axioms: [Quot.sound, propext]
 }
 \end{semanticmodule}
