@@ -15,7 +15,7 @@ definition{
 }
 
 definition{
-  name: mayCompose,
+  name: mayRedact,
   parameters: [
     version : Nat,
     senderStatus : Nat,
@@ -76,7 +76,7 @@ definition{
     authorities : (List Nat)
   ],
   result: Bool,
-  body: ((action =? 8) && (mayCompose version senderStatus senderPower required redactPower own parents authorities))
+  body: ((action =? 8) && (mayRedact version senderStatus senderPower required redactPower own parents authorities))
 }
 \end{semanticmodule}
 \end{lexlean}

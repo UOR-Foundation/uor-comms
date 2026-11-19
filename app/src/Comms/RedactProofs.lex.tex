@@ -51,8 +51,8 @@ theorem{
     parents : (List Nat),
     authorities : (List Nat)
   ],
-  statement: ((Comms.Redact::mayCompose 2 senderStatus senderPower required redactPower own parents authorities) = false),
-  proof: linear_arithmetic{definitions: [Comms.Event::canonical, Comms.Redact::mayCompose]},
+  statement: ((Comms.Redact::mayRedact 2 senderStatus senderPower required redactPower own parents authorities) = false),
+  proof: linear_arithmetic{definitions: [Comms.Event::canonical, Comms.Redact::mayRedact]},
   axioms: [Quot.sound, propext]
 }
 
@@ -163,7 +163,7 @@ theorem{
   ],
   statement: (((Comms.Redact::composes action version senderStatus senderPower required redactPower own parents authorities) && (not (Comms.Redact::allowed senderStatus senderPower required redactPower own))) = false),
   proof: linear_arithmetic{
-    definitions: [Comms.Redact::allowed, Comms.Redact::composes, Comms.Redact::mayCompose]
+    definitions: [Comms.Redact::allowed, Comms.Redact::composes, Comms.Redact::mayRedact]
   },
   axioms: [Classical.choice, Quot.sound, propext]
 }
