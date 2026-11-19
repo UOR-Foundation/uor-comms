@@ -35,7 +35,7 @@ model does not sanction.
 | `RK-01` | `build` | An event is admitted only when its address matches, it is signed, its device may sign, its parents are known and it is permitted |
 | `RK-02` | `build` | Only a joined member with the required power writes, and nobody removes a member of equal or higher power |
 | `RK-03` | `build` | Candidates for a state key are in a strict total order by rank then address, and the word-by-word comparison of the kernel is that order |
-| `RK-04` | `build` | The resolved state does not depend on the order or repetition of delivery |
+| `RK-04` | `build` | The resolved state does not depend on the order or repetition of delivery, and neither does the place of an event in the order |
 | `RK-05` | `build` | A member holds no key from before joining unless history is shared, and none from removal onward |
 | `RK-06` | `build` | A call connects only through an answer, an ended call stays ended, and the two sides never both yield when calls cross |
 | `RK-07` | `build` | A permitted ban leaves the member banned, a refused event changes nothing, and only joining makes a member |
