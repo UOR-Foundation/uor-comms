@@ -1,0 +1,113 @@
+\begin{lexlean}{Comms.Content}
+\useglossary{lexlean.std.bool@1.2.0}
+\useglossary{lexlean.std.nat@1.2.0}
+\importmodule{Comms.Event}
+\title{Boolean}
+\begin{semanticmodule}
+definition{
+  name: bigEndian,
+  parameters: [bytes : (List Nat), start : Nat, width : Nat, gathered : Nat],
+  result: Nat,
+  body: (match width
+    | Nat.zero => gathered
+    | Nat.succ fewer => (bigEndian bytes (start + 1) fewer ((prim multiply gathered 256 : Nat) + (Comms.Event::wordAt bytes start)))),
+  recursive_argument: width
+}
+
+definition{
+  name: badTextBytes,
+  parameters: [text : (List Nat)],
+  result: Nat,
+  body: (match text
+    | List.nil => 0
+    | List.cons head rest => ((if ((head =? 0) || (head =? 13)) then 1 else 0) + (badTextBytes rest))),
+  recursive_argument: text
+}
+
+definition{
+  name: badKeyBytes,
+  parameters: [key : (List Nat)],
+  result: Nat,
+  body: (match key
+    | List.nil => 0
+    | List.cons head rest => ((if ((head =? 0) || ((head =? 9) || ((head =? 10) || ((head =? 13) || (head =? 32))))) then 1 else 0) + (badKeyBytes rest))),
+  recursive_argument: key
+}
+
+definition{
+  name: addressWords,
+  parameters: [bytes : (List Nat), start : Nat, words : Nat],
+  result: (List Nat),
+  body: (match words
+    | Nat.zero => (nil Nat)
+    | Nat.succ fewer => (cons (bigEndian bytes start 8 0) (addressWords bytes (start + 8) fewer))),
+  recursive_argument: words
+}
+
+definition{
+  name: slice,
+  parameters: [bytes : (List Nat), start : Nat, length : Nat],
+  result: (List Nat),
+  body: (project (Comms.Event::take (project (Comms.Event::skip bytes start) items) length) items)
+}
+
+definition{
+  name: fieldsAllowed,
+  parameters: [
+    version : Nat,
+    kind : Nat,
+    relates : Nat,
+    forwarded : Nat,
+    everyone : Nat,
+    mentions : Nat,
+    textLength : Nat,
+    attachments : Nat,
+    keyLength : Nat
+  ],
+  result: Bool,
+  body: ((version =? 1) && ((relates <=? 1) && (((kind =? 3) && ((relates =? 1) && ((1 <=? keyLength) && (keyLength <=? 32)))) || (((kind =? 1) || ((kind =? 2) && (relates =? 1))) && ((forwarded <=? 1) && ((everyone <=? 1) && ((mentions <=? 50) && ((1 <=? textLength) && ((textLength <=? 16384) && (attachments =? 0))))))))))
+}
+
+definition{
+  name: headerOf,
+  parameters: [bytes : (List Nat)],
+  result: Nat,
+  body: (11 + (if ((Comms.Event::wordAt bytes 10) =? 1) then 32 else 0))
+}
+
+definition{
+  name: mentionsOf,
+  parameters: [bytes : (List Nat)],
+  result: Nat,
+  body: (Comms.Event::wordAt bytes ((headerOf bytes) + 2))
+}
+
+definition{
+  name: textAtOf,
+  parameters: [bytes : (List Nat)],
+  result: Nat,
+  body: (((headerOf bytes) + 3) + (prim multiply 32 (mentionsOf bytes) : Nat))
+}
+
+definition{
+  name: textBytesOf,
+  parameters: [bytes : (List Nat)],
+  result: Nat,
+  body: (bigEndian bytes (textAtOf bytes) 4 0)
+}
+
+definition{
+  name: valid,
+  parameters: [bytes : (List Nat)],
+  result: Bool,
+  body: (if ((Comms.Event::wordAt bytes 1) =? 3) then ((fieldsAllowed (Comms.Event::wordAt bytes 0) 3 (Comms.Event::wordAt bytes 10) 0 0 0 1 0 (Comms.Event::wordAt bytes (headerOf bytes))) && (((Comms.Event::count bytes) =? (((headerOf bytes) + 1) + (Comms.Event::wordAt bytes (headerOf bytes)))) && ((badKeyBytes (slice bytes ((headerOf bytes) + 1) (Comms.Event::wordAt bytes (headerOf bytes)))) =? 0))) else ((fieldsAllowed (Comms.Event::wordAt bytes 0) (Comms.Event::wordAt bytes 1) (Comms.Event::wordAt bytes 10) (Comms.Event::wordAt bytes (headerOf bytes)) (Comms.Event::wordAt bytes ((headerOf bytes) + 1)) (mentionsOf bytes) (textBytesOf bytes) (Comms.Event::wordAt bytes (((textAtOf bytes) + 4) + (textBytesOf bytes))) 1) && (((Comms.Event::count bytes) =? (((textAtOf bytes) + 5) + (textBytesOf bytes))) && (((badTextBytes (slice bytes ((textAtOf bytes) + 4) (textBytesOf bytes))) =? 0) && (Comms.Event::ascending (addressWords bytes ((headerOf bytes) + 3) (prim multiply 4 (mentionsOf bytes) : Nat)))))))
+}
+
+definition{
+  name: kindOf,
+  parameters: [bytes : (List Nat)],
+  result: Nat,
+  body: (if (valid bytes) then (Comms.Event::wordAt bytes 1) else 0)
+}
+\end{semanticmodule}
+\end{lexlean}

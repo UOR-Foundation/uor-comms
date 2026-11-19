@@ -41,7 +41,7 @@ fn scenario(id: &str) {
         .split("\n  @")
         .find(|scenario| scenario.starts_with(id))
         .unwrap_or_else(|| panic!("{id} has no scenario"));
-    let mut pins = 0;
+    assert!(steps.contains(".lex.tex "), "{id} pins nothing");
     for (step, exact) in steps.lines().map(|s| (s, s.contains(" states "))) {
         let mark = [" contains ", " states "][usize::from(exact)];
         let Some((head, text)) = step.split_once(mark) else {
@@ -61,9 +61,7 @@ fn scenario(id: &str) {
             let known = ["", "Classical.choice", "Quot.sound", "propext"].contains(&axiom);
             assert!(known, "{name} rests on `{axiom}`");
         }
-        pins += 1;
     }
-    assert!(pins > 0, "{id} pins nothing");
 }
 
 // One line each: the meta-gate reads `#[test]` and the `fn` line after it, and
@@ -101,4 +99,6 @@ mod pins {
     fn room_rk_14() { scenario("RK-14") }
     #[test]
     fn room_rk_15() { scenario("RK-15") }
+    #[test]
+    fn room_rk_16() { scenario("RK-16") }
 }

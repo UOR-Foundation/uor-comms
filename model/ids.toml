@@ -25,7 +25,7 @@
 # `Result` only when a row here declares it and the negative test exists. A type
 # is declared once. Nothing else sanctions a type: there is no list in the gate.
 #
-# The first rows are this repository's Prism application in `app/`, the room kernel (RK-01 to RK-15).
+# The first rows are this repository's Prism application in `app/`, the room kernel (RK-01 to RK-16).
 # A capability starts with a row here; `just new-capability` writes the row,
 # its scenario and its failing test in the order `AGENTS.md` sets out.
 
@@ -83,7 +83,7 @@ statement = "Equal heads move no bytes and content already held is not requested
 id = "RK-09"
 level = "build"
 suite = "room"
-statement = "The kernel answers each of its twelve questions with the function the theorems are about, and invalid request for anything else"
+statement = "The kernel answers each of its thirteen questions with the function the theorems are about, and invalid request for anything else"
 
 [[id]]
 id = "RK-10"
@@ -120,6 +120,12 @@ id = "RK-15"
 level = "build"
 suite = "room"
 statement = "An event is folded after every parent: its depth is one more than its deepest parent's, a shallower event precedes a deeper one and has the smaller ordering key, and of two held events the one with the smaller key is placed first"
+
+[[id]]
+id = "RK-16"
+level = "build"
+suite = "room"
+statement = "Message content version 1 is read only in its one form: a message, an edit or a reaction; an edit and a reaction name the event they concern; text has 1 to 16,384 bytes with no NUL and no carriage return; at most 50 mentions in ascending order; a reaction key of 1 to 32 bytes without whitespace; no attachment until the cipher exists; nothing after"
 
 [[id]]
 id = "FR-01"
