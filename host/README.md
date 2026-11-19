@@ -48,6 +48,11 @@ identity, no keys and no network of its own:
 - `verdict(sender, device)` is Prism ID's answer on a device. The tests use a table.
 - `transport` has `announce(message)` and `fetch(address)`. The tests hand messages across directly.
 
+## Asking and receiving
+
+- `engine.offered(room, target, { granted })` lists the actions this identity may take toward `target` (itself when absent), by name, as the kernel answers (`Comms.Queue::offered`, proved equal to the permission and direct-room rules). `setPower` depends on the level granted: ask once per level offered. Show controls from this list; a refusal's `reason` is the fallback.
+- `engine.receive(message)` answers `{ admitted: true }`, `{ admitted: false, held: true, reason: "parents unknown" }` when a cited event has not arrived (the kernel's verdict is `held`; it is admitted when the parent arrives), or `{ admitted: false, reason }` when refused. An event that fails its address, signature or device check is refused, never held (`badEventIsNeverHeld`). At most 1,000 events are held; past that the oldest is dropped, and arrives again only if a peer sends it again.
+
 ## Connecting two browsers
 
 ```js

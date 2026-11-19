@@ -237,12 +237,16 @@ export function open({ identity, device, kernel, hash, store, signer, verdict, t
       return fetched;
     },
     rooms: () => [...rooms.values()].map((room) => room.id),
-    /** What this identity may do in a room, toward `target` (itself when absent), as the kernel offers it. */
-    async offered(roomId, target = identity) {
+    /**
+     * What this identity may do in a room, toward `target` (itself when absent), as the kernel offers it.
+     * `setPower` is answered for granting `granted` (0 when absent): ask once per level the page offers.
+     * Room settings are the same for every room until they become events; then this reads the room's.
+     */
+    async offered(roomId, target = identity, { granted = 0 } = {}) {
       const room = rooms.get(hex(roomId));
       if (!room) return [];
       const names = Object.keys(ACTION);
-      const actions = await kernel.queue(standing(room.state, identity), standing(room.state, target), SETTINGS, Boolean(room.direct));
+      const actions = await kernel.queue(standing(room.state, identity), standing(room.state, target), SETTINGS, Boolean(room.direct), granted);
       return actions.map((action) => names[action]);
     },
     /** The direct room this identity shares with `target`, or null, so one is reused, not duplicated. */
