@@ -14,7 +14,16 @@ This folder is the one place in the repository where non-Prism code may grow (`a
 | `content.mjs` | Lays message content version 1 out and reads it back; the kernel judges it (operation 0d) |
 | `store.mjs` | Bytes by BLAKE3 address, one copy per address, checked on write. In memory only |
 | `engine.mjs` | Rooms: create, join, leave, invite, kick, ban, unban, set power, send, receive, members, timeline |
+| `publish.mjs` | Publishes these modules and the holo on the site under `engine/<version>/`, named by their BLAKE3 |
 | `test.mjs` | Two or three peers in one process against the real holo |
+
+## Loading it in a page
+
+The site publishes every version at `engine/<version>/`, where the version is the BLAKE3 of the
+file list in `engine/<version>/manifest.json`. `engine/index.json` names the latest. A page pins one
+version, fetches its manifest, checks each file's BLAKE3 against it, then imports
+`engine/<version>/engine.mjs` and loads `engine/<version>/room-kernel.holo`. Every deploy carries
+forward the versions already live, after checking their files.
 
 ## How an event enters a room
 

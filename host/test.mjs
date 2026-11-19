@@ -194,3 +194,26 @@ test("content version 1: the kernel reads a message, an edit and a reaction, and
   const room = await peerA.engine.createDirect(peerB.identity);
   await assert.rejects(peerA.engine.send(room, text("not content")), { reason: "refused" });
 });
+
+test("publishing names a version by its files and carries forward only versions that still check out", async () => {
+  const { carried, manifestOf, matches } = await import("./publish.mjs");
+  const one = { "a.mjs": text("one"), "room-kernel.holo": text("holo") };
+  const two = { "a.mjs": text("two"), "room-kernel.holo": text("holo") };
+  const first = manifestOf(one, "c1");
+  assert.notEqual(first.version, manifestOf(two, "c2").version);
+  assert.equal(first.version, manifestOf(one, "c9").version);
+  assert.ok(matches(first, one));
+  assert.ok(!matches(first, two));
+  const json = (value) => text(JSON.stringify(value));
+  const live = new Map([
+    ["engine/index.json", json({ versions: [first.version, "f".repeat(64)] })],
+    [`engine/${first.version}/manifest.json`, json(first)],
+    [`engine/${first.version}/a.mjs`, one["a.mjs"]],
+    [`engine/${first.version}/room-kernel.holo`, one["room-kernel.holo"]],
+    [`engine/${"f".repeat(64)}/manifest.json`, json({ ...first, version: "f".repeat(64) })],
+  ]);
+  const kept = await carried(async (path) => live.get(path) ?? null, "0".repeat(64));
+  assert.deepEqual(kept.map((v) => v.manifest.version), [first.version]);
+  live.set(`engine/${first.version}/a.mjs`, text("tampered"));
+  assert.deepEqual(await carried(async (path) => live.get(path) ?? null, "0".repeat(64)), []);
+});
