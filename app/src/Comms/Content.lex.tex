@@ -65,7 +65,7 @@ definition{
     keyLength : Nat
   ],
   result: Bool,
-  body: ((version =? 1) && ((relates <=? 1) && (((kind =? 3) && ((relates =? 1) && ((1 <=? keyLength) && (keyLength <=? 32)))) || (((kind =? 1) || ((kind =? 2) && (relates =? 1))) && ((forwarded <=? 1) && ((everyone <=? 1) && ((mentions <=? 50) && ((1 <=? textLength) && ((textLength <=? 16384) && (attachments =? 0))))))))))
+  body: ((version =? 1) && ((relates <=? 1) && (((kind =? 3) && ((relates =? 1) && ((1 <=? keyLength) && (keyLength <=? 32)))) || (((kind =? 1) || ((kind =? 2) && (relates =? 1))) && ((forwarded <=? 1) && ((everyone <=? 1) && ((mentions <=? 50) && ((1 <=? textLength) && ((textLength <=? 4096) && (attachments =? 0))))))))))
 }
 
 definition{
