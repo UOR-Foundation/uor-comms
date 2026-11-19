@@ -14,6 +14,7 @@ This folder is the one place in the repository where non-Prism code may grow (`a
 | `content.mjs` | Lays message content version 1 out and reads it back; the kernel judges it (operation 0d) |
 | `store.mjs` | Bytes by BLAKE3 address, one copy per address, checked on write, and every admitted event as it arrived. `memoryStore` in memory; `browserStore` in IndexedDB, across reloads and closed tabs, with `evicted` true when the browser cleared it |
 | `engine.mjs` | Rooms: create, join, leave, invite, kick, ban, unban, set power, send, receive, members, timeline |
+| `transport.mjs` | WebRTC data channels between browsers, with ntfy.sh carrying only the setup on hourly BLAKE3-derived topics; peers prove their identity before any event moves |
 | `publish.mjs` | Publishes these modules and the holo on the site under `engine/<version>/`, named by their BLAKE3 |
 | `test.mjs` | Two or three peers in one process against the real holo |
 
@@ -47,6 +48,18 @@ identity, no keys and no network of its own:
 - `verdict(sender, device)` is Prism ID's answer on a device. The tests use a table.
 - `transport` has `announce(message)` and `fetch(address)`. The tests hand messages across directly.
 
+## Connecting two browsers
+
+```js
+const transport = webrtcTransport({ rendezvous: ntfyRendezvous(), signer, verdict, hash, store });
+const engine = open({ identity, device, kernel, hash, store, signer, verdict, transport });
+await engine.restore();
+await transport.start();
+transport.onStatus((status) => show(status)); // offline, connecting, online
+```
+
+`open` binds the transport to the engine. The transport listens on a meeting topic for each room it holds, for its own identity, and for each invited or joined member's identity, so creating a direct room with someone is how to reach them. When two peers meet, each proves its identity by signing the other's nonce with a device key (checked with the same `signer` and `verdict` as events), then they exchange the addresses each holds per room and send what the other lacks. A room's events go only to a peer the room lists as invited or joined, or to another device of the same identity. New events follow as they are admitted, and every member relays what it admits. Everything a peer sends goes through `engine.receive`. `host/transport.test.mjs` runs two Chromium pages through a local server that speaks ntfy's subset.
+
 ## Refusals
 
 A refused call rejects with an error whose `reason` names the cause. From the kernel (`Comms.Reason`): `banned`, `closed`, `not joined`, `needs power`, `not allowed`, `unknown action`, and `direct` for an invitation in a direct room. From the host's own checks: `unknown room`, `malformed`, `content` (the kernel refused the content), and on receipt `tampered` (the address does not match the bytes), `signature`, `device`, or `not allowed`. A received event whose parents have not arrived is held, not refused: `{ held: true, reason: "parents unknown" }`.
@@ -54,7 +67,9 @@ A refused call rejects with an error whose `reason` names the cause. From the ke
 ## Not done
 
 - **Restoring re-verifies.** `engine.restore()` rebuilds every room by admitting each kept event again, so a reload costs one signature check and one kernel answer per event. A page passes `browserStore(hash, { name })` to `open` and calls `restore` once.
-- **No transport yet.** Browsers will reach each other over WebRTC data channels, with ntfy.sh carrying only the connection setup on derived, rotating topics (`docs/DESIGN.md` decisions 12 and 15). None of it is built.
+- **The transport has no relay.** Two peers that cannot find a direct path (both behind strict NATs) do not connect. A member-owned relay (`Comms.Reach::mayForward`) is not built.
+- **Meeting topics come from the room address, not a secret.** Anyone who has seen a room's address can derive its topic and see when its members set up connections, and the offers carry their network addresses. Topics move to the room's epoch secret when encryption lands.
+- **Sync sends every address a room holds** when two peers connect, so the first exchange grows with history.
 - **No Prism ID.** The signer and the device verdict are supplied by the caller.
 - **No encryption.** Content is stored and fetched as given.
 - **Three rules are computed here, not asked.** An event's depth (`Comms.Fold::depthOf`, proved in

@@ -193,7 +193,7 @@ export function open({ identity, device, kernel, hash, store, signer, verdict, t
     return publish(bytes, onStep);
   }
 
-  return {
+  const api = {
     Refused,
     /** Creates a room and returns its address. With `target` the room is direct and the target invited. */
     async createRoom({ target = ZERO, onStep } = {}) {
@@ -255,6 +255,14 @@ export function open({ identity, device, kernel, hash, store, signer, verdict, t
       const room = rooms.get(hex(roomId));
       return room ? [...room.state].map(([member, { status, power }]) => ({ member, status, power })) : [];
     },
+    /** Every admitted event of a room as it travels (address, bytes, signature), in the fold order. */
+    eventsOf(roomId) {
+      const room = rooms.get(hex(roomId));
+      return room ? room.order.map(({ address, bytes, signature }) => ({ address, bytes, signature })) : [];
+    },
+    /** This engine's identity and device. */
+    identity,
+    device,
     timeline(roomId) {
       const room = rooms.get(hex(roomId));
       return room ? room.order.map(({ address, fields, depth }) => ({ address, depth, ...fields })) : [];
@@ -264,4 +272,7 @@ export function open({ identity, device, kernel, hash, store, signer, verdict, t
       return () => listeners.delete(listener);
     },
   };
+  // A transport that needs the engine (to hand on what it receives, and to know who may see a room) binds here.
+  transport.bind?.(api);
+  return api;
 }
