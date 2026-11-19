@@ -1,0 +1,87 @@
+\begin{lexlean}{Comms.QueueProofs}
+\useglossary{lexlean.std.bool@1.2.0}
+\useglossary{lexlean.std.nat@1.2.0}
+\importmodule{Comms.Create}
+\importmodule{Comms.Queue}
+\importmodule{Comms.Rules}
+\title{Boolean}
+\begin{semanticmodule}
+theorem{
+  name: offeredIsWhatTheRulesAdmit,
+  parameters: [
+    action : Nat,
+    senderStatus : Nat,
+    senderPower : Nat,
+    targetStatus : Nat,
+    targetPower : Nat,
+    required : Nat,
+    open : Nat,
+    grantedPower : Nat,
+    isDirect : Nat
+  ],
+  statement: ((Comms.Queue::offered action senderStatus senderPower targetStatus targetPower required open grantedPower isDirect) = ((Comms.Rules::permitted action senderStatus senderPower targetStatus targetPower required open grantedPower) && (Comms.Create::directAllows action isDirect))),
+  proof: simplify{definitions: [Comms.Queue::offered]},
+  axioms: [propext]
+}
+
+theorem{
+  name: strangerIsOfferedNothingInAClosedRoom,
+  parameters: [
+    action : Nat,
+    senderStatus : Nat,
+    senderPower : Nat,
+    targetStatus : Nat,
+    targetPower : Nat,
+    required : Nat,
+    open : Nat,
+    grantedPower : Nat,
+    isDirect : Nat
+  ],
+  statement: (((senderStatus =? 0) && ((open =? 0) && (Comms.Queue::offered action senderStatus senderPower targetStatus targetPower required open grantedPower isDirect))) = false),
+  proof: linear_arithmetic{
+    definitions: [Comms.Create::directAllows, Comms.Queue::offered, Comms.Rules::permitted]
+  },
+  axioms: [Classical.choice, Quot.sound, propext]
+}
+
+theorem{
+  name: invitedMemberIsOfferedJoin,
+  parameters: [
+    action : Nat,
+    senderStatus : Nat,
+    senderPower : Nat,
+    targetStatus : Nat,
+    targetPower : Nat,
+    required : Nat,
+    open : Nat,
+    grantedPower : Nat,
+    isDirect : Nat
+  ],
+  statement: (((action =? 0) && ((senderStatus =? 1) && (not (Comms.Queue::offered action senderStatus senderPower targetStatus targetPower required open grantedPower isDirect)))) = false),
+  proof: linear_arithmetic{
+    definitions: [Comms.Create::directAllows, Comms.Queue::offered, Comms.Rules::permitted]
+  },
+  axioms: [Classical.choice, Quot.sound, propext]
+}
+
+theorem{
+  name: directRoomNeverOffersInvite,
+  parameters: [
+    action : Nat,
+    senderStatus : Nat,
+    senderPower : Nat,
+    targetStatus : Nat,
+    targetPower : Nat,
+    required : Nat,
+    open : Nat,
+    grantedPower : Nat,
+    isDirect : Nat
+  ],
+  statement: (((action =? 2) && ((isDirect =? 1) && (Comms.Queue::offered action senderStatus senderPower targetStatus targetPower required open grantedPower isDirect))) = false),
+  proof: linear_arithmetic{
+    definitions: [Comms.Create::directAllows, Comms.Queue::offered, Comms.Rules::permitted]
+  },
+  axioms: [Classical.choice, Quot.sound, propext]
+}
+\end{semanticmodule}
+\end{lexlean}

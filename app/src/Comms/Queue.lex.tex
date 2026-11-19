@@ -1,0 +1,25 @@
+\begin{lexlean}{Comms.Queue}
+\useglossary{lexlean.std.bool@1.2.0}
+\useglossary{lexlean.std.nat@1.2.0}
+\importmodule{Comms.Create}
+\importmodule{Comms.Rules}
+\title{Boolean}
+\begin{semanticmodule}
+definition{
+  name: offered,
+  parameters: [
+    action : Nat,
+    senderStatus : Nat,
+    senderPower : Nat,
+    targetStatus : Nat,
+    targetPower : Nat,
+    required : Nat,
+    open : Nat,
+    grantedPower : Nat,
+    isDirect : Nat
+  ],
+  result: Bool,
+  body: ((Comms.Rules::permitted action senderStatus senderPower targetStatus targetPower required open grantedPower) && (Comms.Create::directAllows action isDirect))
+}
+\end{semanticmodule}
+\end{lexlean}

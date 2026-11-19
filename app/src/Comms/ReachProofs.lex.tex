@@ -1,0 +1,72 @@
+\begin{lexlean}{Comms.ReachProofs}
+\useglossary{lexlean.std.bool@1.2.0}
+\useglossary{lexlean.std.nat@1.2.0}
+\importmodule{Comms.Epoch}
+\importmodule{Comms.Reach}
+\title{Boolean}
+\begin{semanticmodule}
+theorem{
+  name: removedMemberHearsNoLaterSetup,
+  parameters: [joinedAt : Nat, leftAt : Nat, topicEpoch : Nat],
+  statement: (((Comms.Reach::holdsTopic joinedAt leftAt topicEpoch) && (leftAt <=? topicEpoch)) = false),
+  proof: linear_arithmetic{definitions: [Comms.Epoch::holdsKey, Comms.Reach::holdsTopic]},
+  axioms: [Quot.sound, propext]
+}
+
+theorem{
+  name: memberBeforeJoiningHearsNoSetup,
+  parameters: [joinedAt : Nat, leftAt : Nat, topicEpoch : Nat],
+  statement: (((Comms.Reach::holdsTopic joinedAt leftAt topicEpoch) && (topicEpoch <? joinedAt)) = false),
+  proof: linear_arithmetic{definitions: [Comms.Epoch::holdsKey, Comms.Reach::holdsTopic]},
+  axioms: [Quot.sound, propext]
+}
+
+theorem{
+  name: strangerNeverForwards,
+  parameters: [forwarderStatus : Nat, consented : Nat, directPath : Nat],
+  statement: (((Comms.Reach::mayForward forwarderStatus 0 consented directPath) && (not (forwarderStatus =? 2))) = false),
+  proof: linear_arithmetic{definitions: [Comms.Reach::mayForward]},
+  axioms: [Quot.sound, propext]
+}
+
+theorem{
+  name: directPathRetiresTheForwarder,
+  parameters: [forwarderStatus : Nat, ownedByMember : Nat, consented : Nat],
+  statement: ((Comms.Reach::mayForward forwarderStatus ownedByMember consented 1) = false),
+  proof: linear_arithmetic{definitions: [Comms.Reach::mayForward]},
+  axioms: [Quot.sound, propext]
+}
+
+theorem{
+  name: forwardingNeedsConsent,
+  parameters: [forwarderStatus : Nat, ownedByMember : Nat, directPath : Nat],
+  statement: ((Comms.Reach::mayForward forwarderStatus ownedByMember 0 directPath) = false),
+  proof: linear_arithmetic{definitions: [Comms.Reach::mayForward]},
+  axioms: [Quot.sound, propext]
+}
+
+theorem{
+  name: aPhoneNeverHoldsMail,
+  parameters: [holderStatus : Nat, ownedByMember : Nat, alwaysOn : Nat],
+  statement: ((Comms.Reach::mayHoldMail holderStatus ownedByMember alwaysOn 1) = false),
+  proof: linear_arithmetic{definitions: [Comms.Reach::mayHoldMail]},
+  axioms: [Quot.sound, propext]
+}
+
+theorem{
+  name: aStrangerNeverHoldsMail,
+  parameters: [holderStatus : Nat, alwaysOn : Nat, isPhone : Nat],
+  statement: (((Comms.Reach::mayHoldMail holderStatus 0 alwaysOn isPhone) && (not (holderStatus =? 2))) = false),
+  proof: linear_arithmetic{definitions: [Comms.Reach::mayHoldMail]},
+  axioms: [Quot.sound, propext]
+}
+
+theorem{
+  name: aSleepingNodeNeverHoldsMail,
+  parameters: [holderStatus : Nat, ownedByMember : Nat, isPhone : Nat],
+  statement: ((Comms.Reach::mayHoldMail holderStatus ownedByMember 0 isPhone) = false),
+  proof: linear_arithmetic{definitions: [Comms.Reach::mayHoldMail]},
+  axioms: [Quot.sound, propext]
+}
+\end{semanticmodule}
+\end{lexlean}

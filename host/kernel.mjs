@@ -53,9 +53,10 @@ export function kernel(dispatch) {
       return next;
     },
     /** Admission: the five conditions of `Comms.Admission`. The kernel compares the two addresses. */
-    admit: async (claimed, derived, checks) =>
-      (await ask(0x01, [claimed, derived, flag(checks.signatureValid), flag(checks.deviceMaySign),
-        flag(checks.parentsKnown), flag(checks.permitted)])) === "admitted",
+    /** `admitted`, `held` (a cited event has not arrived) or `refused` (`Comms.Admission::verdict`). */
+    admit: (claimed, derived, checks) =>
+      ask(0x01, [claimed, derived, flag(checks.signatureValid), flag(checks.deviceMaySign),
+        flag(checks.parentsKnown), flag(checks.permitted)]),
     /** `left`, `right` or `same`: which of two (rank, address) candidates comes first. */
     order: (leftRank, leftAddress, rightRank, rightAddress) =>
       ask(0x03, [[leftRank, 8], leftAddress, [rightRank, 8], rightAddress]),
@@ -63,6 +64,12 @@ export function kernel(dispatch) {
     content: (contentBytes) => ask(0x0d, [contentBytes]),
     /** Whether an action may happen in a direct room (`Comms.Create::directAllows`): no third member. */
     direct: async (action, isDirect) => (await ask(0x0e, [[action, 1], flag(isDirect)])) === "permitted",
+    /** The actions a member may take, by action number (`Comms.Queue::offered`): exactly what the door admits. */
+    queue: async (sender, target, room, direct) => {
+      const bits = await ask(0x0f, [[sender.status, 1], [sender.power, 8], [target.status, 1], [target.power, 8],
+        [room.required, 8], flag(room.open), [0, 8], flag(direct)]);
+      return [...bits].flatMap((bit, action) => (bit === "1" ? [action] : []));
+    },
     /** What to do next in a send: `sign`, `store`, `announce` or `nothing`. */
     sendStep: (phase, report) => ask(0x08, [[phase, 1], [report, 1]]),
   };

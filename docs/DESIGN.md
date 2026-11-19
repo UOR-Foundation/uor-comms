@@ -6,7 +6,7 @@ A messenger with the features of Matrix and no server. Every decision about a ro
 
 ## Decisions taken
 
-These were open in the map. The first four are the owner's instructions; the rest are assumptions made to start Phase 1 and can be reversed.
+These were open in the map. Decisions 1 to 4 and 10 to 15 are the owner's instructions or rulings; 5 to 8 are assumptions made to start Phase 2 and can be reversed.
 
 | # | Decision | Status |
 |---|---|---|
@@ -17,8 +17,25 @@ These were open in the map. The first four are the owner's instructions; the res
 | 5 | Content is encrypted before it is addressed. Only ciphertext is ever named or sent | assumed |
 | 6 | Equivalent features behind our own contract. An unmodified Matrix client is not a goal | assumed |
 | 7 | The browser is the first target | assumed |
-| 8 | An always-on peer is optional and untrusted: it may hold and forward ciphertext, and nothing depends on it being honest | assumed |
+| 8 | An always-on peer is optional and untrusted: it may hold and forward ciphertext, and nothing depends on it being honest. Narrowed by decision 15: it is a member's node, never a phone and never a third party | assumed, narrowed |
 | 9 | This is a hand-written LexLean project, not a Prism app rendered from `prism/spec.json`. That spec covers an answer decided from fields or a bounded state machine, and a messenger keeps lists of events and free text | forced by the SDK |
+| 10 | The host (store, transport, signing, the API a page calls) is built in this repository, under `host/`, the one folder exempt from the non-Prism ratchet | ruled 2026-11-18 |
+| 11 | A page loads the host and the kernel holo from this repository's site under a path named by their content (`engine/<version>/`), pins the version and checks it on load | ruled 2026-11-19 |
+| 12 | Browsers reach each other over WebRTC data channels; ntfy.sh carries only the connection setup. The sync contract of decision 3 (fetch, announce, discover) is what travels over those channels: WebRTC is the link, not a second protocol. Topics are derived and rotated (decision 15) | ruled 2026-11-19; the layering under decision 3 is this repository's reading |
+| 13 | A direct chat is exactly two people with equal power: a third invitation is refused, and an existing direct room is reused | ruled 2026-11-19 |
+| 14 | This repository is the canonical reference for the engine. Holo Messenger is a client; where the two disagree on the engine's design, phases, behaviour or status, this repository is right | ruled 2026-11-19 |
+| 15 | The proposals of `docs/CEWP-INSIGHTS.md` D1 to D5 and D7 are adopted: the actions offered are the actions admitted; a missing parent holds an event; a relay tree every member computes alike; per-sender call streams with layers; derived, rotating meeting topics and member-only forwarders; mailboxes only on always-on member nodes | approved 2026-11-19 |
+
+## Phases
+
+The engine follows the four phases of its brief. The client's phases are its own releases and are not these.
+
+| Phase | Output | State |
+|---|---|---|
+| 1. Study Matrix | `docs/MATRIX-MAP.md` | done |
+| 2. Design | this file, with the decisions above | in use; open decisions are listed at the end |
+| 3. Specify and verify in LexLean | `app/src/Comms`; `docs/STATUS.md` says what is proved, tested and assumed | under way |
+| 4. Build and publish, in slices: (1) identity and 1:1 text, (2) rooms and state, (3) encryption and multi-device, (4) media, (5) 1:1 voice and video, (6) group calls, (7) spaces, threads and the rest | `host/`, the kernel holo, the site | slice 1 under way: rooms, send and receive run in the host between peers in one process; no transport, persistence, Prism ID or encryption yet |
 
 ## Where each server job goes
 
@@ -30,7 +47,7 @@ These were open in the map. The first four are the owner's instructions; the res
 | Relay: fan-out, typing, receipts, device-to-device | Peers announce addresses to room members; receivers fetch what they lack (`Comms.Sync`) |
 | Discovery: names, aliases, directories | A room is named by the address of its creating event. Finding peers is Hologram's lookup. Directories are rooms like any other |
 | Push: waking a sleeping device | Not solved without an always-on party. Optional peer, decision 8 |
-| Media forwarding | Encrypted content fetched from several peers at once. Group calls: peers forward for each other (Phase 3) |
+| Media forwarding | Encrypted content fetched from several peers at once. Group calls: members forward for members along a relay tree every peer computes alike (Phase 4, slice 6) |
 | Enforcement: who may do what | `Comms.Rules` and `Comms.Admission`, run by every peer on every event |
 
 ## How a room works
@@ -75,6 +92,12 @@ An event has one byte form. Parents and authorities are each in ascending order 
 **Sending.** `Comms.Send` composes an event only when `Comms.Rules` permits the action against the sender's state and the form is canonical; otherwise it returns no bytes. The host then reports three steps in order: signed, stored, announced. The core asks for one step at a time, a report for any other step changes nothing, and so an address is announced only after its bytes are stored. The sent event becomes a head of the room and the heads it cites stop being heads.
 
 **Message content.** The bytes behind an event's content address, before encryption (`Comms.Content`, version 1): a message, an edit or a reaction, with the sender's claimed time for display only, and the address of the event it replies to, replaces or answers. Text is the source as typed, LF only. Mentions are identity addresses in ascending order; the list, not the text, decides who is notified. Attachments wait for the cipher. `host/content.mjs` lays it out.
+
+**What a member may do.** The kernel lists the actions a member may take as eight characters, one per action (`Comms.Queue`), and the list is proved to be exactly what the permission and direct-room rules admit: the client never offers a button the engine would refuse. An event whose parents have not arrived is held, not refused (`Comms.Admission::verdict`).
+
+**Calls and relay trees.** Two people call directly; up to six share a full mesh; above six, members forward for members along a tree every peer computes alike (`Comms.Tree`): the publisher at index 0, the others by place, and index i under ⌊(i − 1) / 4⌋. Each receiver takes each sender at the best layer that fits its share of its budget, never below the base layer (`Comms.Media`). There is no media server.
+
+**Reaching a peer.** WebRTC is set up through ntfy.sh on topics the host derives from the room's epoch secret and the hour, so the relay sees only topics that change hourly; only members of an epoch hold its topic (`Comms.Reach::holdsTopic`). When no direct path exists, a consenting member or member-owned node may forward ciphertext, and a direct path retires it (`mayForward`). Mail for a sleeping member is held only by an always-on member node that is not a phone (`mayHoldMail`). These are the proposals approved from `docs/CEWP-INSIGHTS.md`.
 
 **Creating a room.** A room is created by one event with action 9 (`Comms.Create`). It cites no parent and no authority and its room field is zero, because the room is named by the address of this event. Its sender starts joined with the creator's power. If it names a target the room is direct: the target starts invited with the creator's power, so may join whether or not the room is open, neither can remove the other, and no third member is ever invited; nobody else is a member. This is the state `Comms.State` gives a room with no later events.
 
