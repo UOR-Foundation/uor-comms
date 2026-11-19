@@ -57,7 +57,7 @@ Judging against cited evidence, and not against "current" state, is what makes a
 | Words | Field |
 |---|---|
 | 0 | version, 1 |
-| 1 | action, 0 to 7 as in `Comms.Rules`, 8 for a redaction |
+| 1 | action, 0 to 7 as in `Comms.Rules`, 8 for a redaction, 9 for creating a room |
 | 2 to 5 | room |
 | 6 to 9 | sender |
 | 10 to 13 | device |
@@ -73,6 +73,8 @@ An event has one byte form. Parents and authorities are each in ascending order 
 **Reading an event.** `Comms.Event::readable` accepts words only when they hold at least the 25 fixed words, hold exactly the parents and authorities their two counts name with nothing after them, and are canonical. The fields are then read by position: `wordAt` for version, action and granted power, `parentsOf` and `authoritiesOf` for the two lists. The kernel reads the words of an event from the request, refuses a length that is not whole words, and asks `readable`, so a request may be up to 1,508 bytes. The compiled guest cannot pass a list from one function to another, so `skip`, `take` and the readers built on them return a list inside the record `Words`.
 
 **Sending.** `Comms.Send` composes an event only when `Comms.Rules` permits the action against the sender's state and the form is canonical; otherwise it returns no bytes. The host then reports three steps in order: signed, stored, announced. The core asks for one step at a time, a report for any other step changes nothing, and so an address is announced only after its bytes are stored. The sent event becomes a head of the room and the heads it cites stop being heads.
+
+**Creating a room.** A room is created by one event with action 9 (`Comms.Create`). It cites no parent and no authority and its room field is zero, because the room is named by the address of this event. Its sender starts joined with the creator's power. If it names a target the room is direct and the target starts invited, so may join whether or not the room is open; nobody else is a member. This is the state `Comms.State` gives a room with no later events.
 
 **Redaction.** A redaction is an event with action 8 whose target is the address of the event it redacts (`Comms.Redact`). Only a joined member with the power to send may redact: their own event with that alone, another member's only with the room's redaction power. A peer keeps the set of events redacted. An event in that set shows no content and its content is not fetched; the event record itself stays, so its address, its place in the graph and its effect on membership and power do not change. The set only grows, and the order and number of times redactions arrive make no difference. This follows Matrix in substance; Matrix strips keys from a plaintext event, and here the content is a separate encrypted object that is simply dropped.
 

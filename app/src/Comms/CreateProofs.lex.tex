@@ -1,0 +1,171 @@
+\begin{lexlean}{Comms.CreateProofs}
+\useglossary{lexlean.std.bool@1.2.0}
+\useglossary{lexlean.std.nat@1.2.0}
+\importmodule{Comms.Create}
+\importmodule{Comms.Event}
+\importmodule{Comms.Rules}
+\importmodule{Comms.State}
+\title{Boolean}
+\begin{semanticmodule}
+theorem{
+  name: creationCitesNothing,
+  parameters: [
+    version : Nat,
+    action : Nat,
+    r0 : Nat,
+    r1 : Nat,
+    r2 : Nat,
+    r3 : Nat,
+    parents : (List Nat),
+    authorities : (List Nat)
+  ],
+  statement: (((Comms.Create::mayCreate version action r0 r1 r2 r3 parents authorities) && (not (((Comms.Event::count parents) + (Comms.Event::count authorities)) =? 0))) = false),
+  proof: linear_arithmetic{definitions: [Comms.Create::mayCreate]},
+  axioms: [Quot.sound, propext]
+}
+
+theorem{
+  name: creationNamesNoRoom,
+  parameters: [
+    version : Nat,
+    action : Nat,
+    r0 : Nat,
+    r1 : Nat,
+    r2 : Nat,
+    r3 : Nat,
+    parents : (List Nat),
+    authorities : (List Nat)
+  ],
+  statement: (((Comms.Create::mayCreate version action r0 r1 r2 r3 parents authorities) && (not (Comms.Create::unnamed r0 r1 r2 r3))) = false),
+  proof: linear_arithmetic{definitions: [Comms.Create::mayCreate, Comms.Create::unnamed]},
+  axioms: [Classical.choice, Quot.sound, propext]
+}
+
+theorem{
+  name: creationIsNoOtherEvent,
+  parameters: [
+    version : Nat,
+    action : Nat,
+    r0 : Nat,
+    r1 : Nat,
+    r2 : Nat,
+    r3 : Nat,
+    parents : (List Nat),
+    authorities : (List Nat)
+  ],
+  statement: (((Comms.Create::mayCreate version action r0 r1 r2 r3 parents authorities) && (Comms.Event::canonical version action parents authorities)) = false),
+  proof: linear_arithmetic{definitions: [Comms.Create::mayCreate, Comms.Event::canonical]},
+  axioms: [Quot.sound, propext]
+}
+
+theorem{
+  name: onlyVersionOneCreates,
+  parameters: [
+    action : Nat,
+    r0 : Nat,
+    r1 : Nat,
+    r2 : Nat,
+    r3 : Nat,
+    parents : (List Nat),
+    authorities : (List Nat)
+  ],
+  statement: ((Comms.Create::mayCreate 2 action r0 r1 r2 r3 parents authorities) = false),
+  proof: linear_arithmetic{definitions: [Comms.Create::mayCreate]},
+  axioms: [Quot.sound, propext]
+}
+
+theorem{
+  name: creatorIsJoined,
+  parameters: [isInvitee : Nat, isDirect : Nat],
+  statement: ((Comms.Create::statusAtCreation 1 isInvitee isDirect) = 2),
+  proof: linear_arithmetic{definitions: [Comms.Create::statusAtCreation]},
+  axioms: [propext]
+}
+
+theorem{
+  name: directInviteeIsInvited,
+  parameters: [isCreator : Nat],
+  statement: (((isCreator =? 1) || ((Comms.Create::statusAtCreation isCreator 1 1) =? 1)) = true),
+  proof: linear_arithmetic{definitions: [Comms.Create::statusAtCreation]},
+  axioms: [Quot.sound, propext]
+}
+
+theorem{
+  name: nobodyElseIsAMember,
+  parameters: [isCreator : Nat, isInvitee : Nat, isDirect : Nat],
+  statement: (((isCreator =? 1) || ((isInvitee =? 1) || ((Comms.Create::statusAtCreation isCreator isInvitee isDirect) =? 0))) = true),
+  proof: linear_arithmetic{definitions: [Comms.Create::statusAtCreation]},
+  axioms: [Quot.sound, propext]
+}
+
+theorem{
+  name: roomWithoutInviteeHasOnlyItsCreator,
+  parameters: [isCreator : Nat, isInvitee : Nat, isDirect : Nat],
+  statement: (((isCreator =? 1) || ((isDirect =? 1) || ((Comms.Create::statusAtCreation isCreator isInvitee isDirect) =? 0))) = true),
+  proof: linear_arithmetic{definitions: [Comms.Create::statusAtCreation]},
+  axioms: [Quot.sound, propext]
+}
+
+theorem{
+  name: onlyTheCreatorHoldsPower,
+  parameters: [isCreator : Nat, creatorPower : Nat],
+  statement: (((isCreator =? 1) || ((Comms.Create::powerAtCreation isCreator creatorPower) =? 0)) = true),
+  proof: linear_arithmetic{definitions: [Comms.Create::powerAtCreation]},
+  axioms: [Quot.sound, propext]
+}
+
+theorem{
+  name: namedTargetMakesARoomDirect,
+  parameters: [t0 : Nat, t1 : Nat, t2 : Nat, t3 : Nat],
+  statement: (((Comms.Create::unnamed t0 t1 t2 t3) || ((Comms.Create::direct t0 t1 t2 t3) =? 1)) = true),
+  proof: linear_arithmetic{definitions: [Comms.Create::direct, Comms.Create::unnamed]},
+  axioms: [Classical.choice, Quot.sound, propext]
+}
+
+theorem{
+  name: directInviteeMayJoin,
+  parameters: [
+    senderPower : Nat,
+    targetStatus : Nat,
+    targetPower : Nat,
+    required : Nat,
+    grantedPower : Nat,
+    open : Nat
+  ],
+  statement: ((Comms.Rules::permitted 0 (Comms.Create::statusAtCreation 0 1 1) senderPower targetStatus targetPower required open grantedPower) = true),
+  proof: linear_arithmetic{definitions: [Comms.Create::statusAtCreation, Comms.Rules::permitted]},
+  axioms: [Classical.choice, Quot.sound, propext]
+}
+
+theorem{
+  name: strangerJoinsOnlyAnOpenRoom,
+  parameters: [
+    senderPower : Nat,
+    targetStatus : Nat,
+    targetPower : Nat,
+    required : Nat,
+    grantedPower : Nat,
+    isDirect : Nat
+  ],
+  statement: ((Comms.Rules::permitted 0 (Comms.Create::statusAtCreation 0 0 isDirect) senderPower targetStatus targetPower required 0 grantedPower) = false),
+  proof: linear_arithmetic{definitions: [Comms.Create::statusAtCreation, Comms.Rules::permitted]},
+  axioms: [Quot.sound, propext]
+}
+
+theorem{
+  name: creationIsTheEmptyHistoryStatus,
+  parameters: [member : Nat, creator : Nat, creatorPower : Nat, required : Nat, open : Nat],
+  statement: ((Comms.State::state 0 member creator creatorPower required open (nil (List Nat))) = (Comms.Create::statusAtCreation (if (member =? creator) then 1 else 0) 0 0)),
+  proof: linear_arithmetic{definitions: [Comms.Create::statusAtCreation, Comms.State::state]},
+  axioms: [Classical.choice, Quot.sound, propext]
+}
+
+theorem{
+  name: creationIsTheEmptyHistoryPower,
+  parameters: [member : Nat, creator : Nat, creatorPower : Nat, required : Nat, open : Nat],
+  statement: ((Comms.State::state 1 member creator creatorPower required open (nil (List Nat))) = (Comms.Create::powerAtCreation (if (member =? creator) then 1 else 0) creatorPower)),
+  proof: linear_arithmetic{definitions: [Comms.Create::powerAtCreation, Comms.State::state]},
+  axioms: [Quot.sound, propext]
+}
+\end{semanticmodule}
+\end{lexlean}

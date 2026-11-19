@@ -1,0 +1,53 @@
+\begin{lexlean}{Comms.Create}
+\useglossary{lexlean.std.bool@1.2.0}
+\useglossary{lexlean.std.nat@1.2.0}
+\importmodule{Comms.Event}
+\title{Boolean}
+\begin{semanticmodule}
+definition{name: actCreate, parameters: [], result: Nat, body: 9}
+
+definition{
+  name: unnamed,
+  parameters: [w0 : Nat, w1 : Nat, w2 : Nat, w3 : Nat],
+  result: Bool,
+  body: ((w0 =? 0) && ((w1 =? 0) && ((w2 =? 0) && (w3 =? 0))))
+}
+
+definition{
+  name: mayCreate,
+  parameters: [
+    version : Nat,
+    action : Nat,
+    r0 : Nat,
+    r1 : Nat,
+    r2 : Nat,
+    r3 : Nat,
+    parents : (List Nat),
+    authorities : (List Nat)
+  ],
+  result: Bool,
+  body: ((version =? 1) && ((action =? 9) && ((unnamed r0 r1 r2 r3) && (((Comms.Event::count parents) =? 0) && ((Comms.Event::count authorities) =? 0)))))
+}
+
+definition{
+  name: direct,
+  parameters: [t0 : Nat, t1 : Nat, t2 : Nat, t3 : Nat],
+  result: Nat,
+  body: (if (unnamed t0 t1 t2 t3) then 0 else 1)
+}
+
+definition{
+  name: statusAtCreation,
+  parameters: [isCreator : Nat, isInvitee : Nat, isDirect : Nat],
+  result: Nat,
+  body: (if (isCreator =? 1) then 2 else (if ((isDirect =? 1) && (isInvitee =? 1)) then 1 else 0))
+}
+
+definition{
+  name: powerAtCreation,
+  parameters: [isCreator : Nat, creatorPower : Nat],
+  result: Nat,
+  body: (if (isCreator =? 1) then creatorPower else 0)
+}
+\end{semanticmodule}
+\end{lexlean}

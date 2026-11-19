@@ -55,10 +55,7 @@ fn scenario(id: &str) {
         let model = read(&format!("app/src/{file}"));
         let found = declaration(&model, name);
         let wanted = [text.to_string(), format!("statement: {text},")][usize::from(exact)].clone();
-        assert!(
-            found.contains(&wanted),
-            "{name} in {file} must hold `{text}`:\n{found}"
-        );
+        assert!(found.contains(&wanted), "{file}: {name} lacks `{text}`");
         let axioms = found
             .split_once("axioms: [")
             .and_then(|(_, rest)| rest.split(']').next());
@@ -103,4 +100,6 @@ mod pins {
     fn room_rk_12() { scenario("RK-12") }
     #[test]
     fn room_rk_13() { scenario("RK-13") }
+    #[test]
+    fn room_rk_14() { scenario("RK-14") }
 }

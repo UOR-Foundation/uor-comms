@@ -76,7 +76,7 @@ Feature: room
     And heldContentIsNotFetchedAgain in Comms/SyncProofs.lex.tex states ((Comms.Sync::wanted (cons kappa offered) (cons kappa rest)) = (Comms.Sync::wanted offered (cons kappa rest)))
 
   @RK-09 @build
-  Scenario: The kernel answers each of its eleven questions with the function the theorems are about, and invalid request for anything else
+  Scenario: The kernel answers each of its twelve questions with the function the theorems are about, and invalid request for anything else
     Given the kernel in app/src/RoomKernel.lex.tex
     When prismpm verify replays the acceptance vectors in the compiled guest
     Then admitAnswer in RoomKernel.lex.tex contains (if (Comms.Admission::admitted (flag (sameAddress value 1 33))
@@ -99,6 +99,8 @@ Feature: room
     And route in RoomKernel.lex.tex contains (if ((operation =? 10) && (28 <=? length)) then (composeAnswer value length)
     And redactionAnswer in RoomKernel.lex.tex contains ((Comms.Event::readable words) && (Comms.Redact::composes (Comms.Event::wordAt words 1) (Comms.Event::wordAt words 0)
     And route in RoomKernel.lex.tex contains (if ((operation =? 11) && (27 <=? length)) then (redactionAnswer value length)
+    And createAnswer in RoomKernel.lex.tex contains ((Comms.Event::shaped words) && (Comms.Create::mayCreate (Comms.Event::wordAt words 0) (Comms.Event::wordAt words 1)
+    And route in RoomKernel.lex.tex contains (if ((operation =? 12) && (201 <=? length)) then (createAnswer value length)
     And route in RoomKernel.lex.tex contains else (prim utf8_encode "invalid request" : Bytes)
     And dispatch in RoomKernel.lex.tex contains (route (natAt value 0 1 0) (Foundation.Bytes::byteLength value) value)
     And application in RoomKernel.lex.tex contains response := 0x61646d6974746564})
@@ -185,3 +187,26 @@ Feature: room
     And composes in Comms/Redact.lex.tex contains body: ((action =? 8) && (mayRedact version senderStatus senderPower required redactPower own parents authorities))
     And onlyARedactionIsComposedAsOne in Comms/RedactProofs.lex.tex states (((Comms.Redact::composes action version senderStatus senderPower required redactPower own parents authorities) && (not (action =? 8))) = false)
     And composedRedactionIsAllowed in Comms/RedactProofs.lex.tex states (((Comms.Redact::composes action version senderStatus senderPower required redactPower own parents authorities) && (not (Comms.Redact::allowed senderStatus senderPower required redactPower own))) = false)
+
+  @RK-14 @build
+  Scenario: A room is created by one event that cites nothing and names no room; its creator starts joined with the creator's power, a named target starts invited and may join, and nobody else is a member
+    Given the creation rules in app/src/Comms/Create.lex.tex
+    When the Lean kernel checks the theorems of CreateProofs during prismpm verify
+    Then mayCreate in Comms/Create.lex.tex contains body: ((version =? 1) && ((action =? 9) && ((unnamed r0 r1 r2 r3) && (((Comms.Event::count parents) =? 0) && ((Comms.Event::count authorities) =? 0)))))
+    And statusAtCreation in Comms/Create.lex.tex contains body: (if (isCreator =? 1) then 2 else (if ((isDirect =? 1) && (isInvitee =? 1)) then 1 else 0))
+    And powerAtCreation in Comms/Create.lex.tex contains body: (if (isCreator =? 1) then creatorPower else 0)
+    And direct in Comms/Create.lex.tex contains body: (if (unnamed t0 t1 t2 t3) then 0 else 1)
+    And creationCitesNothing in Comms/CreateProofs.lex.tex states (((Comms.Create::mayCreate version action r0 r1 r2 r3 parents authorities) && (not (((Comms.Event::count parents) + (Comms.Event::count authorities)) =? 0))) = false)
+    And creationNamesNoRoom in Comms/CreateProofs.lex.tex states (((Comms.Create::mayCreate version action r0 r1 r2 r3 parents authorities) && (not (Comms.Create::unnamed r0 r1 r2 r3))) = false)
+    And creationIsNoOtherEvent in Comms/CreateProofs.lex.tex states (((Comms.Create::mayCreate version action r0 r1 r2 r3 parents authorities) && (Comms.Event::canonical version action parents authorities)) = false)
+    And onlyVersionOneCreates in Comms/CreateProofs.lex.tex states ((Comms.Create::mayCreate 2 action r0 r1 r2 r3 parents authorities) = false)
+    And creatorIsJoined in Comms/CreateProofs.lex.tex states ((Comms.Create::statusAtCreation 1 isInvitee isDirect) = 2)
+    And directInviteeIsInvited in Comms/CreateProofs.lex.tex states (((isCreator =? 1) || ((Comms.Create::statusAtCreation isCreator 1 1) =? 1)) = true)
+    And nobodyElseIsAMember in Comms/CreateProofs.lex.tex states (((isCreator =? 1) || ((isInvitee =? 1) || ((Comms.Create::statusAtCreation isCreator isInvitee isDirect) =? 0))) = true)
+    And roomWithoutInviteeHasOnlyItsCreator in Comms/CreateProofs.lex.tex states (((isCreator =? 1) || ((isDirect =? 1) || ((Comms.Create::statusAtCreation isCreator isInvitee isDirect) =? 0))) = true)
+    And onlyTheCreatorHoldsPower in Comms/CreateProofs.lex.tex states (((isCreator =? 1) || ((Comms.Create::powerAtCreation isCreator creatorPower) =? 0)) = true)
+    And namedTargetMakesARoomDirect in Comms/CreateProofs.lex.tex states (((Comms.Create::unnamed t0 t1 t2 t3) || ((Comms.Create::direct t0 t1 t2 t3) =? 1)) = true)
+    And directInviteeMayJoin in Comms/CreateProofs.lex.tex states ((Comms.Rules::permitted 0 (Comms.Create::statusAtCreation 0 1 1) senderPower targetStatus targetPower required open grantedPower) = true)
+    And strangerJoinsOnlyAnOpenRoom in Comms/CreateProofs.lex.tex states ((Comms.Rules::permitted 0 (Comms.Create::statusAtCreation 0 0 isDirect) senderPower targetStatus targetPower required 0 grantedPower) = false)
+    And creationIsTheEmptyHistoryStatus in Comms/CreateProofs.lex.tex states ((Comms.State::state 0 member creator creatorPower required open (nil (List Nat))) = (Comms.Create::statusAtCreation (if (member =? creator) then 1 else 0) 0 0))
+    And creationIsTheEmptyHistoryPower in Comms/CreateProofs.lex.tex states ((Comms.State::state 1 member creator creatorPower required open (nil (List Nat))) = (Comms.Create::powerAtCreation (if (member =? creator) then 1 else 0) creatorPower))
