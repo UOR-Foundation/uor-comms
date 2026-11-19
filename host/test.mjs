@@ -277,3 +277,12 @@ test("an event whose parent list was tampered with is refused, not held", async 
   assert.notEqual(result.held, true);
   assert.equal(result.reason, "refused");
 });
+
+test("the kernel reads the largest valid content and refuses one byte more, without trapping", async () => {
+  const mentions = Array.from({ length: 50 }, (_, i) => hash(text("member " + i)));
+  const largest = encodeContent({ text: "x".repeat(16384), sent: 1_800_000_000_000, relates: hash(text("an event")), mentions });
+  assert.equal(largest.length + 1, 18036);
+  assert.equal(await kernel.content(largest), "message");
+  assert.equal(await kernel.content(encodeContent({ text: "x".repeat(16385), sent: 1_800_000_000_000 })), "refused");
+  assert.equal(await kernel.content(encodeContent({ text: "y".repeat(2000), sent: 1_800_000_000_000 })), "message");
+});
