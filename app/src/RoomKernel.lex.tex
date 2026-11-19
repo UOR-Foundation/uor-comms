@@ -264,10 +264,26 @@ definition{
 }
 
 definition{
+  name: routeLow,
+  parameters: [operation : Nat, length : Nat, value : Bytes],
+  result: Bytes,
+  body: (if ((operation =? 1) && (length =? 69)) then (admitAnswer value) else (if ((operation =? 2) && (length =? 37)) then (permitAnswer value) else (if ((operation =? 3) && (length =? 81)) then (orderAnswer value) else (if ((operation =? 4) && (length =? 26)) then (keyAnswer value) else (if ((operation =? 5) && (length =? 3)) then (callName (Comms.Call::step (natAt value 1 1 0) (natAt value 2 1 0))) else (if ((operation =? 6) && (length =? 4)) then (statusName (Comms.Member::applied (natAt value 1 1 0) (natAt value 2 1 0) (natAt value 3 1 0))) else (if ((operation =? 7) && (length =? 27)) then (redactAnswer value) else (if ((operation =? 8) && (length =? 3)) then (sendName (Comms.Send::instruction (Comms.Send::advance (natAt value 1 1 0) (natAt value 2 1 0)))) else (if ((operation =? 9) && (length =? 65)) then (headsAnswer value) else (if ((operation =? 10) && (28 <=? length)) then (composeAnswer value length) else (prim utf8_encode "invalid request" : Bytes))))))))))),
+  axioms: [Quot.sound, propext]
+}
+
+definition{
+  name: routeHigh,
+  parameters: [operation : Nat, length : Nat, value : Bytes],
+  result: Bytes,
+  body: (if ((operation =? 11) && (27 <=? length)) then (redactionAnswer value length) else (if ((operation =? 12) && (201 <=? length)) then (createAnswer value length) else (if ((operation =? 13) && (2 <=? length)) then (contentAnswer value length) else (if ((operation =? 14) && (length =? 3)) then (directAnswer value) else (if ((operation =? 15) && (length =? 37)) then (queueAnswer value) else (if ((operation =? 16) && (length =? 17)) then (parentAnswer value) else (if ((operation =? 17) && (length =? 33)) then (layerAnswer value) else (if ((operation =? 18) && (length =? 9)) then (shapeAnswer value) else (if ((operation =? 19) && (length =? 5)) then (forwardAnswer value) else (if ((operation =? 20) && (length =? 5)) then (mailAnswer value) else (if ((operation =? 21) && (length =? 37)) then (reasonAnswer value) else (prim utf8_encode "invalid request" : Bytes)))))))))))),
+  axioms: [Quot.sound, propext]
+}
+
+definition{
   name: route,
   parameters: [operation : Nat, length : Nat, value : Bytes],
   result: Bytes,
-  body: (if ((operation =? 1) && (length =? 69)) then (admitAnswer value) else (if ((operation =? 2) && (length =? 37)) then (permitAnswer value) else (if ((operation =? 3) && (length =? 81)) then (orderAnswer value) else (if ((operation =? 4) && (length =? 26)) then (keyAnswer value) else (if ((operation =? 5) && (length =? 3)) then (callName (Comms.Call::step (natAt value 1 1 0) (natAt value 2 1 0))) else (if ((operation =? 6) && (length =? 4)) then (statusName (Comms.Member::applied (natAt value 1 1 0) (natAt value 2 1 0) (natAt value 3 1 0))) else (if ((operation =? 7) && (length =? 27)) then (redactAnswer value) else (if ((operation =? 8) && (length =? 3)) then (sendName (Comms.Send::instruction (Comms.Send::advance (natAt value 1 1 0) (natAt value 2 1 0)))) else (if ((operation =? 9) && (length =? 65)) then (headsAnswer value) else (if ((operation =? 10) && (28 <=? length)) then (composeAnswer value length) else (if ((operation =? 11) && (27 <=? length)) then (redactionAnswer value length) else (if ((operation =? 12) && (201 <=? length)) then (createAnswer value length) else (if ((operation =? 13) && (2 <=? length)) then (contentAnswer value length) else (if ((operation =? 14) && (length =? 3)) then (directAnswer value) else (if ((operation =? 15) && (length =? 37)) then (queueAnswer value) else (if ((operation =? 16) && (length =? 17)) then (parentAnswer value) else (if ((operation =? 17) && (length =? 33)) then (layerAnswer value) else (if ((operation =? 18) && (length =? 9)) then (shapeAnswer value) else (if ((operation =? 19) && (length =? 5)) then (forwardAnswer value) else (if ((operation =? 20) && (length =? 5)) then (mailAnswer value) else (if ((operation =? 21) && (length =? 37)) then (reasonAnswer value) else (prim utf8_encode "invalid request" : Bytes)))))))))))))))))))))),
+  body: (if (operation <=? 10) then (routeLow operation length value) else (routeHigh operation length value)),
   axioms: [Quot.sound, propext]
 }
 
