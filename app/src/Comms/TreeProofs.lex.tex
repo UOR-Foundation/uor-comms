@@ -1,0 +1,66 @@
+\begin{lexlean}{Comms.TreeProofs}
+\useglossary{lexlean.std.bool@1.2.0}
+\useglossary{lexlean.std.nat@1.2.0}
+\importmodule{Comms.Resolve}
+\importmodule{Comms.Tree}
+\title{Boolean}
+\begin{semanticmodule}
+theorem{
+  name: parentComesBeforeItsChild,
+  parameters: [index : Nat, candidate : Nat],
+  statement: (((Comms.Tree::isParent index candidate) && (not (candidate <? index))) = false),
+  proof: linear_arithmetic{definitions: [Comms.Tree::isParent, Comms.Tree::parentOf]},
+  axioms: [Quot.sound, propext]
+}
+
+theorem{
+  name: publisherHasNoParent,
+  parameters: [candidate : Nat],
+  statement: ((Comms.Tree::isParent 0 candidate) = false),
+  proof: linear_arithmetic{definitions: [Comms.Tree::isParent]},
+  axioms: [Quot.sound, propext]
+}
+
+theorem{
+  name: everyOtherMemberHasOneParent,
+  parameters: [index : Nat],
+  statement: (((0 <? index) && (not (Comms.Tree::isParent index (Comms.Tree::parentOf index)))) = false),
+  proof: linear_arithmetic{definitions: [Comms.Tree::isParent]},
+  axioms: [Quot.sound, propext]
+}
+
+theorem{
+  name: aParentHasAtMostFourChildren,
+  parameters: [index : Nat, candidate : Nat],
+  statement: (((Comms.Tree::isParent index candidate) && ((index <? ((prim multiply 4 candidate : Nat) + 1)) || (((prim multiply 4 candidate : Nat) + 4) <? index))) = false),
+  proof: linear_arithmetic{definitions: [Comms.Tree::isParent, Comms.Tree::parentOf]},
+  axioms: [Quot.sound, propext]
+}
+
+theorem{
+  name: laterDepartureMovesNoEarlierMember,
+  parameters: [key : Nat, leaving : Nat, before : (List Nat), after : (List Nat)],
+  statement: (((not (leaving <? key)) && (not ((Comms.Resolve::place key (Comms.Resolve::joined before (cons leaving after))) =? (Comms.Resolve::place key (Comms.Resolve::joined before after))))) = false),
+  proof: induction{
+    branches: [
+      {
+        proof: linear_arithmetic{
+          definitions: [Comms.Resolve::ahead, Comms.Resolve::joined, Comms.Resolve::place]
+        },
+        binders: [],
+        constructor: nil
+      },
+      {
+        proof: linear_arithmetic{
+          definitions: [Comms.Resolve::ahead, Comms.Resolve::joined, Comms.Resolve::place]
+        },
+        binders: [head, rest, ih],
+        constructor: cons
+      }
+    ],
+    scrutinee: before
+  },
+  axioms: [Classical.choice, Quot.sound, propext]
+}
+\end{semanticmodule}
+\end{lexlean}

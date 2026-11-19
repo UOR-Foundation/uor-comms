@@ -15,5 +15,18 @@ definition{
   result: Bool,
   body: ((addressMatches =? 1) && ((signatureValid =? 1) && ((deviceMaySign =? 1) && ((parentsKnown =? 1) && (permitted =? 1)))))
 }
+
+definition{
+  name: verdict,
+  parameters: [
+    addressMatches : Nat,
+    signatureValid : Nat,
+    deviceMaySign : Nat,
+    parentsKnown : Nat,
+    permitted : Nat
+  ],
+  result: Nat,
+  body: (if (parentsKnown =? 0) then 1 else (if ((addressMatches =? 1) && ((signatureValid =? 1) && ((deviceMaySign =? 1) && (permitted =? 1)))) then 2 else 0))
+}
 \end{semanticmodule}
 \end{lexlean}

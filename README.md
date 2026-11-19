@@ -378,7 +378,7 @@ to ask, so it asks the kernel: one request, one decision.
 
 | Operation | First byte | Request length | Answers |
 | --- | --- | --- | --- |
-| Admit an event | `01` | 69 | `admitted`, `refused` |
+| Admit an event | `01` | 69 | `admitted`, `held`, `refused` |
 | Permit an action | `02` | 37 | `permitted`, `refused` |
 | Order two candidates | `03` | 81 | `left`, `right`, `same` |
 | Hold a key | `04` | 26 | `holds`, `withheld` |
@@ -392,6 +392,12 @@ to ask, so it asks the kernel: one request, one decision.
 | Create a room | `0c` | 1 and the event | `created`, `created direct`, `refused` |
 | Read message content | `0d` | 1 and the content | `message`, `edit`, `reaction`, `refused` |
 | Permit in a direct room | `0e` | 3 | `permitted`, `refused` |
+| What a member may do | `0f` | 37 | eight characters of `0` and `1`, join first |
+| Parent in the relay tree | `10` | 17 | `parent`, `not parent` |
+| Layer for a sender | `11` | 33 | `base`, `middle`, `top` |
+| Shape of a call | `12` | 9 | `pair`, `mesh`, `tree` |
+| Permit a forwarder | `13` | 5 | `forward`, `refused` |
+| Permit a mailbox | `14` | 5 | `hold`, `refused` |
 
 Anything else is answered `invalid request`. Numbers are big-endian; an
 address is 32 bytes. The field layout of each request is in
@@ -408,7 +414,7 @@ just app
 npx prism-code inspect app/.prism/build/*/*.holo
 ```
 
-The claims are registered as `RK-01` to `RK-16`, specified in
+The claims are registered as `RK-01` to `RK-17`, specified in
 `features/suites/room.feature`, and pinned by the tests in
 `crates/conformance/tests/contract.rs`.
 

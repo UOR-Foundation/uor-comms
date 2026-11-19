@@ -50,7 +50,7 @@ identity, no keys and no network of its own:
 ## Not done
 
 - **Nothing survives a reload.** The store and the rooms are in memory.
-- **No transport.** How two browsers reach each other is not decided.
+- **No transport yet.** Browsers will reach each other over WebRTC data channels, with ntfy.sh carrying only the connection setup on derived, rotating topics (`docs/DESIGN.md` decisions 12 and 15). None of it is built.
 - **No Prism ID.** The signer and the device verdict are supplied by the caller.
 - **No encryption.** Content is stored and fetched as given.
 - **Three rules are computed here, not asked.** An event's depth (`Comms.Fold::depthOf`, proved in

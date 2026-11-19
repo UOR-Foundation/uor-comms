@@ -120,17 +120,18 @@ export function open({ identity, device, kernel, hash, store, signer, verdict, t
     if (room?.events.has(hex(address))) return { admitted: true, address, known: true };
     const cited = [...fields.parents, ...fields.authorities];
     const parentsKnown = creates ? cited.length === 0 : Boolean(room) && cited.every((a) => room.events.has(hex(a)));
-    if (!parentsKnown) {
-      orphans.set(hex(address), { address: claimed, bytes, signature });
-      return { admitted: false, reason: "parents unknown", held: true };
-    }
     const checks = {
       signatureValid: await signer.verify(bytes, signature, fields.sender, fields.device),
       deviceMaySign: await verdict(fields.sender, fields.device),
       parentsKnown,
-      permitted: await permitted(room, fields, bytes),
+      permitted: parentsKnown && (await permitted(room, fields, bytes)),
     };
-    if (!(await kernel.admit(claimed, address, checks))) {
+    const answer = await kernel.admit(claimed, address, checks);
+    if (answer === "held") {
+      orphans.set(hex(address), { address: claimed, bytes, signature });
+      return { admitted: false, reason: "parents unknown", held: true };
+    }
+    if (answer !== "admitted") {
       orphans.delete(hex(address));
       return { admitted: false, reason: "refused", checks };
     }
@@ -219,6 +220,14 @@ export function open({ identity, device, kernel, hash, store, signer, verdict, t
       return fetched;
     },
     rooms: () => [...rooms.values()].map((room) => room.id),
+    /** What this identity may do in a room, toward `target` (itself when absent), as the kernel offers it. */
+    async offered(roomId, target = identity) {
+      const room = rooms.get(hex(roomId));
+      if (!room) return [];
+      const names = Object.keys(ACTION);
+      const actions = await kernel.queue(standing(room.state, identity), standing(room.state, target), SETTINGS, Boolean(room.direct));
+      return actions.map((action) => names[action]);
+    },
     /** The direct room this identity shares with `target`, or null, so one is reused, not duplicated. */
     findDirect(target) {
       const pair = [hex(identity), hex(target)].sort().join();

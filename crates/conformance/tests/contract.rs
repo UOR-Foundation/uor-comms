@@ -26,12 +26,8 @@ fn read(path: &str) -> String {
 /// The declaration named `name`, from its name to the next declaration.
 fn declaration<'a>(text: &'a str, name: &str) -> &'a str {
     let (_, rest) = text.split_once(&format!("name: {name},")).expect(name);
-    let end = ["\ntheorem{", "\ndefinition{", "\n\\end{semanticmodule}"]
-        .iter()
-        .filter_map(|mark| rest.find(mark))
-        .min()
-        .unwrap_or(rest.len());
-    &rest[..end]
+    let e = |mark: &str| rest.find(mark).unwrap_or(rest.len());
+    &rest[..e("\ntheorem{").min(e("\ndefinition{")).min(e("\n\\end{"))]
 }
 
 /// Every pin of the scenario tagged `id` holds of the model.
@@ -39,8 +35,8 @@ fn scenario(id: &str) {
     let feature = read("features/suites/room.feature");
     let steps = feature
         .split("\n  @")
-        .find(|scenario| scenario.starts_with(id))
-        .unwrap_or_else(|| panic!("{id} has no scenario"));
+        .find(|s| s.starts_with(id))
+        .expect(id);
     assert!(steps.contains(".lex.tex "), "{id} pins nothing");
     for (step, exact) in steps.lines().map(|s| (s, s.contains(" states "))) {
         let mark = [" contains ", " states "][usize::from(exact)];
@@ -101,4 +97,6 @@ mod pins {
     fn room_rk_15() { scenario("RK-15") }
     #[test]
     fn room_rk_16() { scenario("RK-16") }
+    #[test]
+    fn room_rk_17() { scenario("RK-17") }
 }

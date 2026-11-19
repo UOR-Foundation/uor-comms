@@ -237,3 +237,26 @@ test("a direct room: equal power, no third member, and neither party can remove 
   await ada.engine.invite(open, eve.identity);
   assert.equal(standing(ada.engine, open, eve.identity).status, 1);
 });
+
+test("the engine offers exactly what the kernel admits, and holds an event whose parent is missing", async () => {
+  const wire = direct();
+  const ada = await peer("ada", wire);
+  const ben = await peer("ben", wire);
+  const eve = await peer("eve", wire);
+  const room = await ada.engine.createDirect(ben.identity);
+  assert.deepEqual(await ben.engine.offered(room), ["join", "leave"]);
+  await ben.engine.join(room);
+  assert.ok(!(await ada.engine.offered(room, eve.identity)).includes("invite"));
+  assert.ok((await ada.engine.offered(room)).includes("send"));
+  assert.deepEqual(await eve.engine.offered(room), []);
+  const open = await ada.engine.createRoom();
+  assert.ok((await ada.engine.offered(open, eve.identity)).includes("invite"));
+  const sent = [];
+  wire.deliver = async (_other, message) => { sent.push(message); };
+  await ada.engine.send(room, message("first"));
+  await ada.engine.send(room, message("second"));
+  const late = await ben.engine.receive(sent[1]);
+  assert.equal(late.held, true);
+  assert.equal((await ben.engine.receive(sent[0])).admitted, true);
+  assert.equal(ben.engine.timeline(room).length, 4);
+});

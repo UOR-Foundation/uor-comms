@@ -40,7 +40,7 @@ model does not sanction.
 | `RK-06` | `build` | A call connects only through an answer, an ended call stays ended, and the two sides never both yield when calls cross |
 | `RK-07` | `build` | A permitted ban leaves the member banned, a refused event changes nothing, and only joining makes a member |
 | `RK-08` | `build` | Equal heads move no bytes and content already held is not requested again |
-| `RK-09` | `build` | The kernel answers each of its fourteen questions with the function the theorems are about, and invalid request for anything else |
+| `RK-09` | `build` | The kernel answers each of its twenty questions with the function the theorems are about, and invalid request for anything else |
 | `RK-10` | `build` | The membership and power of a room are its events folded by one step, the step is the one the kernel answers, and no history takes a status out of range or a power above the creator's |
 | `RK-11` | `build` | An event's bytes are its words at eight bytes each, decoding returns every word below 2^64 unchanged, a list of addresses has one accepted order with no address twice, and the fields of a laid-out event are read back from its words with nothing left over |
 | `RK-12` | `build` | An event is composed only when its action is permitted and its form is canonical, the sent event replaces the head it cites, and a send is stored only once signed and announced only once stored |
@@ -48,6 +48,7 @@ model does not sanction.
 | `RK-14` | `build` | A room is created by one event that cites nothing and names no room; its creator starts joined with the creator's power, a named target makes the room direct and starts invited with the same power and may join, nobody else is a member, and a direct room never invites a third member |
 | `RK-15` | `build` | An event is folded after every parent: its depth is one more than its deepest parent's, a shallower event precedes a deeper one and has the smaller ordering key, and of two held events the one with the smaller key is placed first |
 | `RK-16` | `build` | Message content version 1 is read only in its one form: a message, an edit or a reaction; an edit and a reaction name the event they concern; text has 1 to 16,384 bytes with no NUL and no carriage return; at most 50 mentions in ascending order; a reaction key of 1 to 32 bytes without whitespace; no attachment until the cipher exists; nothing after |
+| `RK-17` | `build` | The engine offers a member exactly the actions it admits, holds an event whose parents have not arrived, places every member in one relay tree of fan-out four that every peer computes alike, picks each sender's layer within the receiver's share, and lets only a consenting member forward or an always-on member node hold mail |
 
 ## Cited authorities
 

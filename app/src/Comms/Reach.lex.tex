@@ -1,0 +1,28 @@
+\begin{lexlean}{Comms.Reach}
+\useglossary{lexlean.std.bool@1.2.0}
+\useglossary{lexlean.std.nat@1.2.0}
+\importmodule{Comms.Epoch}
+\title{Boolean}
+\begin{semanticmodule}
+definition{
+  name: holdsTopic,
+  parameters: [joinedAt : Nat, leftAt : Nat, topicEpoch : Nat],
+  result: Bool,
+  body: (Comms.Epoch::holdsKey joinedAt leftAt topicEpoch 0)
+}
+
+definition{
+  name: mayForward,
+  parameters: [forwarderStatus : Nat, ownedByMember : Nat, consented : Nat, directPath : Nat],
+  result: Bool,
+  body: ((directPath =? 0) && ((consented =? 1) && ((forwarderStatus =? 2) || (ownedByMember =? 1))))
+}
+
+definition{
+  name: mayHoldMail,
+  parameters: [holderStatus : Nat, ownedByMember : Nat, alwaysOn : Nat, isPhone : Nat],
+  result: Bool,
+  body: ((isPhone =? 0) && ((alwaysOn =? 1) && ((holderStatus =? 2) || (ownedByMember =? 1))))
+}
+\end{semanticmodule}
+\end{lexlean}

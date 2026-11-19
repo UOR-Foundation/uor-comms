@@ -1,0 +1,63 @@
+\begin{lexlean}{Comms.MediaProofs}
+\useglossary{lexlean.std.bool@1.2.0}
+\useglossary{lexlean.std.nat@1.2.0}
+\importmodule{Comms.Media}
+\title{Boolean}
+\begin{semanticmodule}
+theorem{
+  name: aPairCallsDirectly,
+  parameters: [participants : Nat],
+  statement: (((participants <=? 2) && (not ((Comms.Media::shape participants) =? 0))) = false),
+  proof: linear_arithmetic{definitions: [Comms.Media::shape]},
+  axioms: [Quot.sound, propext]
+}
+
+theorem{
+  name: onlyAPairCallsDirectly,
+  parameters: [participants : Nat],
+  statement: ((((Comms.Media::shape participants) =? 0) && (2 <? participants)) = false),
+  proof: linear_arithmetic{definitions: [Comms.Media::shape]},
+  axioms: [Quot.sound, propext]
+}
+
+theorem{
+  name: aboveTheMeshLimitIsATree,
+  parameters: [participants : Nat],
+  statement: (((6 <? participants) && (not ((Comms.Media::shape participants) =? 2))) = false),
+  proof: linear_arithmetic{definitions: [Comms.Media::shape]},
+  axioms: [Quot.sound, propext]
+}
+
+theorem{
+  name: aTreeOnlyAboveTheMeshLimit,
+  parameters: [participants : Nat],
+  statement: ((((Comms.Media::shape participants) =? 2) && (participants <=? 6)) = false),
+  proof: linear_arithmetic{definitions: [Comms.Media::shape]},
+  axioms: [Quot.sound, propext]
+}
+
+theorem{
+  name: middleLayerFitsTheShare,
+  parameters: [share : Nat, base : Nat, middle : Nat, top : Nat],
+  statement: (((1 <=? (Comms.Media::layerFor share base middle top)) && (share <? (base + middle))) = false),
+  proof: linear_arithmetic{definitions: [Comms.Media::layerFor]},
+  axioms: [Quot.sound, propext]
+}
+
+theorem{
+  name: topLayerFitsTheShare,
+  parameters: [share : Nat, base : Nat, middle : Nat, top : Nat],
+  statement: ((((Comms.Media::layerFor share base middle top) =? 2) && (share <? ((base + middle) + top))) = false),
+  proof: linear_arithmetic{definitions: [Comms.Media::layerFor]},
+  axioms: [Quot.sound, propext]
+}
+
+theorem{
+  name: moreShareNeverLowersTheLayer,
+  parameters: [share : Nat, base : Nat, middle : Nat, top : Nat, wider : Nat],
+  statement: (((share <=? wider) && ((Comms.Media::layerFor wider base middle top) <? (Comms.Media::layerFor share base middle top))) = false),
+  proof: linear_arithmetic{definitions: [Comms.Media::layerFor]},
+  axioms: [Quot.sound, propext]
+}
+\end{semanticmodule}
+\end{lexlean}
