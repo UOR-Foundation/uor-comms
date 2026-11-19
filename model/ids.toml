@@ -41,7 +41,7 @@ statement = "An event is admitted only when its address matches, it is signed, i
 id = "RK-02"
 level = "build"
 suite = "room"
-statement = "Only a joined member with the required power writes, and nobody removes a member of equal or higher power"
+statement = "Only a joined member with the required power writes, and nobody removes a member of equal or higher power; a refused action is named by its cause, and a name is given only for its cause"
 
 [[id]]
 id = "RK-03"
@@ -83,7 +83,7 @@ statement = "Equal heads move no bytes and content already held is not requested
 id = "RK-09"
 level = "build"
 suite = "room"
-statement = "The kernel answers each of its twenty questions with the function the theorems are about, and invalid request for anything else"
+statement = "The kernel answers each of its twenty-one questions with the function the theorems are about, and invalid request for anything else"
 
 [[id]]
 id = "RK-10"

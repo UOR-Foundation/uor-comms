@@ -1,0 +1,63 @@
+\begin{lexlean}{Comms.ReasonProofs}
+\useglossary{lexlean.std.bool@1.2.0}
+\useglossary{lexlean.std.nat@1.2.0}
+\importmodule{Comms.Reason}
+\title{Boolean}
+\begin{semanticmodule}
+theorem{
+  name: aBannedSenderIsToldBanned,
+  parameters: [action : Nat, senderStatus : Nat, senderPower : Nat, required : Nat],
+  statement: (((senderStatus =? 4) && (not ((Comms.Reason::refusalOf action senderStatus senderPower required) =? 1))) = false),
+  proof: linear_arithmetic{definitions: [Comms.Reason::refusalOf]},
+  axioms: [Classical.choice, Quot.sound, propext]
+}
+
+theorem{
+  name: onlyABannedSenderIsToldBanned,
+  parameters: [action : Nat, senderStatus : Nat, senderPower : Nat, required : Nat],
+  statement: ((((Comms.Reason::refusalOf action senderStatus senderPower required) =? 1) && (not (senderStatus =? 4))) = false),
+  proof: linear_arithmetic{definitions: [Comms.Reason::refusalOf]},
+  axioms: [Quot.sound, propext]
+}
+
+theorem{
+  name: needsPowerOnlyBelowTheRequiredPower,
+  parameters: [action : Nat, senderStatus : Nat, senderPower : Nat, required : Nat],
+  statement: ((((Comms.Reason::refusalOf action senderStatus senderPower required) =? 3) && (required <=? senderPower)) = false),
+  proof: linear_arithmetic{definitions: [Comms.Reason::refusalOf]},
+  axioms: [Quot.sound, propext]
+}
+
+theorem{
+  name: aJoinedMemberIsNeverToldNotJoined,
+  parameters: [action : Nat, senderStatus : Nat, senderPower : Nat, required : Nat],
+  statement: (((((Comms.Reason::refusalOf action senderStatus senderPower required) =? 2) && (senderStatus =? 2)) && (not (action =? 1))) = false),
+  proof: linear_arithmetic{definitions: [Comms.Reason::refusalOf]},
+  axioms: [Quot.sound, propext]
+}
+
+theorem{
+  name: closedOnlyForJoining,
+  parameters: [action : Nat, senderStatus : Nat, senderPower : Nat, required : Nat],
+  statement: ((((Comms.Reason::refusalOf action senderStatus senderPower required) =? 5) && (not (action =? 0))) = false),
+  proof: linear_arithmetic{definitions: [Comms.Reason::refusalOf]},
+  axioms: [Quot.sound, propext]
+}
+
+theorem{
+  name: unknownActionOnlyPastTheLast,
+  parameters: [action : Nat, senderStatus : Nat, senderPower : Nat, required : Nat],
+  statement: ((((Comms.Reason::refusalOf action senderStatus senderPower required) =? 6) && (action <? 8)) = false),
+  proof: linear_arithmetic{definitions: [Comms.Reason::refusalOf]},
+  axioms: [Quot.sound, propext]
+}
+
+theorem{
+  name: everyRefusalHasAName,
+  parameters: [action : Nat, senderStatus : Nat, senderPower : Nat, required : Nat],
+  statement: ((((Comms.Reason::refusalOf action senderStatus senderPower required) =? 0) || (6 <? (Comms.Reason::refusalOf action senderStatus senderPower required))) = false),
+  proof: linear_arithmetic{definitions: [Comms.Reason::refusalOf]},
+  axioms: [Quot.sound, propext]
+}
+\end{semanticmodule}
+\end{lexlean}

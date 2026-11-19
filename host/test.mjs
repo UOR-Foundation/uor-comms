@@ -98,8 +98,8 @@ test("a stranger cannot write, and a peer refuses an event the sender was not pe
   const ben = await peer("ben", wire);
   const eve = await peer("eve", wire);
   const room = await ada.engine.createDirect(ben.identity);
-  await assert.rejects(eve.engine.send(room, message("let me in")), { reason: "refused" });
-  await assert.rejects(eve.engine.join(room), { reason: "refused" });
+  await assert.rejects(eve.engine.send(room, message("let me in")), { reason: "not joined" });
+  await assert.rejects(eve.engine.join(room), { reason: "closed" });
   // Eve writes the bytes anyway and signs them with her own device.
   const head = ada.engine.timeline(room).at(-1).address;
   const bytes = encode({ action: ACTION.send, room, sender: eve.identity, device: eve.device, parents: [head] });
@@ -177,8 +177,8 @@ test("moderation: the creator bans a member, whose later event every peer refuse
   await ben.engine.join(room);
   await ada.engine.ban(room, ben.identity);
   assert.equal(standing(ben.engine, room, ben.identity).status, 4);
-  await assert.rejects(ben.engine.send(room, message("still here")), { reason: "refused" });
-  await assert.rejects(ben.engine.ban(room, ada.identity), { reason: "refused" });
+  await assert.rejects(ben.engine.send(room, message("still here")), { reason: "banned" });
+  await assert.rejects(ben.engine.ban(room, ada.identity), { reason: "banned" });
 });
 
 test("content version 1: the kernel reads a message, an edit and a reaction, and refuses the rest", async () => {
@@ -196,7 +196,7 @@ test("content version 1: the kernel reads a message, an edit and a reaction, and
   const peerA = await peer("ada", wire);
   const peerB = await peer("ben", wire);
   const room = await peerA.engine.createDirect(peerB.identity);
-  await assert.rejects(peerA.engine.send(room, text("not content")), { reason: "refused" });
+  await assert.rejects(peerA.engine.send(room, text("not content")), { reason: "content" });
 });
 
 test("publishing names a version by its files and carries forward only versions that still check out", async () => {
@@ -231,8 +231,8 @@ test("a direct room: equal power, no third member, and neither party can remove 
   await ben.engine.join(room);
   assert.equal(standing(ada.engine, room, ben.identity).power, standing(ada.engine, room, ada.identity).power);
   await assert.rejects(ada.engine.invite(room, eve.identity), { reason: "direct" });
-  await assert.rejects(ada.engine.kick(room, ben.identity), { reason: "refused" });
-  await assert.rejects(ben.engine.ban(room, ada.identity), { reason: "refused" });
+  await assert.rejects(ada.engine.kick(room, ben.identity), { reason: "not allowed" });
+  await assert.rejects(ben.engine.ban(room, ada.identity), { reason: "not allowed" });
   assert.equal(ada.engine.findDirect(eve.identity), null);
   const open = await ada.engine.createRoom();
   await ada.engine.invite(open, eve.identity);
@@ -278,7 +278,7 @@ test("an event whose parent list was tampered with is refused, not held", async 
   const result = await ben.engine.receive({ ...sent[1], bytes: tampered });
   assert.equal(result.admitted, false);
   assert.notEqual(result.held, true);
-  assert.equal(result.reason, "refused");
+  assert.equal(result.reason, "tampered");
 });
 test("an engine reopened on the same store rebuilds every room as it was", async () => {
   const wire = direct();
@@ -296,4 +296,19 @@ test("an engine reopened on the same store rebuilds every room as it was", async
   assert.deepEqual(order(again), order(ben.engine));
   assert.deepEqual(again.members(room), ben.engine.members(room));
   assert.equal(decodeContent(await again.content(again.timeline(room)[2].content)).text, "one");
+});
+
+test("a refusal is named by its cause", async () => {
+  const wire = direct();
+  const ada = await peer("ada", wire);
+  const ben = await peer("ben", wire);
+  const room = await ada.engine.createRoom();
+  await assert.rejects(ben.engine.send(room, message("hi")), { reason: "not joined" });
+  await assert.rejects(ben.engine.join(room), { reason: "closed" });
+  await ada.engine.invite(room, ben.identity);
+  await ben.engine.join(room);
+  await assert.rejects(ben.engine.kick(room, ada.identity), { reason: "not allowed" });
+  await ada.engine.ban(room, ben.identity);
+  await assert.rejects(ben.engine.send(room, message("hi")), { reason: "banned" });
+  await assert.rejects(ada.engine.send(hash(text("no such room")), message("hi")), { reason: "unknown room" });
 });

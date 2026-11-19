@@ -7,7 +7,7 @@ That run covered the 58 theorems of the first eight proof modules. The 14 theore
 
 "Proved" means Lean accepted the theorem in that run. "Tested" means an acceptance vector was replayed in the compiled guest in that run. Each theorem declares the exact axioms Lean observed (`propext`, `Quot.sound`, `Classical.choice`, or none).
 
-## Proved (191 theorems)
+## Proved (198 theorems)
 
 | Module | Theorems | What they say |
 |---|---|---|
@@ -40,6 +40,7 @@ That run covered the 58 theorems of the first eight proof modules. The 14 theore
 | | `redactedContentIsGone`, `laterRedactionUndoesNone`, `redeliveredRedactionChangesNothing`, `redactionOrderChangesNothing`, `redactionTouchesOnlyItsEvent`, `redactedContentIsNotFetched` | A redacted event shows no content, a later redaction of another event does not bring it back, a redaction delivered twice or two delivered in either order give the same result, a redaction changes no other event, and redacted content is not fetched |
 | | `redactionChangesNoMember` | A redaction changes no member's status or power |
 | | `onlyARedactionIsComposedAsOne`, `composedRedactionIsAllowed` | Only an event of action 8 is composed as a redaction, and one that is composed is allowed |
+| `Comms.ReasonProofs` | `aBannedSenderIsToldBanned`, `onlyABannedSenderIsToldBanned`, `needsPowerOnlyBelowTheRequiredPower`, `aJoinedMemberIsNeverToldNotJoined`, `closedOnlyForJoining`, `unknownActionOnlyPastTheLast`, `everyRefusalHasAName` | A banned sender is told banned and nobody else is; needs power only below the required power; a joined member is never told not joined except to leave; closed only for joining; every refusal has one of the six names |
 | `Comms.AdmissionProofs` | `missingParentsAreHeld`, `badEventIsNeverHeld`, `heldIsNeverAdmitted`, `verdictAdmitsOnlyWhatAdmissionAdmits`, `verdictAdmitsWhatAdmissionAdmits` | An event that passes its address, signature and device checks but whose parents have not arrived is held, never admitted; an event that fails any of those checks is refused, never held; otherwise the verdict is admission |
 | `Comms.QueueProofs` | `offeredIsWhatTheRulesAdmit`, `strangerIsOfferedNothingInAClosedRoom`, `invitedMemberIsOfferedJoin`, `directRoomNeverOffersInvite` | An action is offered exactly when the permission rule and the direct-room rule admit it; a stranger is offered nothing in a closed room; an invited member is offered join; a direct room never offers an invitation |
 | `Comms.TreeProofs` | `parentComesBeforeItsChild`, `publisherHasNoParent`, `everyOtherMemberHasOneParent`, `aParentHasAtMostFourChildren`, `laterDepartureMovesNoEarlierMember` | In the relay tree a parent comes before its child, the publisher has no parent, every other member has one, a parent has at most four children, and a member leaving after another never moves it |
@@ -57,7 +58,7 @@ That run covered the 58 theorems of the first eight proof modules. The 14 theore
 
 ## Tested (105 acceptance vectors)
 
-The holo's entry point, `RoomKernel.dispatch`, answers twenty operations. The vectors are in the `application` record of `app/src/RoomKernel.lex.tex` and were replayed in the compiled guest.
+The holo's entry point, `RoomKernel.dispatch`, answers twenty-one operations. The vectors are in the `application` record of `app/src/RoomKernel.lex.tex` and were replayed in the compiled guest.
 
 | Operation | Vectors | Covers |
 |---|---|---|
@@ -72,15 +73,16 @@ The holo's entry point, `RoomKernel.dispatch`, answers twenty operations. The ve
 | Heads | 2 | equal heads; different heads |
 | Compose | 8 | a send citing one parent; version 2; banned sender; parents out of order; two parents in order; a parent count the words do not match; a trailing byte; no parents |
 | Compose a redaction | 6 | another's event with the redaction power; without it; their own event without it; a send asked as a redaction; banned sender; a trailing byte |
-| Create a room | 7 | a room; a direct room; version 2; an ordinary action; an event that names a room; one that cites a parent; a trailing byte |
-| Read content | 14 | a message; a reply with two mentions; an edit; a reaction; an edit naming nothing; a reaction naming nothing; empty text; a NUL in text; a space in a reaction key; version 2; kind 4; mentions out of order; an attachment; a trailing byte |
-| Direct room | 6 | an invitation in a direct room; in another room; a join, a send, a ban and a change of power in a direct room |
+| Create a room | 6 | a room; a direct room; an ordinary action; an event that names a room; one that cites a parent; a trailing byte |
+| Read content | 12 | a message; a reply with two mentions; an edit; a reaction; an edit naming nothing; a reaction naming nothing; empty text; a NUL in text; a space in a reaction key; mentions out of order; an attachment; a trailing byte |
+| Direct room | 3 | an invitation in a direct room; in another room; a join in a direct room |
 | Queue | 4 | invited; joined with power; the same in a direct room; a stranger in a closed room |
 | Relay tree | 3 | a parent, a non-parent, the publisher |
 | Layer | 3 | top, middle, base |
 | Call shape | 3 | two, six and seven participants |
 | Forwarder | 4 | a member; a member-owned node; a stranger; a direct path |
 | Mailbox | 4 | a member; a member-owned node; a phone; a stranger |
+| Why refused | 6 | banned; closed; not joined; needs power; not allowed; permitted |
 | Invalid | 6 | empty; unknown operation; wrong length, three times; a request of 32,768 zero bytes, exactly the allocation bound, which prismpm requires |
 
 The expected answers were computed by a script that restates the rules in JavaScript; the replay is what checks them against the model.
@@ -101,6 +103,7 @@ The expected answers were computed by a script that restates the rules in JavaSc
 - **How many vectors fit.** The acceptance vectors are one literal list in the application record, which prismpm requires to be closed, and the checker and prismpm's snapshot refuse one nested past their recursion limit: 87 passed the gate, 115 did not, and 105 are kept. Each operation keeps one vector per distinct answer; a wrong length is tested for three operations, not every one. New operations get one vector per distinct answer and boundary, and one wrong-length vector where the operation is new.
 - **The approved CEWP proposals, in full.** The relay tree's fan-out is fixed at four and the call's mesh limit at six: the prover's arithmetic is linear, so neither can be a variable divisor or bound, and six is a guess to be measured. The host orders members for the tree by place and divides the receiver's budget by the number of senders; neither step is in the model. Meeting topics are derived by the host with BLAKE3 `derive_key` over the epoch secret and the hour; the model decides only who holds an epoch's topic. That a peer in fact forwards or holds mail as answered is not checked. The queue is proved equal to the permission rule with the direct-room rule; composing an event adds only its canonical form (`Comms.Send::mayCompose`), which concerns the event, not the person.
 - **Message content, in full.** The theorems are about the field rule and the byte scans. That `valid` reads the fields from the places the layout puts them, that decoding undoes encoding, and that two different valid contents never share bytes are not theorems. Mentions are compared as four 64-bit words each with `Comms.Event::ascending`. UTF-8 well-formedness and Unicode normal form are not checked: the host normalises to NFC when it encodes, and nothing proves it. An edit's sender and attachments, and repeated reactions, are rules of aggregation, which is not modelled. The kernel takes requests up to 5,748 bytes, the largest valid content with its operation byte, and may allocate 32 KiB; a larger allocation bound makes the gate's Lean build exceed its recursion depth on the boundary vector prismpm requires, so text is limited to 4,096 bytes. **Content over about 450 bytes still traps the kernel.** The generated code recurses once per byte while it reads content into a list, and the guest's call stack holds a few hundred frames; only a recursion that keeps the bytes unchanged and changes numbers becomes a loop. Reading content in place in that shape is the next change.** The required power and whether the room is open are fixed for the fold. Events that change them, and a required power per action, are not modelled.
+- **Room settings as events.** The required power and whether the room is open are fixed for the fold. Events that change them, and a required power per action, are not modelled.
 - **The ban race.** A ban and an event from the banned member that do not see each other are settled by rank; the security argument is not proved.
 - **The planted-defect check** was run in a scaffold before this repository existed, not through this gate.
 

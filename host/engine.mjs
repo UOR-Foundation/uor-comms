@@ -136,7 +136,10 @@ export function open({ identity, device, kernel, hash, store, signer, verdict, t
     }
     if (answer !== "admitted") {
       orphans.delete(hex(address));
-      return { admitted: false, reason: "refused", checks };
+      // Named by the first check that failed: the host's own checks, then the kernel's rule.
+      const reason = hex(claimed) !== hex(address) ? "tampered" : !checks.signatureValid ? "signature"
+        : !checks.deviceMaySign ? "device" : "not allowed";
+      return { admitted: false, reason, checks };
     }
     await store.put(bytes, address);
     await store.putEvent?.({ address, bytes, signature });
@@ -182,7 +185,10 @@ export function open({ identity, device, kernel, hash, store, signer, verdict, t
     const bytes = encode(fields);
     const subject = action < 2 ? identity : target;
     const allowed = await kernel.compose(standing(room.state, identity), standing(room.state, subject), SETTINGS, bytes);
-    if (!allowed) throw new Refused("refused");
+    if (!allowed) {
+      const why = await kernel.reason(action, standing(room.state, identity), standing(room.state, subject), SETTINGS, granted);
+      throw new Refused(why === "permitted" ? "malformed" : why);
+    }
     if (!(await kernel.direct(action, Boolean(room.direct)))) throw new Refused("direct");
     return publish(bytes, onStep);
   }
@@ -192,7 +198,7 @@ export function open({ identity, device, kernel, hash, store, signer, verdict, t
     /** Creates a room and returns its address. With `target` the room is direct and the target invited. */
     async createRoom({ target = ZERO, onStep } = {}) {
       const bytes = encode({ action: ACTION.create, sender: identity, device, target });
-      if (!CREATED.has(await kernel.create(bytes))) throw new Refused("refused");
+      if (!CREATED.has(await kernel.create(bytes))) throw new Refused("malformed");
       return publish(bytes, onStep);
     },
     createDirect(target, options = {}) {
@@ -208,7 +214,7 @@ export function open({ identity, device, kernel, hash, store, signer, verdict, t
     setPower: (room, target, granted, options) => act(room, ACTION.setPower, { ...options, target, granted }),
     /** Sends content. The content is stored by address; the event carries only the address. */
     async send(room, contentBytes, options) {
-      if ((await kernel.content(contentBytes)) === "refused") throw new Refused("refused");
+      if ((await kernel.content(contentBytes)) === "refused") throw new Refused("content");
       const content = await store.put(contentBytes);
       return act(room, ACTION.send, { ...options, content });
     },
