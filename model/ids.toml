@@ -53,7 +53,7 @@ statement = "Candidates for a state key are in a strict total order by rank then
 id = "RK-04"
 level = "build"
 suite = "room"
-statement = "The resolved state does not depend on the order or repetition of delivery"
+statement = "The resolved state does not depend on the order or repetition of delivery, and neither does the place of an event in the order"
 
 [[id]]
 id = "RK-05"

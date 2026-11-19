@@ -48,6 +48,8 @@ Judging against cited evidence, and not against "current" state, is what makes a
 
 **Permissions.** `Comms.Rules` covers join, leave, invite, kick, ban, unban, send and change of power level, with five member statuses. It follows Matrix room version 12 in substance: only joined members write, a sender needs the required power, nobody removes or changes a member of equal or higher power, nobody grants more power than they hold, a banned member can do nothing.
 
+**Place in the order.** A peer orders the events it holds by ordering key (`Comms.Order`). The place of an event is the number of held events with a smaller key (`Comms.Resolve::place`). It depends on which events are held and not on when each arrived, so two peers that hold the same events give every event the same place.
+
 **State from history.** The status and power of every member are the room's events folded by one step, newest first (`Comms.State`). An event is four numbers: action, sender, target, granted power. The step asks the permission rule against the state the earlier events define, then applies the membership or power change to the event's subject and to nobody else. A join or a leave has its sender as subject. A room starts with its creator joined at the creator's power. The required power and whether the room is open are fixed for the fold; events that change them are not modelled.
 
 **Event bytes.** An event is a list of 64-bit words, and its bytes are those words at eight bytes each, most significant byte first (`Comms.Event`). An address is four words. The order is fixed by `layout`:

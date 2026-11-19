@@ -33,11 +33,17 @@ Feature: room
     And wideOrderMatchesPackedAddress in Comms/OrderProofs.lex.tex states ((((wordsBounded l0 l1 l2 l3) && (wordsBounded r0 r1 r2 r3)) && ((Comms.Order::precedesWide leftRank l0 l1 l2 l3 rightRank r0 r1 r2 r3) && ((Comms.Order::precedes rightRank (packed r0 r1 r2 r3) leftRank (packed l0 l1 l2 l3)) || (Comms.Order::same leftRank (packed l0 l1 l2 l3) rightRank (packed r0 r1 r2 r3))))) = false)
 
   @RK-04 @build
-  Scenario: The resolved state does not depend on the order or repetition of delivery
+  Scenario: The resolved state does not depend on the order or repetition of delivery, and neither does the place of an event in the order
     Given the resolver in app/src/Comms/Resolve.lex.tex
     When the Lean kernel checks the theorems of ResolveProofs during prismpm verify
     Then neighboursSwapAnywhere in Comms/ResolveProofs.lex.tex states ((Comms.Resolve::resolve (Comms.Resolve::joined before (cons earlier (cons later after))) seed) = (Comms.Resolve::resolve (Comms.Resolve::joined before (cons later (cons earlier after))) seed))
     And redeliveryChangesNothing in Comms/ResolveProofs.lex.tex states ((Comms.Resolve::resolve (cons event (cons event rest)) seed) = (Comms.Resolve::resolve (cons event rest) seed))
+    And place in Comms/Resolve.lex.tex contains | List.cons head rest => ((ahead key head) + (place key rest))
+    And placeIgnoresArrivalPosition in Comms/ResolveProofs.lex.tex states ((Comms.Resolve::place key (Comms.Resolve::joined before (cons event after))) = ((Comms.Resolve::ahead key event) + (Comms.Resolve::place key (Comms.Resolve::joined before after))))
+    And arrivalOrderChangesNoPlace in Comms/ResolveProofs.lex.tex states ((Comms.Resolve::place key (Comms.Resolve::joined before (cons earlier (cons later after)))) = (Comms.Resolve::place key (Comms.Resolve::joined before (cons later (cons earlier after)))))
+    And earlierEventIsNeverPlacedLater in Comms/ResolveProofs.lex.tex states (((a <? b) && ((Comms.Resolve::place b arrivals) <? (Comms.Resolve::place a arrivals))) = false)
+    And eventIsNotAheadOfItself in Comms/ResolveProofs.lex.tex states ((Comms.Resolve::ahead key key) = 0)
+    And earlierEventIsAheadOfALater in Comms/ResolveProofs.lex.tex states (((a <? b) && ((Comms.Resolve::ahead b a) =? 0)) = false)
 
   @RK-05 @build
   Scenario: A member holds no key from before joining unless history is shared, and none from removal onward

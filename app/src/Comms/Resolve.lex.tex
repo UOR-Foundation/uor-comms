@@ -25,5 +25,22 @@ definition{
   body: (match left | List.nil => right | List.cons head rest => (cons head (joined rest right))),
   recursive_argument: left
 }
+
+definition{
+  name: ahead,
+  parameters: [key : Nat, other : Nat],
+  result: Nat,
+  body: (if (other <? key) then 1 else 0)
+}
+
+definition{
+  name: place,
+  parameters: [key : Nat, arrivals : (List Nat)],
+  result: Nat,
+  body: (match arrivals
+    | List.nil => 0
+    | List.cons head rest => ((ahead key head) + (place key rest))),
+  recursive_argument: arrivals
+}
 \end{semanticmodule}
 \end{lexlean}

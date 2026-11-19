@@ -91,5 +91,83 @@ theorem{
   },
   axioms: [Quot.sound, propext]
 }
+
+theorem{
+  name: sumLeftComm,
+  parameters: [a : Nat, b : Nat, c : Nat],
+  statement: ((a + (b + c)) = (b + (a + c))),
+  proof: linear_arithmetic{definitions: [Comms.Resolve::ahead]},
+  axioms: [Quot.sound, propext]
+}
+
+theorem{
+  name: placeIgnoresArrivalPosition,
+  parameters: [key : Nat, before : (List Nat), event : Nat, after : (List Nat)],
+  statement: ((Comms.Resolve::place key (Comms.Resolve::joined before (cons event after))) = ((Comms.Resolve::ahead key event) + (Comms.Resolve::place key (Comms.Resolve::joined before after)))),
+  proof: induction{
+    branches: [
+      {
+        proof: simplify{definitions: [Comms.Resolve::joined, Comms.Resolve::place]},
+        binders: [],
+        constructor: nil
+      },
+      {
+        proof: simplify{
+          definitions: [ih, sumLeftComm, Comms.Resolve::joined, Comms.Resolve::place]
+        },
+        binders: [head, rest, ih],
+        constructor: cons
+      }
+    ],
+    scrutinee: before
+  },
+  axioms: [Quot.sound, propext]
+}
+
+theorem{
+  name: arrivalOrderChangesNoPlace,
+  parameters: [key : Nat, before : (List Nat), earlier : Nat, later : Nat, after : (List Nat)],
+  statement: ((Comms.Resolve::place key (Comms.Resolve::joined before (cons earlier (cons later after)))) = (Comms.Resolve::place key (Comms.Resolve::joined before (cons later (cons earlier after))))),
+  proof: simplify{definitions: [placeIgnoresArrivalPosition, sumLeftComm]},
+  axioms: [Quot.sound, propext]
+}
+
+theorem{
+  name: earlierEventIsNeverPlacedLater,
+  parameters: [a : Nat, b : Nat, arrivals : (List Nat)],
+  statement: (((a <? b) && ((Comms.Resolve::place b arrivals) <? (Comms.Resolve::place a arrivals))) = false),
+  proof: induction{
+    branches: [
+      {
+        proof: linear_arithmetic{definitions: [Comms.Resolve::ahead, Comms.Resolve::place]},
+        binders: [],
+        constructor: nil
+      },
+      {
+        proof: linear_arithmetic{definitions: [Comms.Resolve::ahead, Comms.Resolve::place]},
+        binders: [head, rest, ih],
+        constructor: cons
+      }
+    ],
+    scrutinee: arrivals
+  },
+  axioms: [Classical.choice, Quot.sound, propext]
+}
+
+theorem{
+  name: eventIsNotAheadOfItself,
+  parameters: [key : Nat],
+  statement: ((Comms.Resolve::ahead key key) = 0),
+  proof: linear_arithmetic{definitions: [Comms.Resolve::ahead]},
+  axioms: [Quot.sound, propext]
+}
+
+theorem{
+  name: earlierEventIsAheadOfALater,
+  parameters: [a : Nat, b : Nat],
+  statement: (((a <? b) && ((Comms.Resolve::ahead b a) =? 0)) = false),
+  proof: linear_arithmetic{definitions: [Comms.Resolve::ahead]},
+  axioms: [Quot.sound, propext]
+}
 \end{semanticmodule}
 \end{lexlean}
