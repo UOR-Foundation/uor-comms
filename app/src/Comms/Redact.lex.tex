@@ -61,5 +61,22 @@ definition{
   result: Bool,
   body: (if (Comms.Sync::holds redacted event) then false else (if (Comms.Sync::holds store content) then false else true))
 }
+
+definition{
+  name: composes,
+  parameters: [
+    action : Nat,
+    version : Nat,
+    senderStatus : Nat,
+    senderPower : Nat,
+    required : Nat,
+    redactPower : Nat,
+    own : Nat,
+    parents : (List Nat),
+    authorities : (List Nat)
+  ],
+  result: Bool,
+  body: ((action =? 8) && (mayCompose version senderStatus senderPower required redactPower own parents authorities))
+}
 \end{semanticmodule}
 \end{lexlean}

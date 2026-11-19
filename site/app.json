@@ -2,7 +2,7 @@
   "name": "Room kernel",
   "shortName": "Room",
   "live": "https://uor-foundation.github.io/uor-comms/",
-  "purpose": "Decides one question about a room for a peer with no server to ask: admit an event, permit an action, order two candidates, hold a key, step a call, step a membership, permit a redaction, step a send, compare heads, or compose an event. Send one request; it answers with the decision, and invalid request for anything else.",
+  "purpose": "Decides one question about a room for a peer with no server to ask: admit an event, permit an action, order two candidates, hold a key, step a call, step a membership, permit a redaction, step a send, compare heads, compose an event, or compose a redaction. Send one request; it answers with the decision, and invalid request for anything else.",
   "inputLabel": "Request",
   "placeholder": "hex: one operation byte, then that operation's fields",
   "submitLabel": "Decide",

@@ -83,7 +83,7 @@ statement = "Equal heads move no bytes and content already held is not requested
 id = "RK-09"
 level = "build"
 suite = "room"
-statement = "The kernel answers each of its ten questions with the function the theorems are about, and invalid request for anything else"
+statement = "The kernel answers each of its eleven questions with the function the theorems are about, and invalid request for anything else"
 
 [[id]]
 id = "RK-10"
@@ -107,7 +107,7 @@ statement = "An event is composed only when its action is permitted and its form
 id = "RK-13"
 level = "build"
 suite = "room"
-statement = "Only a joined member with the power to send redacts, their own event with that alone and another's only with the redaction power; a redacted event shows no content and is not fetched, in whatever order redactions arrive, and a redaction changes no member's status or power"
+statement = "Only a joined member with the power to send redacts, their own event with that alone and another's only with the redaction power; a redacted event shows no content and is not fetched, in whatever order redactions arrive, a redaction changes no member's status or power, and only an allowed event of action 8 is composed as a redaction"
 
 [[id]]
 id = "FR-01"
