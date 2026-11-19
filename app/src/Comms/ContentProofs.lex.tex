@@ -102,7 +102,7 @@ theorem{
     attachments : Nat,
     keyLength : Nat
   ],
-  statement: (((not (kind =? 3)) && ((16384 <? textLength) && (Comms.Content::fieldsAllowed version kind relates forwarded everyone mentions textLength attachments keyLength))) = false),
+  statement: (((not (kind =? 3)) && ((4096 <? textLength) && (Comms.Content::fieldsAllowed version kind relates forwarded everyone mentions textLength attachments keyLength))) = false),
   proof: linear_arithmetic{definitions: [Comms.Content::fieldsAllowed]},
   axioms: [Quot.sound, propext]
 }
