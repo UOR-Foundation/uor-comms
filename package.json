@@ -4,6 +4,7 @@
   "type": "module",
   "scripts": {
     "test:try": "node --test try/test.mjs",
+    "test:host": "node --test host/test.mjs",
     "test:identity": "node identity/stitch-sync.mjs --check && node --test identity/test.mjs"
   },
   "devDependencies": {

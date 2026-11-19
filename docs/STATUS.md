@@ -93,6 +93,6 @@ The expected answers were computed by a script that restates the rules in JavaSc
 
 ## Not done
 
-- No host: nothing stores events, moves bytes, encrypts or draws a screen. The send path is modelled; receiving, and reading an event back into fields, are not.
+- The host in `host/` is a first slice, tested by hand against the built holo and not in the gate: two peers in one process create a direct room, join, send, receive, hold events that arrive early, agree on one order, and refuse a tampered event, a wrong address, a device of another identity and a banned member. Nothing survives a reload, nothing crosses a network, nothing is encrypted, and Prism ID is not wired: the caller supplies the signer, the device verdict and the transport. The host restates three rules it should ask for: the order events are folded in (depth, then address), a member's standing at creation, and the power a change of power leaves. `host/README.md` lists the rest. Receiving and reading an event into fields are done by the host and are not modelled.
 - Knock, space-restricted joins, reporting, presence, per-user synced data and profiles are not in the model.
 - Hosted-prover runs made while developing are diagnostics; only the build workflow's run is cited above.
