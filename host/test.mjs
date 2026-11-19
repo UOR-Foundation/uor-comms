@@ -255,9 +255,11 @@ test("the engine offers exactly what the kernel admits, and holds an event whose
   wire.deliver = async (_other, message) => { sent.push(message); };
   await ada.engine.send(room, message("first"));
   await ada.engine.send(room, message("second"));
-  const late = await ben.engine.receive(sent[1]);
+  // The wire hands each message to every other peer, Eve too: keep one copy per address.
+  const [first, second] = [...new Map(sent.map((m) => [hex(m.address), m])).values()];
+  const late = await ben.engine.receive(second);
   assert.equal(late.held, true);
-  assert.equal((await ben.engine.receive(sent[0])).admitted, true);
+  assert.equal((await ben.engine.receive(first)).admitted, true);
   assert.equal(ben.engine.timeline(room).length, 4);
 });
 
