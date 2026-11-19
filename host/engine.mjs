@@ -43,30 +43,32 @@ export function open({ identity, device, kernel, hash, store, signer, verdict, t
   }
 
   /** One step of the fold: the kernel says whether the event is permitted and what it leaves. */
-  async function apply(state, event) {
+  async function apply(state, event, direct) {
     const { fields } = event;
     if (fields.action === ACTION.create) {
       const answer = await kernel.create(event.bytes);
       if (!CREATED.has(answer)) return;
-      // Not a kernel answer yet: `Comms.Create::statusAtCreation` and `powerAtCreation`.
+      // Not a kernel answer yet: `Comms.Create::statusAtCreation` and `powerAtCreation`. In a direct
+      // room both parties hold the creator's power (`directPartiesHaveEqualPower`).
       state.set(hex(fields.sender), { status: 2, power: CREATOR_POWER });
-      if (answer === "created direct") state.set(hex(fields.target), { status: 1, power: 0 });
+      if (answer === "created direct") state.set(hex(fields.target), { status: 1, power: CREATOR_POWER });
       return;
     }
     if (changesNoMember(fields.action)) return;
     const subject = fields.action < 2 ? fields.sender : fields.target;
     const sender = standing(state, fields.sender);
     const target = standing(state, subject);
-    const permitted = await kernel.permit(fields.action, sender, target, SETTINGS, fields.granted);
+    const permitted = (await kernel.permit(fields.action, sender, target, SETTINGS, fields.granted))
+      && (await kernel.direct(fields.action, direct));
     const status = await kernel.memberStep(permitted, fields.action, target.status);
     // Not a kernel answer yet: `Comms.Member::nextPower`.
     const power = permitted && fields.action === ACTION.setPower ? Number(fields.granted) : target.power;
     state.set(hex(subject), { status, power });
   }
 
-  async function fold(events) {
+  async function fold(events, direct) {
     const state = new Map();
-    for (const event of events) await apply(state, event);
+    for (const event of events) await apply(state, event, direct);
     return state;
   }
 
@@ -82,7 +84,7 @@ export function open({ identity, device, kernel, hash, store, signer, verdict, t
       seen.add(key);
       walk.push(...room.events.get(key).fields.parents.map(hex));
     }
-    return fold(room.order.filter((event) => seen.has(hex(event.address))));
+    return fold(room.order.filter((event) => seen.has(hex(event.address))), Boolean(room.direct));
   }
 
   async function insert(room, event) {
@@ -94,8 +96,8 @@ export function open({ identity, device, kernel, hash, store, signer, verdict, t
       else high = middle;
     }
     room.order.splice(low, 0, event);
-    if (low === room.order.length - 1) await apply(room.state, event);
-    else room.state = await fold(room.order);
+    if (low === room.order.length - 1) await apply(room.state, event, Boolean(room.direct));
+    else room.state = await fold(room.order, Boolean(room.direct));
   }
 
   async function permitted(room, fields, bytes) {
@@ -103,7 +105,8 @@ export function open({ identity, device, kernel, hash, store, signer, verdict, t
     if (fields.action === ACTION.redact) return false; // not wired yet
     const state = await stateBefore(room, fields.parents);
     const subject = fields.action < 2 ? fields.sender : fields.target;
-    return kernel.compose(standing(state, fields.sender), standing(state, subject), SETTINGS, bytes);
+    return (await kernel.compose(standing(state, fields.sender), standing(state, subject), SETTINGS, bytes))
+      && kernel.direct(fields.action, Boolean(room.direct));
   }
 
   /** The one way an event enters a room, whether a peer sent it or this device wrote it. */
@@ -132,7 +135,8 @@ export function open({ identity, device, kernel, hash, store, signer, verdict, t
       return { admitted: false, reason: "refused", checks };
     }
     await store.put(bytes, address);
-    const target = room ?? { id: address, events: new Map(), order: [], heads: new Set(), state: new Map() };
+    const target = room ?? { id: address, events: new Map(), order: [], heads: new Set(), state: new Map(),
+      direct: creates && !isZero(fields.target) ? [fields.sender, fields.target] : null };
     rooms.set(roomKey, target);
     // `Comms.Fold::depthOf`: one more than the deepest parent, 0 with none.
     const depth = fields.parents.reduce((most, a) => Math.max(most, target.events.get(hex(a)).depth + 1), 0);
@@ -174,6 +178,7 @@ export function open({ identity, device, kernel, hash, store, signer, verdict, t
     const subject = action < 2 ? identity : target;
     const allowed = await kernel.compose(standing(room.state, identity), standing(room.state, subject), SETTINGS, bytes);
     if (!allowed) throw new Refused("refused");
+    if (!(await kernel.direct(action, Boolean(room.direct)))) throw new Refused("direct");
     return publish(bytes, onStep);
   }
 
@@ -214,6 +219,12 @@ export function open({ identity, device, kernel, hash, store, signer, verdict, t
       return fetched;
     },
     rooms: () => [...rooms.values()].map((room) => room.id),
+    /** The direct room this identity shares with `target`, or null, so one is reused, not duplicated. */
+    findDirect(target) {
+      const pair = [hex(identity), hex(target)].sort().join();
+      const found = [...rooms.values()].find((room) => room.direct && room.direct.map(hex).sort().join() === pair);
+      return found?.id ?? null;
+    },
     members(roomId) {
       const room = rooms.get(hex(roomId));
       return room ? [...room.state].map(([member, { status, power }]) => ({ member, status, power })) : [];

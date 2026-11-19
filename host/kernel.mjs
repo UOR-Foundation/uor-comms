@@ -61,6 +61,8 @@ export function kernel(dispatch) {
       ask(0x03, [[leftRank, 8], leftAddress, [rightRank, 8], rightAddress]),
     /** What message content is: `message`, `edit`, `reaction` or `refused` (`Comms.Content::valid`). */
     content: (contentBytes) => ask(0x0d, [contentBytes]),
+    /** Whether an action may happen in a direct room (`Comms.Create::directAllows`): no third member. */
+    direct: async (action, isDirect) => (await ask(0x0e, [[action, 1], flag(isDirect)])) === "permitted",
     /** What to do next in a send: `sign`, `store`, `announce` or `nothing`. */
     sendStep: (phase, report) => ask(0x08, [[phase, 1], [report, 1]]),
   };

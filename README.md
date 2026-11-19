@@ -391,6 +391,7 @@ to ask, so it asks the kernel: one request, one decision.
 | Compose a redaction | `0b` | 27 and the event | `composed`, `refused` |
 | Create a room | `0c` | 1 and the event | `created`, `created direct`, `refused` |
 | Read message content | `0d` | 1 and the content | `message`, `edit`, `reaction`, `refused` |
+| Permit in a direct room | `0e` | 3 | `permitted`, `refused` |
 
 Anything else is answered `invalid request`. Numbers are big-endian; an
 address is 32 bytes. The field layout of each request is in
