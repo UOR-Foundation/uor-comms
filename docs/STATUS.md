@@ -55,7 +55,7 @@ That run covered the 58 theorems of the first eight proof modules. The 14 theore
 | `Comms.SyncProofs` | `equalHeadsMoveNothing`, `emptyOfferWantsNothing`, `heldContentIsNotFetchedAgain` | Equal heads send nothing; held content is never requested |
 | `Comms.CallProofs` | `endedCallStaysEnded`, `hangUpAlwaysEnds`, `stateStaysInRange`, `noConnectionFromIdle`, `callerConnectsOnlyWhenAnswered`, `calleeConnectsOnlyByAccepting`, `crossedCallsNeverBothYield`, `crossedCallsOneSideYields`, `namedStatesMatch` | A call connects only through an answer and ends for good; when calls cross exactly one side yields |
 
-## Tested (115 acceptance vectors)
+## Tested (105 acceptance vectors)
 
 The holo's entry point, `RoomKernel.dispatch`, answers twenty operations. The vectors are in the `application` record of `app/src/RoomKernel.lex.tex` and were replayed in the compiled guest.
 
@@ -76,12 +76,12 @@ The holo's entry point, `RoomKernel.dispatch`, answers twenty operations. The ve
 | Read content | 14 | a message; a reply with two mentions; an edit; a reaction; an edit naming nothing; a reaction naming nothing; empty text; a NUL in text; a space in a reaction key; version 2; kind 4; mentions out of order; an attachment; a trailing byte |
 | Direct room | 6 | an invitation in a direct room; in another room; a join, a send, a ban and a change of power in a direct room |
 | Queue | 4 | invited; joined with power; the same in a direct room; a stranger in a closed room |
-| Relay tree | 4 | parents and non-parents, the publisher |
-| Layer | 4 | top, middle, base, the presence floor |
-| Call shape | 4 | two, three, six and seven participants |
-| Forwarder | 5 | a member; a member-owned node; a stranger; no consent; a direct path |
-| Mailbox | 5 | a member; a member-owned node; a phone; a stranger; asleep |
-| Invalid | 11 | empty; unknown operation; wrong length, eight times; a request at the guest's allocation bound |
+| Relay tree | 3 | a parent, a non-parent, the publisher |
+| Layer | 3 | top, middle, base |
+| Call shape | 3 | two, six and seven participants |
+| Forwarder | 4 | a member; a member-owned node; a stranger; a direct path |
+| Mailbox | 4 | a member; a member-owned node; a phone; a stranger |
+| Invalid | 6 | empty; unknown operation; wrong length, three times; a request at the guest's allocation bound |
 
 The expected answers were computed by a script that restates the rules in JavaScript; the replay is what checks them against the model.
 
@@ -98,7 +98,7 @@ The expected answers were computed by a script that restates the rules in JavaSc
 - **That the host sends as the model does.** `Comms.Send` says when an event is composed and in what order it is signed, stored and announced. The kernel answers the order of the three steps and whether an event may be composed. It returns that answer, not the bytes. A redaction is asked through its own operation, which answers with `Comms.Redact::composes`; "own" is still an input the host supplies.
 - **Creating a room, in full.** The theorems are about the creating event and the members it names. The room's address is the address of that event, which the host computes; that two rooms never share an address rests on BLAKE3. The kernel answers whether an event creates a room and whether the room is direct; it does not answer the status or power at creation, and `Comms.State` still takes the creator as an input, not from the event. A direct room is a room whose creating event names a target. Both parties hold the creator's power and a third member is never invited: the owner ruled on 2026-11-19 that a direct chat is exactly two people with equal standing. The target may be the creator, as notes to self. That a third member never joins is proved for invitation only; a direct room is closed, so nobody joins uninvited while room settings are fixed. That two parties never get two direct rooms is not modelled: the host reuses one it already holds (`findDirect`), and two created at the same moment both stand.
 - **Requests the page types as text.** The browser replay types a request that is valid UTF-8 as text, and a text field turns a carriage return into a line feed, so no vector may be valid UTF-8 and hold byte 0x0d. Every content vector carries a sent time whose bytes are not valid UTF-8, and the one-byte request `0d`, a lone carriage return, is not a vector.
-- **How many vectors fit.** The acceptance vectors are one literal list in the application record, which prismpm requires to be closed, and the checker refuses one nested past its recursion limit: 115 fit, 125 did not. New operations get one vector per distinct answer and boundary, and one wrong-length vector where the operation is new.
+- **How many vectors fit.** The acceptance vectors are one literal list in the application record, which prismpm requires to be closed, and the checker and prismpm's snapshot refuse one nested past their recursion limit: 87 passed the gate, 115 did not, and 105 are kept. Each operation keeps one vector per distinct answer; a wrong length is tested for three operations, not every one. New operations get one vector per distinct answer and boundary, and one wrong-length vector where the operation is new.
 - **The approved CEWP proposals, in full.** The relay tree's fan-out is fixed at four and the call's mesh limit at six: the prover's arithmetic is linear, so neither can be a variable divisor or bound, and six is a guess to be measured. The host orders members for the tree by place and divides the receiver's budget by the number of senders; neither step is in the model. Meeting topics are derived by the host with BLAKE3 `derive_key` over the epoch secret and the hour; the model decides only who holds an epoch's topic. That a peer in fact forwards or holds mail as answered is not checked. The queue is proved equal to the permission rule with the direct-room rule; composing an event adds only its canonical form (`Comms.Send::mayCompose`), which concerns the event, not the person.
 - **Message content, in full.** The theorems are about the field rule and the byte scans. That `valid` reads the fields from the places the layout puts them, that decoding undoes encoding, and that two different valid contents never share bytes are not theorems. Mentions are compared as four 64-bit words each with `Comms.Event::ascending`. UTF-8 well-formedness and Unicode normal form are not checked: the host normalises to NFC when it encodes, and nothing proves it. An edit's sender and attachments, and repeated reactions, are rules of aggregation, which is not modelled. The kernel reads at most 1,507 bytes of content in one request, so text near the 16,384-byte limit cannot be asked.
 - **Room settings as events.** The required power and whether the room is open are fixed for the fold. Events that change them, and a required power per action, are not modelled.
