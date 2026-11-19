@@ -1,0 +1,269 @@
+\begin{lexlean}{Comms.ContentProofs}
+\useglossary{lexlean.std.bool@1.2.0}
+\useglossary{lexlean.std.nat@1.2.0}
+\importmodule{Comms.Content}
+\importmodule{Comms.Event}
+\title{Boolean}
+\begin{semanticmodule}
+theorem{
+  name: onlyVersionOneIsRead,
+  parameters: [
+    kind : Nat,
+    relates : Nat,
+    forwarded : Nat,
+    everyone : Nat,
+    mentions : Nat,
+    textLength : Nat,
+    attachments : Nat,
+    keyLength : Nat
+  ],
+  statement: ((Comms.Content::fieldsAllowed 2 kind relates forwarded everyone mentions textLength attachments keyLength) = false),
+  proof: linear_arithmetic{definitions: [Comms.Content::fieldsAllowed]},
+  axioms: [Quot.sound, propext]
+}
+
+theorem{
+  name: unknownKindIsRefused,
+  parameters: [
+    version : Nat,
+    kind : Nat,
+    relates : Nat,
+    forwarded : Nat,
+    everyone : Nat,
+    mentions : Nat,
+    textLength : Nat,
+    attachments : Nat,
+    keyLength : Nat
+  ],
+  statement: ((((kind =? 0) || (3 <? kind)) && (Comms.Content::fieldsAllowed version kind relates forwarded everyone mentions textLength attachments keyLength)) = false),
+  proof: linear_arithmetic{definitions: [Comms.Content::fieldsAllowed]},
+  axioms: [Quot.sound, propext]
+}
+
+theorem{
+  name: editNamesWhatItReplaces,
+  parameters: [
+    version : Nat,
+    forwarded : Nat,
+    everyone : Nat,
+    mentions : Nat,
+    textLength : Nat,
+    attachments : Nat,
+    keyLength : Nat
+  ],
+  statement: ((Comms.Content::fieldsAllowed version 2 0 forwarded everyone mentions textLength attachments keyLength) = false),
+  proof: linear_arithmetic{definitions: [Comms.Content::fieldsAllowed]},
+  axioms: [Quot.sound, propext]
+}
+
+theorem{
+  name: reactionNamesWhatItAnswers,
+  parameters: [
+    version : Nat,
+    forwarded : Nat,
+    everyone : Nat,
+    mentions : Nat,
+    textLength : Nat,
+    attachments : Nat,
+    keyLength : Nat
+  ],
+  statement: ((Comms.Content::fieldsAllowed version 3 0 forwarded everyone mentions textLength attachments keyLength) = false),
+  proof: linear_arithmetic{definitions: [Comms.Content::fieldsAllowed]},
+  axioms: [Quot.sound, propext]
+}
+
+theorem{
+  name: messageHasText,
+  parameters: [
+    version : Nat,
+    kind : Nat,
+    relates : Nat,
+    forwarded : Nat,
+    everyone : Nat,
+    mentions : Nat,
+    attachments : Nat,
+    keyLength : Nat
+  ],
+  statement: (((not (kind =? 3)) && (Comms.Content::fieldsAllowed version kind relates forwarded everyone mentions 0 attachments keyLength)) = false),
+  proof: linear_arithmetic{definitions: [Comms.Content::fieldsAllowed]},
+  axioms: [Quot.sound, propext]
+}
+
+theorem{
+  name: textOverTheLimitIsRefused,
+  parameters: [
+    version : Nat,
+    kind : Nat,
+    relates : Nat,
+    forwarded : Nat,
+    everyone : Nat,
+    mentions : Nat,
+    textLength : Nat,
+    attachments : Nat,
+    keyLength : Nat
+  ],
+  statement: (((not (kind =? 3)) && ((16384 <? textLength) && (Comms.Content::fieldsAllowed version kind relates forwarded everyone mentions textLength attachments keyLength))) = false),
+  proof: linear_arithmetic{definitions: [Comms.Content::fieldsAllowed]},
+  axioms: [Quot.sound, propext]
+}
+
+theorem{
+  name: atMostFiftyMentions,
+  parameters: [
+    version : Nat,
+    kind : Nat,
+    relates : Nat,
+    forwarded : Nat,
+    everyone : Nat,
+    mentions : Nat,
+    textLength : Nat,
+    attachments : Nat,
+    keyLength : Nat
+  ],
+  statement: (((not (kind =? 3)) && ((50 <? mentions) && (Comms.Content::fieldsAllowed version kind relates forwarded everyone mentions textLength attachments keyLength))) = false),
+  proof: linear_arithmetic{definitions: [Comms.Content::fieldsAllowed]},
+  axioms: [Quot.sound, propext]
+}
+
+theorem{
+  name: attachmentsWaitForTheCipher,
+  parameters: [
+    version : Nat,
+    kind : Nat,
+    relates : Nat,
+    forwarded : Nat,
+    everyone : Nat,
+    mentions : Nat,
+    textLength : Nat,
+    attachments : Nat,
+    keyLength : Nat
+  ],
+  statement: (((not (kind =? 3)) && ((0 <? attachments) && (Comms.Content::fieldsAllowed version kind relates forwarded everyone mentions textLength attachments keyLength))) = false),
+  proof: linear_arithmetic{definitions: [Comms.Content::fieldsAllowed]},
+  axioms: [Quot.sound, propext]
+}
+
+theorem{
+  name: reactionKeyIsOneToThirtyTwoBytes,
+  parameters: [
+    version : Nat,
+    relates : Nat,
+    forwarded : Nat,
+    everyone : Nat,
+    mentions : Nat,
+    textLength : Nat,
+    attachments : Nat,
+    keyLength : Nat
+  ],
+  statement: ((((keyLength =? 0) || (32 <? keyLength)) && (Comms.Content::fieldsAllowed version 3 relates forwarded everyone mentions textLength attachments keyLength)) = false),
+  proof: linear_arithmetic{definitions: [Comms.Content::fieldsAllowed]},
+  axioms: [Quot.sound, propext]
+}
+
+theorem{
+  name: flagsAreZeroOrOne,
+  parameters: [
+    version : Nat,
+    kind : Nat,
+    relates : Nat,
+    forwarded : Nat,
+    everyone : Nat,
+    mentions : Nat,
+    textLength : Nat,
+    attachments : Nat,
+    keyLength : Nat
+  ],
+  statement: (((not (kind =? 3)) && (((1 <? forwarded) || (1 <? everyone)) && (Comms.Content::fieldsAllowed version kind relates forwarded everyone mentions textLength attachments keyLength))) = false),
+  proof: linear_arithmetic{definitions: [Comms.Content::fieldsAllowed]},
+  axioms: [Quot.sound, propext]
+}
+
+theorem{
+  name: nulInTextIsRefused,
+  parameters: [byte : Nat, front : (List Nat), back : (List Nat)],
+  statement: (((byte =? 0) && ((Comms.Content::badTextBytes (Comms.Event::joined front (cons byte back))) =? 0)) = false),
+  proof: induction{
+    branches: [
+      {
+        proof: linear_arithmetic{definitions: [Comms.Content::badTextBytes, Comms.Event::joined]},
+        binders: [],
+        constructor: nil
+      },
+      {
+        proof: linear_arithmetic{definitions: [Comms.Content::badTextBytes, Comms.Event::joined]},
+        binders: [head, rest, ih],
+        constructor: cons
+      }
+    ],
+    scrutinee: front
+  },
+  axioms: [Classical.choice, Quot.sound, propext]
+}
+
+theorem{
+  name: carriageReturnInTextIsRefused,
+  parameters: [byte : Nat, front : (List Nat), back : (List Nat)],
+  statement: (((byte =? 13) && ((Comms.Content::badTextBytes (Comms.Event::joined front (cons byte back))) =? 0)) = false),
+  proof: induction{
+    branches: [
+      {
+        proof: linear_arithmetic{definitions: [Comms.Content::badTextBytes, Comms.Event::joined]},
+        binders: [],
+        constructor: nil
+      },
+      {
+        proof: linear_arithmetic{definitions: [Comms.Content::badTextBytes, Comms.Event::joined]},
+        binders: [head, rest, ih],
+        constructor: cons
+      }
+    ],
+    scrutinee: front
+  },
+  axioms: [Classical.choice, Quot.sound, propext]
+}
+
+theorem{
+  name: spaceInReactionKeyIsRefused,
+  parameters: [byte : Nat, front : (List Nat), back : (List Nat)],
+  statement: (((byte =? 32) && ((Comms.Content::badKeyBytes (Comms.Event::joined front (cons byte back))) =? 0)) = false),
+  proof: induction{
+    branches: [
+      {
+        proof: linear_arithmetic{definitions: [Comms.Content::badKeyBytes, Comms.Event::joined]},
+        binders: [],
+        constructor: nil
+      },
+      {
+        proof: linear_arithmetic{definitions: [Comms.Content::badKeyBytes, Comms.Event::joined]},
+        binders: [head, rest, ih],
+        constructor: cons
+      }
+    ],
+    scrutinee: front
+  },
+  axioms: [Classical.choice, Quot.sound, propext]
+}
+
+theorem{
+  name: lineEndInReactionKeyIsRefused,
+  parameters: [byte : Nat, front : (List Nat), back : (List Nat)],
+  statement: (((byte =? 10) && ((Comms.Content::badKeyBytes (Comms.Event::joined front (cons byte back))) =? 0)) = false),
+  proof: induction{
+    branches: [
+      {
+        proof: linear_arithmetic{definitions: [Comms.Content::badKeyBytes, Comms.Event::joined]},
+        binders: [],
+        constructor: nil
+      },
+      {
+        proof: linear_arithmetic{definitions: [Comms.Content::badKeyBytes, Comms.Event::joined]},
+        binders: [head, rest, ih],
+        constructor: cons
+      }
+    ],
+    scrutinee: front
+  },
+  axioms: [Classical.choice, Quot.sound, propext]
+}
+\end{semanticmodule}
+\end{lexlean}

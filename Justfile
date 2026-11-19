@@ -8,7 +8,7 @@
 default: vv
 
 # The whole gate.
-vv: fmt-check model template-check lint test deny app
+vv: fmt-check model template-check lint test deny app host
     @echo "vv: the acceptance gate passed"
 
 fmt-check:
@@ -74,6 +74,24 @@ app:
     attestation=$(sed -n 's/^verified attestation: \([0-9a-f]\{64\}\)$/\1/p' .prism-proof.log)
     rm -f .prism-proof.log
     cargo run -q --locked -p xtask -- proof-keep "$attestation"
+
+# The messenger's host (`host/`) against the room kernel holo this checkout builds. `app` leaves
+# the holo in `app/.prism/build` when it proves in full; a reused proof keeps no holo, so it is
+# built here, without proving again: the proof it would carry is the one `app` reused.
+host:
+    #!/usr/bin/env bash
+    set -euo pipefail
+    shopt -s nullglob
+    holos=(app/.prism/build/*/*.holo)
+    if [[ ${#holos[@]} -eq 0 ]]; then
+      prismpm --project app build
+      holos=(app/.prism/build/*/*.holo)
+    fi
+    if [[ ${#holos[@]} -ne 1 ]]; then
+      printf 'host: expected one holo, found %d\n' "${#holos[@]}" >&2
+      exit 1
+    fi
+    HOLO="${holos[0]}" node --test host/test.mjs
 
 # Only the meta-gate, while iterating on a scenario. `test` already runs it.
 bdd:

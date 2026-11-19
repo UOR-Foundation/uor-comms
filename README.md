@@ -390,6 +390,7 @@ to ask, so it asks the kernel: one request, one decision.
 | Compose an event | `0a` | 28 and the event | `composed`, `refused` |
 | Compose a redaction | `0b` | 27 and the event | `composed`, `refused` |
 | Create a room | `0c` | 1 and the event | `created`, `created direct`, `refused` |
+| Read message content | `0d` | 1 and the content | `message`, `edit`, `reaction`, `refused` |
 
 Anything else is answered `invalid request`. Numbers are big-endian; an
 address is 32 bytes. The field layout of each request is in
@@ -406,7 +407,7 @@ just app
 npx prism-code inspect app/.prism/build/*/*.holo
 ```
 
-The claims are registered as `RK-01` to `RK-15`, specified in
+The claims are registered as `RK-01` to `RK-16`, specified in
 `features/suites/room.feature`, and pinned by the tests in
 `crates/conformance/tests/contract.rs`.
 

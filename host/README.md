@@ -11,6 +11,7 @@ This folder is the one place in the repository where non-Prism code may grow (`a
 | --- | --- |
 | `event.mjs` | Lays an event's fields out as bytes and reads them back, in the order `Comms.Event::layout` fixes |
 | `kernel.mjs` | The kernel's questions as requests: create, compose, permit, step a membership, admit, order, step a send |
+| `content.mjs` | Lays message content version 1 out and reads it back; the kernel judges it (operation 0d) |
 | `store.mjs` | Bytes by BLAKE3 address, one copy per address, checked on write. In memory only |
 | `engine.mjs` | Rooms: create, join, leave, invite, kick, ban, unban, set power, send, receive, members, timeline |
 | `test.mjs` | Two or three peers in one process against the real holo |
@@ -50,5 +51,4 @@ identity, no keys and no network of its own:
 - **Redactions are refused** on receipt: not wired.
 - **Authorising events are never cited.** State is the fold of an event's ancestors.
 - **Cost.** An event that lands last costs one step. One that lands earlier refolds the room.
-- **Not in the gate.** `test.mjs` needs a built holo and runs by hand:
-  `HOLO="app/.prism/build/<id>/Room kernel.holo" node --test host/test.mjs`
+- **The tests run in the gate** (`just host`, part of `just vv`) against the holo the same run builds.

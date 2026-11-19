@@ -77,7 +77,7 @@ Feature: room
     And heldContentIsNotFetchedAgain in Comms/SyncProofs.lex.tex states ((Comms.Sync::wanted (cons kappa offered) (cons kappa rest)) = (Comms.Sync::wanted offered (cons kappa rest)))
 
   @RK-09 @build
-  Scenario: The kernel answers each of its twelve questions with the function the theorems are about, and invalid request for anything else
+  Scenario: The kernel answers each of its thirteen questions with the function the theorems are about, and invalid request for anything else
     Given the kernel in app/src/RoomKernel.lex.tex
     When prismpm verify replays the acceptance vectors in the compiled guest
     Then admitAnswer in RoomKernel.lex.tex contains (if (Comms.Admission::admitted (flag (sameAddress value 1 33))
@@ -102,6 +102,8 @@ Feature: room
     And route in RoomKernel.lex.tex contains (if ((operation =? 11) && (27 <=? length)) then (redactionAnswer value length)
     And createAnswer in RoomKernel.lex.tex contains ((Comms.Event::shaped words) && (Comms.Create::mayCreate (Comms.Event::wordAt words 0) (Comms.Event::wordAt words 1)
     And route in RoomKernel.lex.tex contains (if ((operation =? 12) && (201 <=? length)) then (createAnswer value length)
+    And contentAnswer in RoomKernel.lex.tex contains (Comms.Content::kindOf (project (contentBytes value 1 (prim subtract length 1 : Nat)) items))
+    And route in RoomKernel.lex.tex contains (if ((operation =? 13) && (2 <=? length)) then (contentAnswer value length)
     And route in RoomKernel.lex.tex contains else (prim utf8_encode "invalid request" : Bytes)
     And dispatch in RoomKernel.lex.tex contains (route (natAt value 0 1 0) (Foundation.Bytes::byteLength value) value)
     And application in RoomKernel.lex.tex contains response := 0x61646d6974746564})
@@ -222,3 +224,26 @@ Feature: room
     And shallowerEventPrecedes in Comms/FoldProofs.lex.tex states (((shallow <? deep) && (not (Comms.Order::precedes shallow shallowKappa deep deepKappa))) = false)
     And shallowerEventHasSmallerKey in Comms/FoldProofs.lex.tex states (((shallow <? deep) && ((shallowKappa <? (Comms.Order::addressBound)) && ((deepKappa <? (Comms.Order::addressBound)) && ((Comms.Order::orderingKey deep deepKappa) <=? (Comms.Order::orderingKey shallow shallowKappa))))) = false)
     And heldEarlierEventIsPlacedFirst in Comms/ResolveProofs.lex.tex states (((a <? b) && ((Comms.Resolve::place b arrivals) <? ((Comms.Resolve::place a arrivals) + (Comms.Resolve::copies a arrivals)))) = false)
+
+  @RK-16 @build
+  Scenario: Message content version 1 is read only in its one form: a message, an edit or a reaction; an edit and a reaction name the event they concern; text has 1 to 16,384 bytes with no NUL and no carriage return; at most 50 mentions in ascending order; a reaction key of 1 to 32 bytes without whitespace; no attachment until the cipher exists; nothing after
+    Given message content in app/src/Comms/Content.lex.tex
+    When the Lean kernel checks the theorems of ContentProofs during prismpm verify
+    Then fieldsAllowed in Comms/Content.lex.tex contains body: ((version =? 1) && ((relates <=? 1) && (((kind =? 3) && ((relates =? 1) && ((1 <=? keyLength) && (keyLength <=? 32)))) || (((kind =? 1) || ((kind =? 2) && (relates =? 1))) && ((forwarded <=? 1) && ((everyone <=? 1) && ((mentions <=? 50) && ((1 <=? textLength) && ((textLength <=? 16384) && (attachments =? 0))))))))))
+    And valid in Comms/Content.lex.tex contains body: (if ((Comms.Event::wordAt bytes 1) =? 3) then ((fieldsAllowed (Comms.Event::wordAt bytes 0) 3 (Comms.Event::wordAt bytes 10) 0 0 0 1 0 (Comms.Event::wordAt bytes (headerOf bytes))) && (((Comms.Event::count bytes) =? (((headerOf bytes) + 1) + (Comms.Event::wordAt bytes (headerOf bytes)))) && ((badKeyBytes (project (slice bytes ((headerOf bytes) + 1) (Comms.Event::wordAt bytes (headerOf bytes))) items)) =? 0))) else ((fieldsAllowed (Comms.Event::wordAt bytes 0) (Comms.Event::wordAt bytes 1) (Comms.Event::wordAt bytes 10) (Comms.Event::wordAt bytes (headerOf bytes)) (Comms.Event::wordAt bytes ((headerOf bytes) + 1)) (mentionsOf bytes) (textBytesOf bytes) (Comms.Event::wordAt bytes (((textAtOf bytes) + 4) + (textBytesOf bytes))) 1) && (((Comms.Event::count bytes) =? (((textAtOf bytes) + 5) + (textBytesOf bytes))) && (((badTextBytes (project (slice bytes ((textAtOf bytes) + 4) (textBytesOf bytes)) items)) =? 0) && (Comms.Event::ascending (project (addressWords bytes ((headerOf bytes) + 3) (prim multiply 4 (mentionsOf bytes) : Nat)) items))))))
+    And badTextBytes in Comms/Content.lex.tex contains body: (match text
+    And badKeyBytes in Comms/Content.lex.tex contains body: (match key
+    And onlyVersionOneIsRead in Comms/ContentProofs.lex.tex states ((Comms.Content::fieldsAllowed 2 kind relates forwarded everyone mentions textLength attachments keyLength) = false)
+    And unknownKindIsRefused in Comms/ContentProofs.lex.tex states ((((kind =? 0) || (3 <? kind)) && (Comms.Content::fieldsAllowed version kind relates forwarded everyone mentions textLength attachments keyLength)) = false)
+    And editNamesWhatItReplaces in Comms/ContentProofs.lex.tex states ((Comms.Content::fieldsAllowed version 2 0 forwarded everyone mentions textLength attachments keyLength) = false)
+    And reactionNamesWhatItAnswers in Comms/ContentProofs.lex.tex states ((Comms.Content::fieldsAllowed version 3 0 forwarded everyone mentions textLength attachments keyLength) = false)
+    And messageHasText in Comms/ContentProofs.lex.tex states (((not (kind =? 3)) && (Comms.Content::fieldsAllowed version kind relates forwarded everyone mentions 0 attachments keyLength)) = false)
+    And textOverTheLimitIsRefused in Comms/ContentProofs.lex.tex states (((not (kind =? 3)) && ((16384 <? textLength) && (Comms.Content::fieldsAllowed version kind relates forwarded everyone mentions textLength attachments keyLength))) = false)
+    And atMostFiftyMentions in Comms/ContentProofs.lex.tex states (((not (kind =? 3)) && ((50 <? mentions) && (Comms.Content::fieldsAllowed version kind relates forwarded everyone mentions textLength attachments keyLength))) = false)
+    And attachmentsWaitForTheCipher in Comms/ContentProofs.lex.tex states (((not (kind =? 3)) && ((0 <? attachments) && (Comms.Content::fieldsAllowed version kind relates forwarded everyone mentions textLength attachments keyLength))) = false)
+    And reactionKeyIsOneToThirtyTwoBytes in Comms/ContentProofs.lex.tex states ((((keyLength =? 0) || (32 <? keyLength)) && (Comms.Content::fieldsAllowed version 3 relates forwarded everyone mentions textLength attachments keyLength)) = false)
+    And flagsAreZeroOrOne in Comms/ContentProofs.lex.tex states (((not (kind =? 3)) && (((1 <? forwarded) || (1 <? everyone)) && (Comms.Content::fieldsAllowed version kind relates forwarded everyone mentions textLength attachments keyLength))) = false)
+    And nulInTextIsRefused in Comms/ContentProofs.lex.tex states (((byte =? 0) && ((Comms.Content::badTextBytes (Comms.Event::joined front (cons byte back))) =? 0)) = false)
+    And carriageReturnInTextIsRefused in Comms/ContentProofs.lex.tex states (((byte =? 13) && ((Comms.Content::badTextBytes (Comms.Event::joined front (cons byte back))) =? 0)) = false)
+    And spaceInReactionKeyIsRefused in Comms/ContentProofs.lex.tex states (((byte =? 32) && ((Comms.Content::badKeyBytes (Comms.Event::joined front (cons byte back))) =? 0)) = false)
+    And lineEndInReactionKeyIsRefused in Comms/ContentProofs.lex.tex states (((byte =? 10) && ((Comms.Content::badKeyBytes (Comms.Event::joined front (cons byte back))) =? 0)) = false)

@@ -198,6 +198,7 @@ export function open({ identity, device, kernel, hash, store, signer, verdict, t
     setPower: (room, target, granted, options) => act(room, ACTION.setPower, { ...options, target, granted }),
     /** Sends content. The content is stored by address; the event carries only the address. */
     async send(room, contentBytes, options) {
+      if ((await kernel.content(contentBytes)) === "refused") throw new Refused("refused");
       const content = await store.put(contentBytes);
       return act(room, ACTION.send, { ...options, content });
     },

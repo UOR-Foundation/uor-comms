@@ -6,6 +6,7 @@ import test from "node:test";
 
 import { blake3 } from "../try/vendor/prism-code/src/blake3.mjs";
 import { loadArchive } from "../try/vendor/prism-code/src/index.mjs";
+import { decodeContent, encodeContent, KIND } from "./content.mjs";
 import { open } from "./engine.mjs";
 import { ACTION, decode, encode, hex } from "./event.mjs";
 import { kernel as kernelOver } from "./kernel.mjs";
@@ -17,6 +18,7 @@ const app = await loadArchive(new Uint8Array(await readFile(holo)));
 const kernel = kernelOver((request) => app.dispatch(request));
 const hash = (bytes) => blake3(bytes);
 const text = (value) => new TextEncoder().encode(value);
+const message = (value) => encodeContent({ text: value, sent: 1_800_000_000_000 });
 
 // Devices known to the test, by address: the stand-in for Prism ID's device log.
 const devices = new Map();
@@ -76,15 +78,15 @@ test("a direct chat: create, join, and a message each way reach both peers in on
   await ben.engine.join(room);
   assert.equal(standing(ada.engine, room, ben.identity).status, 2);
 
-  const first = await ada.engine.send(room, text("hello"));
-  const second = await ben.engine.send(room, text("hello back"));
+  const first = await ada.engine.send(room, message("hello"));
+  const second = await ben.engine.send(room, message("hello back"));
   for (const side of [ada, ben]) {
     const timeline = side.engine.timeline(room);
     assert.deepEqual(timeline.map((event) => event.action), [ACTION.create, ACTION.join, ACTION.send, ACTION.send]);
     assert.deepEqual(timeline.slice(2).map((event) => hex(event.address)), [first, second].map(hex));
   }
   const received = ben.engine.timeline(room)[2];
-  assert.equal(new TextDecoder().decode(await ben.engine.content(received.content)), "hello");
+  assert.equal(decodeContent(await ben.engine.content(received.content)).text, "hello");
 });
 
 test("a stranger cannot write, and a peer refuses an event the sender was not permitted", async () => {
@@ -93,7 +95,7 @@ test("a stranger cannot write, and a peer refuses an event the sender was not pe
   const ben = await peer("ben", wire);
   const eve = await peer("eve", wire);
   const room = await ada.engine.createDirect(ben.identity);
-  await assert.rejects(eve.engine.send(room, text("let me in")), { reason: "refused" });
+  await assert.rejects(eve.engine.send(room, message("let me in")), { reason: "refused" });
   await assert.rejects(eve.engine.join(room), { reason: "refused" });
   // Eve writes the bytes anyway and signs them with her own device.
   const head = ada.engine.timeline(room).at(-1).address;
@@ -135,8 +137,8 @@ test("events that arrive out of order are held and land in the same order on bot
   const ada = await peer("ada", wire);
   const ben = await peer("ben", wire);
   const room = await ada.engine.createDirect(ben.identity);
-  await ada.engine.send(room, text("one"));
-  await ada.engine.send(room, text("two"));
+  await ada.engine.send(room, message("one"));
+  await ada.engine.send(room, message("two"));
   for (const message of [...sent].reverse()) await ben.engine.receive(message);
   assert.deepEqual(ben.engine.timeline(room).map((e) => hex(e.address)), ada.engine.timeline(room).map((e) => hex(e.address)));
   assert.equal(ben.engine.timeline(room).length, 3);
@@ -150,15 +152,15 @@ test("two peers who write at once agree on the order once each has the other's e
   const room = await ada.engine.createDirect(ben.identity);
   await ben.engine.join(room);
   wire.deliver = async (other, message) => { held.push([other, message]); };
-  await ada.engine.send(room, text("from ada"));
-  await ben.engine.send(room, text("from ben"));
+  await ada.engine.send(room, message("from ada"));
+  await ben.engine.send(room, message("from ben"));
   for (const [other, message] of held) await other.receive(message);
   const order = (side) => side.engine.timeline(room).map((e) => hex(e.address));
   assert.equal(order(ada).length, 4);
   assert.deepEqual(order(ada), order(ben));
   // The next event cites both heads.
   wire.deliver = (other, message) => other.receive(message);
-  const next = await ada.engine.send(room, text("after both"));
+  const next = await ada.engine.send(room, message("after both"));
   assert.equal(ada.engine.timeline(room).at(-1).parents.length, 2);
   assert.equal(hex(ben.engine.timeline(room).at(-1).address), hex(next));
 });
@@ -171,6 +173,24 @@ test("moderation: the creator bans a member, whose later event every peer refuse
   await ben.engine.join(room);
   await ada.engine.ban(room, ben.identity);
   assert.equal(standing(ben.engine, room, ben.identity).status, 4);
-  await assert.rejects(ben.engine.send(room, text("still here")), { reason: "refused" });
+  await assert.rejects(ben.engine.send(room, message("still here")), { reason: "refused" });
   await assert.rejects(ben.engine.ban(room, ada.identity), { reason: "refused" });
+});
+
+test("content version 1: the kernel reads a message, an edit and a reaction, and refuses the rest", async () => {
+  const target = hash(text("an event"));
+  const ada = hash(text("ada"));
+  const reply = encodeContent({ text: "yes", relates: target, mentions: [ada] });
+  assert.equal(await kernel.content(reply), "message");
+  assert.deepEqual(decodeContent(reply).mentions.map(hex), [hex(ada)]);
+  assert.equal(await kernel.content(encodeContent({ kind: KIND.edit, text: "fixed", relates: target })), "edit");
+  assert.equal(await kernel.content(encodeContent({ kind: KIND.reaction, key: "👍", relates: target })), "reaction");
+  assert.equal(await kernel.content(encodeContent({ kind: KIND.edit, text: "fixed" })), "refused");
+  assert.equal(await kernel.content(encodeContent({ text: "" })), "refused");
+  assert.equal(await kernel.content(text("plain bytes")), "refused");
+  const wire = direct();
+  const peerA = await peer("ada", wire);
+  const peerB = await peer("ben", wire);
+  const room = await peerA.engine.createDirect(peerB.identity);
+  await assert.rejects(peerA.engine.send(room, text("not content")), { reason: "refused" });
 });

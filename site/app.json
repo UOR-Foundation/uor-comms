@@ -2,7 +2,7 @@
   "name": "Room kernel",
   "shortName": "Room",
   "live": "https://uor-foundation.github.io/uor-comms/",
-  "purpose": "Decides one question about a room for a peer with no server to ask: admit an event, permit an action, order two candidates, hold a key, step a call, step a membership, permit a redaction, step a send, compare heads, compose an event, compose a redaction, or create a room. Send one request; it answers with the decision, and invalid request for anything else.",
+  "purpose": "Decides one question about a room for a peer with no server to ask: admit an event, permit an action, order two candidates, hold a key, step a call, step a membership, permit a redaction, step a send, compare heads, compose an event, compose a redaction, create a room, or read message content. Send one request; it answers with the decision, and invalid request for anything else.",
   "inputLabel": "Request",
   "placeholder": "hex: one operation byte, then that operation's fields",
   "submitLabel": "Decide",
@@ -42,7 +42,7 @@
     "headline": "Every peer that asks the same question gets the same answer.",
     "detail": "Each answer is computed by a function in the LexLean model, and the Lean kernel has checked what that function can and cannot answer."
   },
-  "claim": "RK-01 to RK-15: admission, permission, order, resolution, key access, calls, membership, sync, event bytes, sending, redaction, room creation and the fold order are decided by modelled functions whose stated properties the Lean kernel checked.",
+  "claim": "RK-01 to RK-16: admission, permission, order, resolution, key access, calls, membership, sync, event bytes, sending, redaction, room creation, the fold order and message content are decided by modelled functions whose stated properties the Lean kernel checked.",
   "proposition": {
     "name": "admitted",
     "text": "admitted addressMatches signatureValid deviceMaySign parentsKnown permitted :=\n  addressMatches = 1 && signatureValid = 1 && deviceMaySign = 1 && parentsKnown = 1 && permitted = 1",
