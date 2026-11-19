@@ -7,7 +7,7 @@
 //   relates 1 byte (0 or 1) | the related event's address, 32 bytes, only when relates is 1
 //   kind 3:      key length 1 byte (1 to 32) | key bytes
 //   kind 1 or 2: forwarded 1 byte | everyone 1 byte | mention count 1 byte (at most 50)
-//                | mentioned identities, 32 bytes each, ascending | text length 4 bytes (1 to 16,384)
+//                | mentioned identities, 32 bytes each, ascending | text length 4 bytes (1 to 4,096)
 //                | text, UTF-8 | attachment count 1 byte (0 until the cipher is designed)
 // Nothing follows.
 
