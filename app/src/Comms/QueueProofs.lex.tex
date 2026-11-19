@@ -19,8 +19,8 @@ theorem{
     grantedPower : Nat,
     isDirect : Nat
   ],
-  statement: ((Comms.Queue::allowed action senderStatus senderPower targetStatus targetPower required open grantedPower isDirect) = ((Comms.Rules::permitted action senderStatus senderPower targetStatus targetPower required open grantedPower) && (Comms.Create::directAllows action isDirect))),
-  proof: simplify{definitions: [Comms.Queue::allowed]},
+  statement: ((Comms.Queue::offered action senderStatus senderPower targetStatus targetPower required open grantedPower isDirect) = ((Comms.Rules::permitted action senderStatus senderPower targetStatus targetPower required open grantedPower) && (Comms.Create::directAllows action isDirect))),
+  proof: simplify{definitions: [Comms.Queue::offered]},
   axioms: [propext]
 }
 
@@ -37,9 +37,9 @@ theorem{
     grantedPower : Nat,
     isDirect : Nat
   ],
-  statement: (((senderStatus =? 0) && ((open =? 0) && (Comms.Queue::allowed action senderStatus senderPower targetStatus targetPower required open grantedPower isDirect))) = false),
+  statement: (((senderStatus =? 0) && ((open =? 0) && (Comms.Queue::offered action senderStatus senderPower targetStatus targetPower required open grantedPower isDirect))) = false),
   proof: linear_arithmetic{
-    definitions: [Comms.Create::directAllows, Comms.Queue::allowed, Comms.Rules::permitted]
+    definitions: [Comms.Create::directAllows, Comms.Queue::offered, Comms.Rules::permitted]
   },
   axioms: [Classical.choice, Quot.sound, propext]
 }
@@ -57,9 +57,9 @@ theorem{
     grantedPower : Nat,
     isDirect : Nat
   ],
-  statement: (((action =? 0) && ((senderStatus =? 1) && (not (Comms.Queue::allowed action senderStatus senderPower targetStatus targetPower required open grantedPower isDirect)))) = false),
+  statement: (((action =? 0) && ((senderStatus =? 1) && (not (Comms.Queue::offered action senderStatus senderPower targetStatus targetPower required open grantedPower isDirect)))) = false),
   proof: linear_arithmetic{
-    definitions: [Comms.Create::directAllows, Comms.Queue::allowed, Comms.Rules::permitted]
+    definitions: [Comms.Create::directAllows, Comms.Queue::offered, Comms.Rules::permitted]
   },
   axioms: [Classical.choice, Quot.sound, propext]
 }
@@ -77,9 +77,9 @@ theorem{
     grantedPower : Nat,
     isDirect : Nat
   ],
-  statement: (((action =? 2) && ((isDirect =? 1) && (Comms.Queue::allowed action senderStatus senderPower targetStatus targetPower required open grantedPower isDirect))) = false),
+  statement: (((action =? 2) && ((isDirect =? 1) && (Comms.Queue::offered action senderStatus senderPower targetStatus targetPower required open grantedPower isDirect))) = false),
   proof: linear_arithmetic{
-    definitions: [Comms.Create::directAllows, Comms.Queue::allowed, Comms.Rules::permitted]
+    definitions: [Comms.Create::directAllows, Comms.Queue::offered, Comms.Rules::permitted]
   },
   axioms: [Classical.choice, Quot.sound, propext]
 }

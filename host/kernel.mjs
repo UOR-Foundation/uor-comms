@@ -64,7 +64,7 @@ export function kernel(dispatch) {
     content: (contentBytes) => ask(0x0d, [contentBytes]),
     /** Whether an action may happen in a direct room (`Comms.Create::directAllows`): no third member. */
     direct: async (action, isDirect) => (await ask(0x0e, [[action, 1], flag(isDirect)])) === "permitted",
-    /** The actions a member may take, by action number (`Comms.Queue::allowed`): exactly what the door admits. */
+    /** The actions a member may take, by action number (`Comms.Queue::offered`): exactly what the door admits. */
     queue: async (sender, target, room, direct) => {
       const bits = await ask(0x0f, [[sender.status, 1], [sender.power, 8], [target.status, 1], [target.power, 8],
         [room.required, 8], flag(room.open), [0, 8], flag(direct)]);
