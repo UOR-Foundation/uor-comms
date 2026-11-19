@@ -49,7 +49,7 @@ That run covered the 58 theorems of the first eight proof modules. The 14 theore
 | `Comms.SyncProofs` | `equalHeadsMoveNothing`, `emptyOfferWantsNothing`, `heldContentIsNotFetchedAgain` | Equal heads send nothing; held content is never requested |
 | `Comms.CallProofs` | `endedCallStaysEnded`, `hangUpAlwaysEnds`, `stateStaysInRange`, `noConnectionFromIdle`, `callerConnectsOnlyWhenAnswered`, `calleeConnectsOnlyByAccepting`, `crossedCallsNeverBothYield`, `crossedCallsOneSideYields`, `namedStatesMatch` | A call connects only through an answer and ends for good; when calls cross exactly one side yields |
 
-## Tested (81 acceptance vectors)
+## Tested (80 acceptance vectors)
 
 The holo's entry point, `RoomKernel.dispatch`, answers thirteen operations. The vectors are in the `application` record of `app/src/RoomKernel.lex.tex` and were replayed in the compiled guest.
 
@@ -68,7 +68,7 @@ The holo's entry point, `RoomKernel.dispatch`, answers thirteen operations. The 
 | Compose a redaction | 6 | another's event with the redaction power; without it; their own event without it; a send asked as a redaction; banned sender; a trailing byte |
 | Create a room | 7 | a room; a direct room; version 2; an ordinary action; an event that names a room; one that cites a parent; a trailing byte |
 | Read content | 14 | a message; a reply with two mentions; an edit; a reaction; an edit naming nothing; a reaction naming nothing; empty text; a NUL in text; a space in a reaction key; version 2; kind 4; mentions out of order; an attachment; a trailing byte |
-| Invalid | 9 | empty; unknown operation; wrong length, six times; a request at the guest's allocation bound |
+| Invalid | 8 | empty; unknown operation; wrong length, five times; a request at the guest's allocation bound |
 
 The expected answers were computed by a script that restates the rules in JavaScript; the replay is what checks them against the model.
 
@@ -84,6 +84,7 @@ The expected answers were computed by a script that restates the rules in JavaSc
 - **Reading an event, in full.** The read-back theorems are about words, for an event laid out with four-word addresses. That `readable` accepts the words of every such event with a canonical form is not one theorem. The kernel reads the words from the request with `natAt` and refuses a length that is not whole words itself; neither step is proved, and nothing relates them to `decode`. A trailing byte is covered by a vector. Room, sender, device, target and content are four words by position; nothing else checks them.
 - **That the host sends as the model does.** `Comms.Send` says when an event is composed and in what order it is signed, stored and announced. The kernel answers the order of the three steps and whether an event may be composed. It returns that answer, not the bytes. A redaction is asked through its own operation, which answers with `Comms.Redact::composes`; "own" is still an input the host supplies.
 - **Creating a room, in full.** The theorems are about the creating event and the members it names. The room's address is the address of that event, which the host computes; that two rooms never share an address rests on BLAKE3. The kernel answers whether an event creates a room and whether the room is direct; it does not answer the status or power at creation, and `Comms.State` still takes the creator as an input, not from the event. A direct room is a room whose creating event names a target: nothing stops a third member being invited later, the target may be the creator, and the invited party starts with no power.
+- **Requests the page types as text.** The browser replay types a request that is valid UTF-8 as text, and a text field turns a carriage return into a line feed, so no vector may be valid UTF-8 and hold byte 0x0d. Every content vector carries a sent time whose bytes are not valid UTF-8, and the one-byte request `0d`, a lone carriage return, is not a vector.
 - **Message content, in full.** The theorems are about the field rule and the byte scans. That `valid` reads the fields from the places the layout puts them, that decoding undoes encoding, and that two different valid contents never share bytes are not theorems. Mentions are compared as four 64-bit words each with `Comms.Event::ascending`. UTF-8 well-formedness and Unicode normal form are not checked: the host normalises to NFC when it encodes, and nothing proves it. An edit's sender and attachments, and repeated reactions, are rules of aggregation, which is not modelled. The kernel reads at most 1,507 bytes of content in one request, so text near the 16,384-byte limit cannot be asked.
 - **Room settings as events.** The required power and whether the room is open are fixed for the fold. Events that change them, and a required power per action, are not modelled.
 - **The ban race.** A ban and an event from the banned member that do not see each other are settled by rank; the security argument is not proved.
