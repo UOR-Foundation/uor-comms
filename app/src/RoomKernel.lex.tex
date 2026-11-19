@@ -192,21 +192,10 @@ definition{
 }
 
 definition{
-  name: contentBytes,
-  parameters: [value : Bytes, offset : Nat, remaining : Nat],
-  result: Comms.Event::Words,
-  body: (match remaining
-    | Nat.zero => (record Comms.Event::Words {items := (nil Nat)})
-    | Nat.succ rest => (record Comms.Event::Words {items := (cons (natAt value offset 1 0) (project (contentBytes value (offset + 1) rest) items))})),
-  axioms: [Quot.sound, propext],
-  recursive_argument: remaining
-}
-
-definition{
   name: contentAnswer,
   parameters: [value : Bytes, length : Nat],
   result: Bytes,
-  body: (if ((Comms.Content::kindOf (project (contentBytes value 1 (prim subtract length 1 : Nat)) items)) =? 1) then (prim utf8_encode "message" : Bytes) else (if ((Comms.Content::kindOf (project (contentBytes value 1 (prim subtract length 1 : Nat)) items)) =? 2) then (prim utf8_encode "edit" : Bytes) else (if ((Comms.Content::kindOf (project (contentBytes value 1 (prim subtract length 1 : Nat)) items)) =? 3) then (prim utf8_encode "reaction" : Bytes) else (prim utf8_encode "refused" : Bytes)))),
+  body: (if ((Comms.Content::kindIn value 1 (prim subtract length 1 : Nat)) =? 1) then (prim utf8_encode "message" : Bytes) else (if ((Comms.Content::kindIn value 1 (prim subtract length 1 : Nat)) =? 2) then (prim utf8_encode "edit" : Bytes) else (if ((Comms.Content::kindIn value 1 (prim subtract length 1 : Nat)) =? 3) then (prim utf8_encode "reaction" : Bytes) else (prim utf8_encode "refused" : Bytes)))),
   axioms: [Quot.sound, propext]
 }
 
