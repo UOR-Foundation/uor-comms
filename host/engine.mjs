@@ -257,6 +257,24 @@ export function open({ identity, device, kernel, hash, store, signer, verdict, t
     },
     rooms: () => [...rooms.values()].map((room) => room.id),
     /**
+     * This identity's events no peer holds yet, oldest first: `{ room, address }`. Empty when the
+     * transport cannot say (it has no `delivered`). The sync on connect delivers them; `retry` asks again.
+     */
+    outbox() {
+      if (!transport.delivered) return [];
+      return [...rooms.values()].flatMap((room) => room.order
+        .filter((e) => hex(e.fields.sender) === hex(identity) && !transport.delivered(e.address))
+        .map((e) => ({ room: room.id, address: e.address })));
+    },
+    /** Announces one of this engine's events again. */
+    async retry(address) {
+      for (const room of rooms.values()) {
+        const event = room.events.get(hex(address));
+        if (event) return transport.announce({ address: event.address, bytes: event.bytes, signature: event.signature });
+      }
+      throw new Refused("unknown event");
+    },
+    /**
      * What this identity may do in a room, toward `target` (itself when absent), as the kernel offers it.
      * `setPower` is answered for granting `granted` (0 when absent): ask once per level the page offers.
      * Room settings are the same for every room until they become events; then this reads the room's.
