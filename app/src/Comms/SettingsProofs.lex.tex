@@ -235,8 +235,8 @@ theorem{
     parents : (List Nat),
     authorities : (List Nat)
   ],
-  statement: (((not (action =? 10)) && (Comms.Settings::composes action version key keyRest value contentZero senderStatus senderPower settingsPower isDirect parents authorities)) = false),
-  proof: linear_arithmetic{definitions: [Comms.Settings::composes]},
+  statement: (((not (action =? 10)) && (Comms.Settings::changeComposes action version key keyRest value contentZero senderStatus senderPower settingsPower isDirect parents authorities)) = false),
+  proof: linear_arithmetic{definitions: [Comms.Settings::changeComposes]},
   axioms: [Quot.sound, propext]
 }
 
@@ -256,8 +256,8 @@ theorem{
     parents : (List Nat),
     authorities : (List Nat)
   ],
-  statement: (((not (keyRest =? 0)) && (Comms.Settings::composes action version key keyRest value contentZero senderStatus senderPower settingsPower isDirect parents authorities)) = false),
-  proof: linear_arithmetic{definitions: [Comms.Settings::composes]},
+  statement: (((not (keyRest =? 0)) && (Comms.Settings::changeComposes action version key keyRest value contentZero senderStatus senderPower settingsPower isDirect parents authorities)) = false),
+  proof: linear_arithmetic{definitions: [Comms.Settings::changeComposes]},
   axioms: [Quot.sound, propext]
 }
 
@@ -277,10 +277,10 @@ theorem{
     parents : (List Nat),
     authorities : (List Nat)
   ],
-  statement: (((not (Comms.Settings::mayChange key value contentZero senderStatus senderPower settingsPower isDirect)) && (Comms.Settings::composes action version key keyRest value contentZero senderStatus senderPower settingsPower isDirect parents authorities)) = false),
+  statement: (((not (Comms.Settings::mayChange key value contentZero senderStatus senderPower settingsPower isDirect)) && (Comms.Settings::changeComposes action version key keyRest value contentZero senderStatus senderPower settingsPower isDirect parents authorities)) = false),
   proof: linear_arithmetic{
     definitions: [
-      Comms.Settings::composes,
+      Comms.Settings::changeComposes,
       Comms.Settings::known,
       Comms.Settings::mayChange,
       Comms.Settings::valueFits
@@ -304,8 +304,8 @@ theorem{
     parents : (List Nat),
     authorities : (List Nat)
   ],
-  statement: ((Comms.Settings::composes action 2 key keyRest value contentZero senderStatus senderPower settingsPower isDirect parents authorities) = false),
-  proof: linear_arithmetic{definitions: [Comms.Event::canonical, Comms.Settings::composes]},
+  statement: ((Comms.Settings::changeComposes action 2 key keyRest value contentZero senderStatus senderPower settingsPower isDirect parents authorities) = false),
+  proof: linear_arithmetic{definitions: [Comms.Event::canonical, Comms.Settings::changeComposes]},
   axioms: [Quot.sound, propext]
 }
 \end{semanticmodule}

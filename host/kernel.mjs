@@ -84,7 +84,7 @@ export function kernel(dispatch) {
     redaction: async (sender, room, own, eventBytes) =>
       (await ask(0x0b, [[sender.status, 1], [sender.power, 8], [room.required, 8], [room.redact, 8], flag(own), eventBytes])) === "composed",
     /**
-     * Whether a change of a room setting may be composed or admitted (`Comms.Settings::composes`): a joined
+     * Whether a change of a room setting may be composed or admitted (`Comms.Settings::changeComposes`): a joined
      * member with the power to change settings, a known key, a value that fits it, and in a direct room
      * only the name, description or picture. The key and value are read from the event.
      */

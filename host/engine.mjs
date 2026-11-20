@@ -77,7 +77,7 @@ export function open({ identity, device, kernel, hash, store, signer, verdict, t
     };
   }
 
-  /** Whether a change of setting is composed against a state (`Comms.Settings::composes`, operation 22). */
+  /** Whether a change of setting is composed against a state (`Comms.Settings::changeComposes`, operation 22). */
   async function settingComposes(state, sender, bytes, direct) {
     return kernel.setting(standing(state, sender), await valueOf(state, SETTING.settings), direct, bytes);
   }
