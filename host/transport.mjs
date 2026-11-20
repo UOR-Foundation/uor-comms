@@ -97,6 +97,45 @@ export function webrtcTransport({
   const mayShare = (peer, room) => peer.identity && (peer.identity === hex(engine.identity)
     || engine.members(room).some((m) => m.member === peer.identity && SHARED.has(m.status)));
 
+  // Introductions this device cannot judge yet, by room: it does not hold the room, or does not list
+  // the sender as joined or a person introduced as a member. Judged again after each admission there.
+  const waiting = new Map();
+  const WAITING_LIMIT = 200; // introductions kept, at most; the oldest is dropped first. Not a model rule.
+
+  /** Accepts the keys the rule admits now (decision 20) and returns the rest. */
+  async function judge(room, from, keys) {
+    const members = engine.members(room);
+    if (!members.some((m) => m.member === from && m.status === 2)) return keys;
+    const rest = [];
+    for (const k of keys) {
+      if (members.some((m) => m.member === k.identity && SHARED.has(m.status))) await signer.introduce?.(k.identity, k.key);
+      else rest.push(k);
+    }
+    return rest;
+  }
+
+  async function judgeWaiting(room) {
+    const list = waiting.get(hex(room));
+    if (!list) return;
+    waiting.delete(hex(room));
+    for (const { from, keys } of list) {
+      const rest = await judge(room, from, keys);
+      if (rest.length) keep(room, from, rest);
+    }
+  }
+
+  function keep(room, from, keys) {
+    const list = waiting.get(hex(room)) ?? [];
+    list.push({ from, keys });
+    waiting.set(hex(room), list);
+    let total = [...waiting.values()].reduce((n, l) => n + l.length, 0);
+    for (const [key, l] of waiting) {
+      while (total > WAITING_LIMIT && l.length) { l.shift(); total -= 1; }
+      if (!l.length) waiting.delete(key);
+      if (total <= WAITING_LIMIT) break;
+    }
+  }
+
   const send = (peer, message) => {
     if (peer.channel?.readyState === "open") peer.channel.send(JSON.stringify(message));
   };
@@ -225,12 +264,10 @@ export function webrtcTransport({
     if (!peer.identity) { peer.early.push(data); return; } // held until the proof is checked
     if (message.t === "introduce") {
       // Accepted only from a joined member of the room, and only for members it lists.
+      // An introduction can arrive before the room or the member it names: it waits for them.
       const room = unb64(message.room);
-      const members = engine.members(room);
-      if (!members.some((m) => m.member === peer.identity && m.status === 2)) return;
-      for (const { identity, key } of message.keys ?? []) {
-        if (members.some((m) => m.member === identity && SHARED.has(m.status))) await signer.introduce?.(identity, key);
-      }
+      const rest = await judge(room, peer.identity, message.keys ?? []);
+      if (rest.length) keep(room, peer.identity, rest);
       return;
     }
     if (message.t === "have") {
@@ -255,25 +292,30 @@ export function webrtcTransport({
       return;
     }
     if (message.t === "get") {
-      const bytes = await store.get(unb64(message.address));
+      // Only content an admitted message names in a room this peer may see.
+      const address = unb64(message.address);
+      const visible = engine.rooms().some((room) => mayShare(peer, room) && engine.carries(room, address));
+      const bytes = visible ? await store.get(address) : null;
       return send(peer, { t: "got", id: message.id, bytes: bytes ? b64(bytes) : null });
     }
     if (message.t === "got") pending.get(message.id)?.(message.bytes ? unb64(message.bytes) : null);
   }
 
-  /**
-   * Once per room a peer may see: the keys of its other members this device knows (introductions,
-   * decision 20), then the addresses held, so the peer can ask for what it lacks.
-   */
-  function offerRoom(peer, room) {
-    if (!mayShare(peer, room) || peer.offered.has(hex(room))) return;
-    peer.offered.add(hex(room));
+  /** The keys of a room's other members this device knows (introductions, decision 20). */
+  function introduce(peer, room) {
     const keys = [];
     for (const m of engine.members(room)) {
       if (!SHARED.has(m.status) || m.member === peer.identity) continue;
       for (const k of signer.keysOf?.(m.member) ?? []) keys.push({ identity: m.member, key: k });
     }
     if (keys.length) send(peer, { t: "introduce", room: b64(room), keys });
+  }
+
+  /** Once per room a peer may see: introductions, then the addresses held, so the peer can ask for what it lacks. */
+  function offerRoom(peer, room) {
+    if (!mayShare(peer, room) || peer.offered.has(hex(room))) return;
+    peer.offered.add(hex(room));
+    introduce(peer, room);
     send(peer, { t: "have", room: b64(room), addresses: engine.eventsOf(room).map((e) => hex(e.address)) });
   }
 
@@ -314,13 +356,20 @@ export function webrtcTransport({
         const event = engine.eventOf(room, address);
         if (!event) return;
         const fields = decode(event.bytes);
+        const membership = !fields || fields.action !== ACTION.send;
+        judgeWaiting(room).catch(() => {});
         for (const peer of peers.values()) {
-          if (mayShare(peer, room)) { offerRoom(peer, room); sendEvent(peer, event); }
+          if (mayShare(peer, room)) {
+            // A peer already offered the room hears about members who joined since.
+            if (membership && peer.offered.has(hex(room))) introduce(peer, room);
+            offerRoom(peer, room);
+            sendEvent(peer, event);
+          }
           // A member removed or banned is still told: it receives the event that removed it.
           else if (fields && peer.identity === hex(fields.target)) sendEvent(peer, event);
         }
         // Who may see a room changes only with membership: then the topics are refreshed.
-        if (fields && fields.action !== ACTION.send) refreshTopics();
+        if (membership) refreshTopics();
       });
     },
     /** Starts meeting peers: says hello on every topic now and every `helloEvery` milliseconds. */
