@@ -571,3 +571,48 @@ test("redacted content is deleted from every store and not fetched again, unless
   await again.restore();
   assert.equal(await again.content(hash(secret)), null);
 });
+
+test("room settings: the kernel's defaults, changed by event, read by every peer and by the rules", async () => {
+  const wire = direct();
+  const ada = await peer("ada", wire);
+  const ben = await peer("ben", wire);
+  const cam = await peer("cam", wire);
+  const room = await ada.engine.createRoom();
+  await ada.engine.invite(room, ben.identity);
+  await ben.engine.join(room);
+  // Defaults (`Comms.Settings::defaultOf`): invited only; sending 0; kicking, banning, redacting and settings 50.
+  const before = await ben.engine.state(room);
+  assert.deepEqual([before.name, before.open], [null, false]);
+  assert.deepEqual(before.power, { invite: 0, kick: 50, ban: 50, unban: 50, send: 0, setPower: 50, redact: 50, settings: 50 });
+  // The creator names the room and opens it; both peers read the same settings, and the changes are in the order.
+  const title = text("the room");
+  await ada.engine.changeSetting(room, "name", title);
+  await ada.engine.changeSetting(room, "open", true);
+  for (const side of [ada, ben]) {
+    const now = await side.engine.state(room);
+    assert.deepEqual([hex(now.name), now.open], [hex(hash(title)), true]);
+    assert.equal(side.engine.timeline(room).events.filter((e) => e.action === ACTION.change).length, 2);
+  }
+  // Open: Cam, on the same wire, holds the room and joins without an invitation.
+  await cam.engine.join(room);
+  assert.equal(standing(ada.engine, room, cam.identity).status, 2);
+  // Ben has power 0: he changes nothing, and a change he writes anyway is refused on receipt.
+  assert.equal(await ben.engine.mayChangeSetting(room, "name", text("mine")), false);
+  await assert.rejects(ben.engine.changeSetting(room, "name", text("mine")), { reason: "not allowed" });
+  const heads = ben.engine.timeline(room).events.at(-1).address;
+  const forged = encode({ action: ACTION.change, room, sender: ben.identity, device: ben.device, target: new Uint8Array(32), parents: [heads] });
+  assert.deepEqual((await ada.engine.receive({ address: hash(forged), bytes: forged, signature: await ben.options.signer.sign(forged) })).reason, "not allowed");
+  // No power above your own, and no unknown setting.
+  await assert.rejects(ada.engine.changeSetting(room, "power.send", 101), { reason: "not allowed" });
+  await assert.rejects(ada.engine.changeSetting(room, "colour", 1), { reason: "unknown setting" });
+  // The rules read the room's own power for each action: sending at 50 leaves Ben unable to send.
+  assert.ok((await ben.engine.offered(room)).includes("send"));
+  await ada.engine.changeSetting(room, "power.send", 50);
+  await assert.rejects(ben.engine.send(room, message("still here?")), { reason: "needs power" });
+  assert.equal((await ben.engine.offered(room)).includes("send"), false);
+  // A direct room changes only its name, description and picture.
+  const pair = await ada.engine.createDirect(ben.identity);
+  await ben.engine.join(pair);
+  await ada.engine.changeSetting(pair, "name", text("us"));
+  await assert.rejects(ada.engine.changeSetting(pair, "open", true), { reason: "not allowed" });
+});

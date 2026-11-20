@@ -14,9 +14,12 @@ import { decodeContent, KIND } from "./content.mjs";
 import { ACTION, ZERO, decode, encode, hex, isZero } from "./event.mjs";
 
 const ABSENT = Object.freeze({ status: 0, power: 0 });
-// Room settings until they are events (item 6). `redact` is the power to redact another member's event,
-// Matrix's default; the model has none.
-const SETTINGS = Object.freeze({ required: 0, open: false, redact: 50 });
+// Room settings by key (`Comms.Settings`): the target's first word names one, `granted` holds a number,
+// `content` the address of a name, description or picture. Defaults are the kernel's (`defaultOf`).
+const SETTING = Object.freeze({ name: 0, description: 1, picture: 2, open: 3, settings: 4, redact: 5 });
+const POWER_KEYS = Object.freeze({ invite: 12, kick: 13, ban: 14, unban: 15, send: 16, setPower: 17, redact: 5, settings: 4 });
+const KEYS = [0, 1, 2, 3, 4, 5, 12, 13, 14, 15, 16, 17];
+const requiredKey = (action) => 10 + action; // `Comms.Settings::requiredKey`
 const CREATOR_POWER = 100;
 // Events held for a missing parent, at most; the oldest is dropped first. Not a model rule.
 const HELD_LIMIT = 1000;
@@ -25,7 +28,13 @@ const TIMELINE_LIMIT = 50;
 const TIMELINE_MAX = 1000;
 const CREATED = new Set(["created", "created direct"]);
 const PHASE = Object.freeze({ sign: 1, store: 2, announce: 3 });
-const changesNoMember = (action) => action === ACTION.send || action === ACTION.redact || action === ACTION.create;
+const changesNoMember = (action) => action === ACTION.send || action === ACTION.redact || action === ACTION.create
+  || action === ACTION.change;
+/** A setting's key as the target of a change: the key in the first word, the rest zero. */
+const keyTarget = (key) => { const t = new Uint8Array(32); new DataView(t.buffer).setBigUint64(0, BigInt(key)); return t; };
+const keyOf = (target) => Number(new DataView(target.buffer, target.byteOffset, 8).getBigUint64(0));
+/** Folded state: members by identity, and the room's changed settings by key. */
+const newState = () => Object.assign(new Map(), { settings: new Map() });
 
 const citedBy = (fields) => [...fields.parents, ...fields.authorities, ...(fields.action === ACTION.redact ? [fields.target] : [])];
 
@@ -52,6 +61,27 @@ export function open({ identity, device, kernel, hash, store, signer, verdict, t
 
   const standing = (state, member) => state.get(hex(member)) ?? ABSENT;
 
+  // The kernel's defaults, asked once (`Comms.Settings::defaultOf`, operation 23).
+  let defaults = null;
+  const defaultsReady = () => (defaults ??= Promise.all(KEYS.map(async (key) => [key, await kernel.defaultOf(key)]))
+    .then((pairs) => new Map(pairs)));
+  const valueOf = async (state, key) => state.settings.get(key)?.value ?? (await defaultsReady()).get(key);
+
+  /** The room's settings as the kernel's questions take them, for one action: its required power. */
+  async function roomFor(state, action) {
+    const required = action === ACTION.redact ? requiredKey(ACTION.send) : requiredKey(action);
+    return {
+      required: action >= ACTION.invite && action <= ACTION.redact ? await valueOf(state, required) : 0,
+      open: (await valueOf(state, SETTING.open)) === 1,
+      redact: await valueOf(state, SETTING.redact),
+    };
+  }
+
+  /** Whether a change of setting is composed against a state (`Comms.Settings::composes`, operation 22). */
+  async function settingComposes(state, sender, bytes, direct) {
+    return kernel.setting(standing(state, sender), await valueOf(state, SETTING.settings), direct, bytes);
+  }
+
   /**
    * Whether `left` is folded before `right`: by depth, then address, compared by the kernel.
    * Depth is `Comms.Fold::depthOf`; `parentPrecedesItsEvent` proves a parent is folded first.
@@ -72,11 +102,18 @@ export function open({ identity, device, kernel, hash, store, signer, verdict, t
       if (answer === "created direct") state.set(hex(fields.target), { status: 1, power: CREATOR_POWER });
       return;
     }
+    if (fields.action === ACTION.change) {
+      // A refused change keeps the value (`aRefusedChangeKeepsTheValue`); a permitted one sets it.
+      if (await settingComposes(state, fields.sender, event.bytes, direct)) {
+        state.settings.set(keyOf(fields.target), { value: Number(fields.granted), content: fields.content });
+      }
+      return;
+    }
     if (changesNoMember(fields.action)) return;
     const subject = fields.action < 2 ? fields.sender : fields.target;
     const sender = standing(state, fields.sender);
     const target = standing(state, subject);
-    const permitted = (await kernel.permit(fields.action, sender, target, SETTINGS, fields.granted))
+    const permitted = (await kernel.permit(fields.action, sender, target, await roomFor(state, fields.action), fields.granted))
       && (await kernel.direct(fields.action, direct));
     const status = await kernel.memberStep(permitted, fields.action, target.status);
     // Not a kernel answer yet: `Comms.Member::nextPower`.
@@ -85,7 +122,7 @@ export function open({ identity, device, kernel, hash, store, signer, verdict, t
   }
 
   async function fold(events, direct) {
-    const state = new Map();
+    const state = newState();
     for (const event of events) await apply(state, event, direct);
     return state;
   }
@@ -121,14 +158,15 @@ export function open({ identity, device, kernel, hash, store, signer, verdict, t
   async function permitted(room, fields, bytes) {
     if (fields.action === ACTION.create) return CREATED.has(await kernel.create(bytes));
     const state = await stateBefore(room, fields.parents);
+    if (fields.action === ACTION.change) return settingComposes(state, fields.sender, bytes, Boolean(room.direct));
     if (fields.action === ACTION.redact) {
       // The target is cited, so it is held: whether it is the sender's own is read from it.
       const own = hex(room.events.get(hex(fields.target)).fields.sender) === hex(fields.sender);
-      return (await kernel.redaction(standing(state, fields.sender), SETTINGS, own, bytes))
+      return (await kernel.redaction(standing(state, fields.sender), await roomFor(state, ACTION.redact), own, bytes))
         && kernel.direct(fields.action, Boolean(room.direct));
     }
     const subject = fields.action < 2 ? fields.sender : fields.target;
-    return (await kernel.compose(standing(state, fields.sender), standing(state, subject), SETTINGS, bytes))
+    return (await kernel.compose(standing(state, fields.sender), standing(state, subject), await roomFor(state, fields.action), bytes))
       && kernel.direct(fields.action, Boolean(room.direct));
   }
 
@@ -165,7 +203,7 @@ export function open({ identity, device, kernel, hash, store, signer, verdict, t
     }
     await store.put(bytes, address);
     await store.putEvent?.({ address, bytes, signature });
-    const target = room ?? { id: address, events: new Map(), order: [], heads: new Set(), state: new Map(), contents: new Map(), redacted: new Set(),
+    const target = room ?? { id: address, events: new Map(), order: [], heads: new Set(), state: newState(), contents: new Map(), redacted: new Set(),
       direct: creates && !isZero(fields.target) ? [fields.sender, fields.target] : null };
     rooms.set(roomKey, target);
     // `Comms.Fold::depthOf`: one more than the deepest parent, 0 with none.
@@ -216,9 +254,10 @@ export function open({ identity, device, kernel, hash, store, signer, verdict, t
       parents: [...room.heads].map((key) => room.events.get(key).address) };
     const bytes = encode(fields);
     const subject = action < 2 ? identity : target;
-    const allowed = await kernel.compose(standing(room.state, identity), standing(room.state, subject), SETTINGS, bytes);
+    const settings = await roomFor(room.state, action);
+    const allowed = await kernel.compose(standing(room.state, identity), standing(room.state, subject), settings, bytes);
     if (!allowed) {
-      const why = await kernel.reason(action, standing(room.state, identity), standing(room.state, subject), SETTINGS, granted);
+      const why = await kernel.reason(action, standing(room.state, identity), standing(room.state, subject), settings, granted);
       throw new Refused(why === "permitted" ? "malformed" : why);
     }
     if (!(await kernel.direct(action, Boolean(room.direct)))) throw new Refused("direct");
@@ -267,7 +306,32 @@ export function open({ identity, device, kernel, hash, store, signer, verdict, t
     const bytes = encode({ action: ACTION.redact, room: roomId, sender: identity, device, target: target.address, parents });
     const me = standing(room.state, identity);
     const own = hex(target.fields.sender) === hex(identity);
-    return { bytes, me, allowed: await kernel.redaction(me, SETTINGS, own, bytes) };
+    return { room, bytes, me, allowed: await kernel.redaction(me, await roomFor(room.state, ACTION.redact), own, bytes) };
+  }
+
+  /** The change of setting this identity would send now, and whether the kernel admits it. */
+  async function settingChange(roomId, setting, value) {
+    const room = rooms.get(hex(roomId));
+    if (!room) throw new Refused("unknown room");
+    let key;
+    let granted = 0;
+    let content = ZERO;
+    if (setting in SETTING && SETTING[setting] <= SETTING.picture) {
+      key = SETTING[setting];
+      if (value !== null) content = await store.put(value);
+    } else if (setting === "open") {
+      key = SETTING.open;
+      granted = value ? 1 : 0;
+    } else if (setting.startsWith("power.") && setting.slice(6) in POWER_KEYS) {
+      key = POWER_KEYS[setting.slice(6)];
+      granted = value;
+    } else {
+      throw new Refused("unknown setting");
+    }
+    if (!Number.isInteger(granted) || granted < 0) throw new Refused("malformed");
+    const parents = [...room.heads].map((k) => room.events.get(k).address);
+    const bytes = encode({ action: ACTION.change, room: roomId, sender: identity, device, target: keyTarget(key), granted, content, parents });
+    return { room, bytes, allowed: await settingComposes(room.state, identity, bytes, Boolean(room.direct)) };
   }
 
   const api = {
@@ -297,11 +361,11 @@ export function open({ identity, device, kernel, hash, store, signer, verdict, t
      * with the power to send; another member's only with the room's redaction power (`Comms.Redact`).
      */
     async redact(roomId, address, { onStep } = {}) {
-      const { bytes, allowed, me } = await redaction(roomId, address);
+      const { room, bytes, allowed, me } = await redaction(roomId, address);
       if (!allowed) {
         // `Comms.Redact::allowed` asks what sending asks, and the redaction power for another's event:
         // so the send rule's refusal names the cause, and when it permits, the power is what is missing.
-        const why = await kernel.reason(ACTION.send, me, me, SETTINGS, 0);
+        const why = await kernel.reason(ACTION.send, me, me, await roomFor(room.state, ACTION.send), 0);
         throw new Refused(why === "permitted" ? "not allowed" : why);
       }
       return publish(bytes, onStep);
@@ -309,6 +373,41 @@ export function open({ identity, device, kernel, hash, store, signer, verdict, t
     /** Whether `redact` would be accepted now: the kernel's answer on the redaction this identity would send. */
     async mayRedact(roomId, address) {
       return (await redaction(roomId, address)).allowed;
+    },
+    /**
+     * A room's settings now: `name`, `description` and `picture` (content addresses, or null), `open`
+     * (anyone with the room's address may join) and `power` (the power each action needs, and `settings`,
+     * the power to change settings). A setting never changed holds the kernel's default.
+     */
+    async state(roomId) {
+      const room = rooms.get(hex(roomId));
+      if (!room) throw new Refused("unknown room");
+      const content = (key) => {
+        const held = room.state.settings.get(key)?.content;
+        return held && !isZero(held) ? held : null;
+      };
+      const power = {};
+      for (const [name, key] of Object.entries(POWER_KEYS)) power[name] = await valueOf(room.state, key);
+      return { name: content(SETTING.name), description: content(SETTING.description), picture: content(SETTING.picture),
+        open: (await valueOf(room.state, SETTING.open)) === 1, power, direct: Boolean(room.direct) };
+    },
+    /**
+     * Changes one setting by event. `setting` is `name`, `description` or `picture` with content bytes
+     * (stored, the event carries their address) or null to clear; `open` with a boolean; or `power.<x>`
+     * for x in invite, kick, ban, unban, send, setPower, redact, settings, with a number.
+     */
+    async changeSetting(roomId, setting, value, { onStep } = {}) {
+      const { room, bytes, allowed } = await settingChange(roomId, setting, value);
+      if (!allowed) {
+        const me = standing(room.state, identity);
+        const why = await kernel.reason(ACTION.send, me, me, await roomFor(room.state, ACTION.send), 0);
+        throw new Refused(why === "permitted" || why === "needs power" ? "not allowed" : why);
+      }
+      return publish(bytes, onStep);
+    },
+    /** Whether `changeSetting` would be accepted now: the kernel's answer on the change this identity would send. */
+    async mayChangeSetting(roomId, setting, value) {
+      return (await settingChange(roomId, setting, value)).allowed;
     },
     /** Sends content. The content is stored by address; the event carries only the address. */
     async send(room, contentBytes, options) {
@@ -387,7 +486,18 @@ export function open({ identity, device, kernel, hash, store, signer, verdict, t
       const room = rooms.get(hex(roomId));
       if (!room) return [];
       const names = Object.keys(ACTION);
-      const actions = await kernel.queue(standing(room.state, identity), standing(room.state, target), SETTINGS, Boolean(room.direct), granted);
+      const me = standing(room.state, identity);
+      const them = standing(room.state, target);
+      // `Comms.Queue::offered` takes one required power for every action; each action has its own
+      // (`Comms.Settings`), so the queue is asked once per distinct power and each action read from its own.
+      const actions = [];
+      const asked = new Map();
+      for (let action = ACTION.join; action <= ACTION.setPower; action += 1) {
+        const settings = await roomFor(room.state, action);
+        const key = `${settings.required}:${settings.open}`;
+        if (!asked.has(key)) asked.set(key, await kernel.queue(me, them, settings, Boolean(room.direct), granted));
+        if (asked.get(key).includes(action)) actions.push(action);
+      }
       return actions.map((action) => names[action]);
     },
     /** The direct room this identity shares with `target`, or null, so one is reused, not duplicated. */

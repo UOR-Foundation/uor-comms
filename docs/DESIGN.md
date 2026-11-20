@@ -6,7 +6,7 @@ A messenger with the features of Matrix and no server. Every decision about a ro
 
 ## Decisions taken
 
-These were open in the map. Decisions 1 to 4 and 10 to 20 are the owner's instructions or rulings; 5 to 8 are assumptions made to start Phase 2 and can be reversed.
+These were open in the map. Decisions 1 to 4 and 10 to 21 are the owner's instructions or rulings; 5 to 8 are assumptions made to start Phase 2 and can be reversed.
 
 | # | Decision | Status |
 |---|---|---|
@@ -30,6 +30,7 @@ These were open in the map. Decisions 1 to 4 and 10 to 20 are the owner's instru
 | 18 | A person's profile (name, picture by content address) lives in a public room per identity that only its devices write | ruled 2026-11-19 |
 | 19 | Until Prism ID is wired, a device key reaches another person in an invite link (or its QR), which also carries a one-time token that binds the invitee's key back to the inviter; a person's later devices are vouched for by a device already trusted (`host/trust.mjs`). A device's address is the BLAKE3 of its key | ruled 2026-11-20 |
 | 20 | Inside a room, a joined member passes on the device keys it knows of the room's other members, so group members need not all exchange links; you trust whoever let you in to vouch for who else is there | ruled 2026-11-20 |
+| 21 | Room settings are events (action 10), decided by `Comms.Settings`: the power to change settings, a power per action, who may join, and a name, description and picture by content address; defaults are Matrix's (sending, inviting 0; kicking, banning, redacting and changing settings 50) and a room is invited-only until opened; a direct room changes only its name, description and picture | ruled 2026-11-20 |
 
 ## Phases
 
@@ -79,7 +80,7 @@ Judging against cited evidence, and not against "current" state, is what makes a
 | Words | Field |
 |---|---|
 | 0 | version, 1 |
-| 1 | action, 0 to 7 as in `Comms.Rules`, 8 for a redaction, 9 for creating a room |
+| 1 | action, 0 to 7 as in `Comms.Rules`, 8 for a redaction, 9 for creating a room, 10 for changing a room setting |
 | 2 to 5 | room |
 | 6 to 9 | sender |
 | 10 to 13 | device |
@@ -105,6 +106,8 @@ An event has one byte form. Parents and authorities are each in ascending order 
 **Reaching a peer.** WebRTC is set up through ntfy.sh on topics the host derives from the room's epoch secret and the hour, so the relay sees only topics that change hourly; only members of an epoch hold its topic (`Comms.Reach::holdsTopic`). When no direct path exists, a consenting member or member-owned node may forward ciphertext, and a direct path retires it (`mayForward`). Mail for a sleeping member is held only by an always-on member node that is not a phone (`mayHoldMail`). These are the proposals approved from `docs/CEWP-INSIGHTS.md`.
 
 **Creating a room.** A room is created by one event with action 9 (`Comms.Create`). It cites no parent and no authority and its room field is zero, because the room is named by the address of this event. Its sender starts joined with the creator's power. If it names a target the room is direct: the target starts invited with the creator's power, so may join whether or not the room is open, neither can remove the other, and no third member is ever invited; nobody else is a member. This is the state `Comms.State` gives a room with no later events.
+
+**Room settings.** A setting changes by an event with action 10 (`Comms.Settings`). The first word of its target names the setting and the other three are zero; `granted` holds a number and `content` the address of a name, description or picture. Keys: 0 name, 1 description, 2 picture, 3 who may join (0 invited only, 1 open), 4 the power to change settings, 5 the power to redact another member's event, and 10 + action for the power that action needs (12 invite, 13 kick, 14 ban, 15 unban, 16 send, 17 set power). Only a joined member with the power to change settings changes one, never to a power above their own, and a direct room changes only its name, description and picture. A setting never changed holds its default: sending, inviting and who may join 0; kicking, banning, unbanning, setting power, redacting and changing settings 50, Matrix's defaults. Each peer folds changes in the fold order and keeps the last one permitted against the state its parents define. A change is in canonical form when it would be as any other action; `Comms.Event::canonical` checks actions below 9, so `composes` checks action 10 itself.
 
 **Redaction.** A redaction is an event with action 8 whose target is the address of the event it redacts (`Comms.Redact`). Only a joined member with the power to send may redact: their own event with that alone, another member's only with the room's redaction power. A peer keeps the set of events redacted. An event in that set shows no content and its content is not fetched; the event record itself stays, so its address, its place in the graph and its effect on membership and power do not change. The set only grows, and the order and number of times redactions arrive make no difference. This follows Matrix in substance; Matrix strips keys from a plaintext event, and here the content is a separate encrypted object that is simply dropped.
 

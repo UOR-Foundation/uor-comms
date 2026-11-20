@@ -99,4 +99,6 @@ mod pins {
     fn room_rk_16() { scenario("RK-16") }
     #[test]
     fn room_rk_17() { scenario("RK-17") }
+    #[test]
+    fn room_rk_18() { scenario("RK-18") }
 }
