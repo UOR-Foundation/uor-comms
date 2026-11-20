@@ -214,7 +214,7 @@ theorem{
   parameters: [value : Bytes, start : Nat, remaining : Nat],
   statement: ((Comms.Content::textClean value start (remaining + 1)) = ((not (((Comms.Content::byteOf value (start + remaining)) =? 0) || ((Comms.Content::byteOf value (start + remaining)) =? 13))) && (Comms.Content::textClean value start remaining))),
   proof: simplify{definitions: [Comms.Content::textClean]},
-  axioms: [propext]
+  axioms: [Quot.sound, propext]
 }
 
 theorem{
@@ -222,7 +222,7 @@ theorem{
   parameters: [value : Bytes, start : Nat, remaining : Nat],
   statement: ((Comms.Content::keyClean value start (remaining + 1)) = ((not (((Comms.Content::byteOf value (start + remaining)) =? 0) || (((Comms.Content::byteOf value (start + remaining)) =? 9) || (((Comms.Content::byteOf value (start + remaining)) =? 10) || (((Comms.Content::byteOf value (start + remaining)) =? 13) || ((Comms.Content::byteOf value (start + remaining)) =? 32)))))) && (Comms.Content::keyClean value start remaining))),
   proof: simplify{definitions: [Comms.Content::keyClean]},
-  axioms: [propext]
+  axioms: [Quot.sound, propext]
 }
 \end{semanticmodule}
 \end{lexlean}

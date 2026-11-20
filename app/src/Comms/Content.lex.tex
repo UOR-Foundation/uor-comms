@@ -38,6 +38,7 @@ definition{
   body: (match width
     | Nat.zero => gathered
     | Nat.succ fewer => (numberOf value (at + 1) fewer ((prim multiply gathered 256 : Nat) + (byteOf value at)))),
+  axioms: [Quot.sound, propext],
   recursive_argument: width
 }
 
@@ -48,6 +49,7 @@ definition{
   body: (match remaining
     | Nat.zero => true
     | Nat.succ rest => ((not (((byteOf value (start + rest)) =? 0) || ((byteOf value (start + rest)) =? 13))) && (textClean value start rest))),
+  axioms: [Quot.sound, propext],
   recursive_argument: remaining
 }
 
@@ -58,6 +60,7 @@ definition{
   body: (match remaining
     | Nat.zero => true
     | Nat.succ rest => ((not (((byteOf value (start + rest)) =? 0) || (((byteOf value (start + rest)) =? 9) || (((byteOf value (start + rest)) =? 10) || (((byteOf value (start + rest)) =? 13) || ((byteOf value (start + rest)) =? 32)))))) && (keyClean value start rest))),
+  axioms: [Quot.sound, propext],
   recursive_argument: remaining
 }
 
@@ -68,6 +71,7 @@ definition{
   body: (match remaining
     | Nat.zero => false
     | Nat.succ rest => (if ((numberOf value left 8 0) <? (numberOf value right 8 0)) then true else (if ((numberOf value left 8 0) =? (numberOf value right 8 0)) then (wordsBefore value (left + 8) (right + 8) rest) else false))),
+  axioms: [Quot.sound, propext],
   recursive_argument: remaining
 }
 
@@ -78,6 +82,7 @@ definition{
   body: (match remaining
     | Nat.zero => true
     | Nat.succ rest => (if (wordsBefore value (start + (prim multiply 32 rest : Nat)) ((start + (prim multiply 32 rest : Nat)) + 32) 4) then (mentionsAscend value start rest) else false)),
+  axioms: [Quot.sound, propext],
   recursive_argument: remaining
 }
 
@@ -85,35 +90,40 @@ definition{
   name: headerAt,
   parameters: [value : Bytes, base : Nat],
   result: Nat,
-  body: (11 + (if ((byteOf value (base + 10)) =? 1) then 32 else 0))
+  body: (11 + (if ((byteOf value (base + 10)) =? 1) then 32 else 0)),
+  axioms: [Quot.sound, propext]
 }
 
 definition{
   name: textAtIn,
   parameters: [value : Bytes, base : Nat],
   result: Nat,
-  body: (((base + (headerAt value base)) + 3) + (prim multiply 32 (byteOf value ((base + (headerAt value base)) + 2)) : Nat))
+  body: (((base + (headerAt value base)) + 3) + (prim multiply 32 (byteOf value ((base + (headerAt value base)) + 2)) : Nat)),
+  axioms: [Quot.sound, propext]
 }
 
 definition{
   name: textLengthIn,
   parameters: [value : Bytes, base : Nat],
   result: Nat,
-  body: (numberOf value (textAtIn value base) 4 0)
+  body: (numberOf value (textAtIn value base) 4 0),
+  axioms: [Quot.sound, propext]
 }
 
 definition{
   name: validIn,
   parameters: [value : Bytes, base : Nat, length : Nat],
   result: Bool,
-  body: (if ((byteOf value (base + 1)) =? 3) then ((fieldsAllowed (byteOf value base) 3 (byteOf value (base + 10)) 0 0 0 1 0 (byteOf value (base + (headerAt value base)))) && ((length =? (((headerAt value base) + 1) + (byteOf value (base + (headerAt value base))))) && (keyClean value ((base + (headerAt value base)) + 1) (byteOf value (base + (headerAt value base)))))) else ((fieldsAllowed (byteOf value base) (byteOf value (base + 1)) (byteOf value (base + 10)) (byteOf value (base + (headerAt value base))) (byteOf value ((base + (headerAt value base)) + 1)) (byteOf value ((base + (headerAt value base)) + 2)) (textLengthIn value base) (byteOf value (((textAtIn value base) + 4) + (textLengthIn value base))) 1) && ((length =? (prim subtract (((textAtIn value base) + 5) + (textLengthIn value base)) base : Nat)) && ((textClean value ((textAtIn value base) + 4) (textLengthIn value base)) && (mentionsAscend value ((base + (headerAt value base)) + 3) (prim subtract (byteOf value ((base + (headerAt value base)) + 2)) 1 : Nat))))))
+  body: (if ((byteOf value (base + 1)) =? 3) then ((fieldsAllowed (byteOf value base) 3 (byteOf value (base + 10)) 0 0 0 1 0 (byteOf value (base + (headerAt value base)))) && ((length =? (((headerAt value base) + 1) + (byteOf value (base + (headerAt value base))))) && (keyClean value ((base + (headerAt value base)) + 1) (byteOf value (base + (headerAt value base)))))) else ((fieldsAllowed (byteOf value base) (byteOf value (base + 1)) (byteOf value (base + 10)) (byteOf value (base + (headerAt value base))) (byteOf value ((base + (headerAt value base)) + 1)) (byteOf value ((base + (headerAt value base)) + 2)) (textLengthIn value base) (byteOf value (((textAtIn value base) + 4) + (textLengthIn value base))) 1) && ((length =? (prim subtract (((textAtIn value base) + 5) + (textLengthIn value base)) base : Nat)) && ((textClean value ((textAtIn value base) + 4) (textLengthIn value base)) && (mentionsAscend value ((base + (headerAt value base)) + 3) (prim subtract (byteOf value ((base + (headerAt value base)) + 2)) 1 : Nat)))))),
+  axioms: [Quot.sound, propext]
 }
 
 definition{
   name: kindIn,
   parameters: [value : Bytes, base : Nat, length : Nat],
   result: Nat,
-  body: (if (validIn value base length) then (byteOf value (base + 1)) else 0)
+  body: (if (validIn value base length) then (byteOf value (base + 1)) else 0),
+  axioms: [Quot.sound, propext]
 }
 \end{semanticmodule}
 \end{lexlean}
