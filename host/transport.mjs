@@ -102,26 +102,25 @@ export function webrtcTransport({
   const waiting = new Map();
   const WAITING_LIMIT = 200; // introductions kept, at most; the oldest is dropped first. Not a model rule.
 
-  /** Accepts the keys the rule admits now (decision 20) and returns the rest. */
-  async function judge(room, from, keys) {
+  /**
+   * Judges introduced keys against the room as it is now (decision 20): what the rule admits is
+   * recorded, the rest kept. The judging and the keeping happen with no wait between them, so an
+   * admission cannot fall between reading the members and keeping what they did not admit.
+   */
+  function judge(room, from, keys) {
     const members = engine.members(room);
-    if (!members.some((m) => m.member === from && m.status === 2)) return keys;
-    const rest = [];
-    for (const k of keys) {
-      if (members.some((m) => m.member === k.identity && SHARED.has(m.status))) await signer.introduce?.(k.identity, k.key);
-      else rest.push(k);
-    }
-    return rest;
+    const admits = members.some((m) => m.member === from && m.status === 2);
+    const accepted = admits ? keys.filter((k) => members.some((m) => m.member === k.identity && SHARED.has(m.status))) : [];
+    const rest = keys.filter((k) => !accepted.includes(k));
+    if (rest.length) keep(room, from, rest);
+    return Promise.all(accepted.map((k) => signer.introduce?.(k.identity, k.key)));
   }
 
-  async function judgeWaiting(room) {
+  function judgeWaiting(room) {
     const list = waiting.get(hex(room));
-    if (!list) return;
+    if (!list) return Promise.resolve();
     waiting.delete(hex(room));
-    for (const { from, keys } of list) {
-      const rest = await judge(room, from, keys);
-      if (rest.length) keep(room, from, rest);
-    }
+    return Promise.all(list.map(({ from, keys }) => judge(room, from, keys)));
   }
 
   function keep(room, from, keys) {
@@ -266,8 +265,7 @@ export function webrtcTransport({
       // Accepted only from a joined member of the room, and only for members it lists.
       // An introduction can arrive before the room or the member it names: it waits for them.
       const room = unb64(message.room);
-      const rest = await judge(room, peer.identity, message.keys ?? []);
-      if (rest.length) keep(room, peer.identity, rest);
+      await judge(room, peer.identity, message.keys ?? []);
       return;
     }
     if (message.t === "have") {

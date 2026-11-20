@@ -459,6 +459,8 @@ test("redaction: your own with the power to send, another's only with the redact
     assert.equal(side.engine.carries(room, hash(message("ben's"))), false);
   }
   // Ben has power 0; the redaction power is 50.
+  assert.equal(await ben.engine.mayRedact(room, fromAda), false);
+  assert.equal(await ada.engine.mayRedact(room, fromAda), true);
   await assert.rejects(ben.engine.redact(room, fromAda), { reason: "not allowed" });
   await assert.rejects(ben.engine.redact(room, hash(text("nothing"))), { reason: "unknown event" });
   // Ben writes the bytes anyway: Ada judges them on receipt and refuses them.
@@ -507,6 +509,15 @@ test("messages: edits from the sender only, the last wins; one reaction per memb
   const reply = await say(ben, { text: "a reply", relates: first });
   const gone = await say(ben, { text: "deleted" });
   await ben.engine.redact(room, gone);
+  // messages reads only the store: Ben does not hold Ada's content yet, so it is missing, and not fetched.
+  const before = await ben.engine.messages(room);
+  assert.ok(before.missing > 0);
+  assert.equal(before.messages.some((m) => m.text === "first"), false);
+  for (const side of [ada, ben]) {
+    for (const e of side.engine.timeline(room, { limit: 1000 }).events) {
+      if (e.action === ACTION.send && !e.redacted) await side.engine.content(e.content);
+    }
+  }
   for (const side of [ada, ben]) {
     const { messages, hasMore, missing } = await side.engine.messages(room);
     assert.deepEqual(messages.map((m) => m.text), ["first", "a reply"]);
@@ -517,6 +528,16 @@ test("messages: edits from the sender only, the last wins; one reaction per memb
     assert.equal(hex(messages[1].address), hex(reply));
     assert.deepEqual([hasMore, missing], [false, 0]);
   }
+  // mine: each key to this identity's own reaction events, so taking a reaction back is redacting them.
+  const ofBen = (await ben.engine.messages(room)).messages[0];
+  assert.deepEqual(Object.keys(ofBen.mine), ["+1"]);
+  assert.equal(ofBen.mine["+1"].length, 2); // Ben reacted +1 twice; both are his
+  for (const address of ofBen.mine["+1"]) await ben.engine.redact(room, address);
+  assert.deepEqual((await ben.engine.messages(room)).messages[0].reactions["+1"], [hex(ada.identity)]);
+  // mayRedact is the kernel's answer for the redaction redact would send.
+  assert.equal(await ben.engine.mayRedact(room, reply), true);
+  assert.equal(await ada.engine.mayRedact(room, reply), true); // a direct room: both hold the creator's power
+  await assert.rejects(ben.engine.mayRedact(room, hash(text("nothing"))), { reason: "unknown event" });
   const page = await ada.engine.messages(room, { limit: 1 });
   assert.deepEqual([page.messages.map((m) => m.text), page.hasMore], [["a reply"], true]);
   const earlier = await ada.engine.messages(room, { before: page.messages[0].address, limit: 1 });
