@@ -51,7 +51,8 @@ identity, no keys and no network of its own:
 ## Asking and receiving
 
 - `engine.offered(room, target, { granted })` lists the actions this identity may take toward `target` (itself when absent), by name, as the kernel answers (`Comms.Queue::offered`, proved equal to the permission and direct-room rules). `setPower` depends on the level granted: ask once per level offered. Show controls from this list; a refusal's `reason` is the fallback.
-- `engine.receive(message)` answers `{ admitted: true }`, `{ admitted: false, held: true, reason: "parents unknown" }` when a cited event has not arrived (the kernel's verdict is `held`; it is admitted when the parent arrives), or `{ admitted: false, reason }` when refused. An event that fails its address, signature or device check is refused, never held (`badEventIsNeverHeld`). At most 1,000 events are held; past that the oldest is dropped, and arrives again only if a peer sends it again.
+- `engine.receive(message)` answers `{ admitted: true }`, `{ admitted: false, held: true, reason: "parents unknown" }` when a cited event has not arrived (the kernel's verdict is `held`; it is admitted when the parent arrives), or `{ admitted: false, reason }` when refused. An event that fails its address, signature or device check is refused, never held (`badEventIsNeverHeld`). At most 1,000 events are held; past that the oldest is dropped, and arrives again only if a peer sends it again. Events are admitted one at a time, in the order `receive` is called, so an event that arrives while its parent is being admitted is admitted right after it.
+- `engine.carries(room, address)` says whether an admitted message of the room names that content address. The transport serves content only on that answer.
 
 ## Whose key is whose
 
@@ -61,7 +62,7 @@ A device's address is the BLAKE3 of its raw P-256 public key (65 bytes, uncompre
 2. **The invitee's first proof.** The link's token is one-time. When the invitee connects, its proof carries its key and a ticket, BLAKE3 over the token and the inviter's fresh nonce; the inviter records that key for the identity claimed and spends the token. The inviter trusts whoever it gave the link to.
 3. **A vouch.** A person's trusted device signs a new device's address with `book.vouchFor(newRawKey)`; the new device opens its book with that vouch, and peers who know the first device accept the second.
 
-4. **An introduction** (decision 20). When two proven peers share a room, each passes on the keys it knows of that room's other invited or joined members. A key is accepted only from a peer that is a joined member of that room, only for a person the room lists, and its device is its own BLAKE3. So in a group you trust whoever let you in to vouch for who else is there.
+4. **An introduction** (decision 20). When two proven peers share a room, each passes on the keys it knows of that room's other invited or joined members. A key is accepted only from a peer that is a joined member of that room, only for a person the room lists, and its device is its own BLAKE3. So in a group you trust whoever let you in to vouch for who else is there. A peer sends introductions when it first offers a room, and again to every peer that may see the room whenever an admitted event changes its members. An introduction that names a room this device does not hold yet, or a sender or person it does not list yet, is kept (at most 200, oldest dropped first) and judged by the same rule after each admission in that room, so a person invited while everyone is connected is introduced without a reconnect.
 
 Nothing else adds a key: a peer that knows someone's identity but holds no link, and shares no room with anyone you trust, is refused. `book.onLearn` hears each device learned; `saved` and `save` keep the book across reloads.
 
@@ -103,7 +104,7 @@ A refused call rejects with an error whose `reason` names the cause. From the ke
 - **A concurrent ban.** An event that cites the room as it was before a ban is judged against its own parents, so a peer may admit a banned member's message written before the ban reached it. Matrix soft-fails such events; that is not modelled yet.
 - **Sync sends every address a room holds** when two peers connect, so the first exchange grows with history.
 - **No Prism ID.** The signer and the device verdict are supplied by the caller.
-- **No encryption.** Content is stored and fetched as given.
+- **No encryption.** Content is stored and fetched as given. A peer serves content by address only to a proven peer that may see a room in which an admitted message names it. Redaction is not wired, so a redacted message's content is not yet withdrawn from `carries`; it must be when redaction lands.
 - **Three rules are computed here, not asked.** An event's depth (`Comms.Fold::depthOf`, proved in
   the model; that this code matches it is tested, not proved); a member's standing at creation; the
   power a change of power leaves. Each is marked in `engine.mjs`.

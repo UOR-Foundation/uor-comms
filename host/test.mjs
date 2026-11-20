@@ -388,3 +388,30 @@ test("each group room has its own address; a second direct room with the same pe
   const direct1 = await ada.engine.createDirect(ben.identity);
   assert.equal(hex(ada.engine.findDirect(ben.identity)), hex(direct1));
 });
+
+test("a parent and its child received at once are both admitted: admission is one at a time", async () => {
+  const wire = direct();
+  const sent = [];
+  const ada = await peer("ada", wire);
+  const ben = await peer("ben", wire);
+  const room = await ada.engine.createDirect(ben.identity);
+  wire.deliver = async (_other, message) => { sent.push(message); };
+  await ada.engine.send(room, message("parent"));
+  await ada.engine.send(room, message("child"));
+  const [parent, child] = sent;
+  const results = await Promise.all([ben.engine.receive(parent), ben.engine.receive(child)]);
+  assert.deepEqual(results.map((r) => r.admitted), [true, true]);
+  assert.equal(ben.engine.timeline(room).length, 3);
+});
+
+test("a room carries the content its admitted messages name, and nothing else", async () => {
+  const wire = direct();
+  const ada = await peer("ada", wire);
+  const ben = await peer("ben", wire);
+  const room = await ada.engine.createDirect(ben.identity);
+  const bytes = message("named");
+  await ada.engine.send(room, bytes);
+  assert.equal(ben.engine.carries(room, hash(bytes)), true);
+  assert.equal(ben.engine.carries(room, hash(message("never sent"))), false);
+  assert.equal(ben.engine.carries(hash(text("no room")), hash(bytes)), false);
+});

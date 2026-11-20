@@ -22,19 +22,23 @@ import { deviceBook, newDeviceKey } from "/host/trust.mjs";
 import { blake3 } from "/try/vendor/prism-code/src/blake3.mjs";
 const hash = (b) => blake3(b);
 const text = (t) => new TextEncoder().encode(t);
-window.setup = async (name, other) => {
+window.setup = async (name, other, holds = true) => {
   const identity = hash(text("identity " + name));
   const book = deviceBook({ hash, own: { identity, ...(await newDeviceKey()) } });
   const device = book.device;
   const room = hash(text("the room"));
-  const members = [hex(identity), ...[].concat(other).map((o) => hex(hash(text("identity " + o))))];
+  // An event "member <name>" lists that person; a device that holds no room yet lists nobody.
+  const members = holds ? [hex(identity), ...[].concat(other).map((o) => hex(hash(text("identity " + o))))] : [];
+  let held = holds;
+  const contents = new Set();
   const events = [];
   const listeners = new Set();
   const store = memoryStore(hash);
   const engine = {
     identity, device,
-    rooms: () => [room],
+    rooms: () => (held ? [room] : []),
     members: () => members.map((member) => ({ member, status: 2 })),
+    carries: (_room, address) => contents.has(hex(address)),
     eventsOf: () => events.slice(),
     eventOf: (_room, address) => events.find((e) => hex(e.address) === hex(address)) ?? null,
     subscribe: (l) => { listeners.add(l); return () => listeners.delete(l); },
@@ -42,6 +46,12 @@ window.setup = async (name, other) => {
       if (events.some((e) => hex(e.address) === hex(message.address))) return { admitted: true, known: true };
       if (hex(hash(message.bytes)) !== hex(message.address)) return { admitted: false, reason: "tampered" };
       events.push(message);
+      held = true;
+      const said = new TextDecoder().decode(message.bytes);
+      if (said.startsWith("member ")) {
+        const member = hex(hash(text("identity " + said.slice(7))));
+        if (!members.includes(member)) members.push(member);
+      }
       for (const l of listeners) l({ room, address: message.address });
       return { admitted: true };
     },
@@ -53,7 +63,7 @@ window.setup = async (name, other) => {
     hash, store, helloEvery: 500,
   });
   transport.bind(engine);
-  window.peer = { engine, transport, store, events, hash, text, hex, book };
+  window.peer = { engine, transport, store, events, contents, hash, text, hex, book };
   window.invite = () => book.invite(location.origin + "/");
   window.accept = (link) => { const inviter = book.accept(link); transport.reach(inviter); return hex(inviter); };
   window.reachOnly = (identityHex) => transport.reach(unhex(identityHex));
@@ -105,12 +115,12 @@ test("two browsers meet over the rendezvous, prove their identities, sync, forwa
   const browser = await chromium.launch();
   t.after(() => browser.close());
   const errors = [];
-  const open = async (name, other) => {
+  const open = async (name, other, holds = true) => {
     const tab = await (await browser.newContext()).newPage();
     tab.on("pageerror", (e) => errors.push(e));
     await tab.goto(url);
     await tab.waitForFunction(() => window.ready === true);
-    return { tab, info: await tab.evaluate(([n, o]) => window.setup(n, o), [name, other]) };
+    return { tab, info: await tab.evaluate(([n, o, h]) => window.setup(n, o, h), [name, other, holds]) };
   };
   const ada = await open("ada", ["ben", "cam"]);
   const ben = await open("ben", ["ada", "cam"]);
@@ -136,7 +146,10 @@ test("two browsers meet over the rendezvous, prove their identities, sync, forwa
     const message = { address: hash(bytes), bytes, signature: null };
     await engine.receive(message);
     await transport.announce(message);
-    return Array.from(await store.put(text("some content")));
+    const content = await store.put(text("some content"));
+    window.peer.contents.add(window.peer.hex(content));
+    await store.put(text("named by no event"));
+    return Array.from(content);
   });
   await ben.tab.waitForFunction(() => window.peer.events.length === 2, null, { timeout: 10_000 });
   const fetched = await ben.tab.evaluate(async (address) => {
@@ -144,17 +157,31 @@ test("two browsers meet over the rendezvous, prove their identities, sync, forwa
     return bytes && new TextDecoder().decode(bytes);
   }, contentAddress);
   assert.equal(fetched, "some content");
+  // Content no admitted message names is not served, even to a member.
+  assert.equal(await ben.tab.evaluate(async () => {
+    const { transport, hash, text } = window.peer;
+    return transport.fetch(hash(text("named by no event")));
+  }), null);
   assert.deepEqual(await ben.tab.evaluate(() => window.peer.transport.peers()), [ada.info.identity]);
   assert.deepEqual(await ada.tab.evaluate(() => window.peer.book.devicesOf(window.peer.hash(window.peer.text("identity ben"))).length), 1);
 
-  // Cam accepts only Ada's link. Ada introduces Ben to Cam (decision 20), so Cam and Ben meet and prove themselves.
+  // Cam accepts only Ada's link. Once Ada announces Cam as a member, she introduces Ben to Cam and Cam to Ben
+  // (decision 20), so Cam and Ben meet and prove themselves without a reconnect.
   const cam = await open("cam", ["ada", "ben"]);
   const camLink = await ada.tab.evaluate(() => window.invite());
   await cam.tab.evaluate((l) => window.accept(l), camLink);
   await cam.tab.evaluate(() => window.peer.transport.start());
+  await ada.tab.waitForFunction((c) => window.peer.transport.peers().includes(c), cam.info.identity, { timeout: 30_000 });
+  await ada.tab.evaluate(async () => {
+    const { engine, transport, hash, text } = window.peer;
+    const bytes = text("member cam");
+    const message = { address: hash(bytes), bytes, signature: null };
+    await engine.receive(message);
+    await transport.announce(message);
+  });
   await cam.tab.waitForFunction((b) => window.peer.book.devicesOf(window.peer.hash(window.peer.text("identity ben"))).length === 1, null, { timeout: 30_000 });
   await cam.tab.waitForFunction((b) => window.peer.transport.peers().includes(b), ben.info.identity, { timeout: 30_000 });
-  await cam.tab.waitForFunction(() => window.peer.events.length === 2, null, { timeout: 10_000 });
+  await cam.tab.waitForFunction(() => window.peer.events.length === 3, null, { timeout: 10_000 });
 
   // stop() is final: no hello or event brings the transport back.
   await cam.tab.evaluate(() => window.peer.transport.stop());
@@ -168,5 +195,51 @@ test("two browsers meet over the rendezvous, prove their identities, sync, forwa
   await eve.tab.waitForTimeout(5_000);
   assert.notEqual(await eve.tab.evaluate(() => window.peer.transport.status), "online");
   assert.equal(await eve.tab.evaluate(() => window.peer.events.length), 0);
+  assert.deepEqual(errors, []);
+});
+
+test("a member invited while connected is introduced to the others, and they to it, in the same session", async (t) => {
+  const { url, close } = await serve();
+  t.after(close);
+  const browser = await chromium.launch();
+  t.after(() => browser.close());
+  const errors = [];
+  const open = async (name, other, holds = true) => {
+    const tab = await (await browser.newContext()).newPage();
+    tab.on("pageerror", (e) => errors.push(e));
+    await tab.goto(url);
+    await tab.waitForFunction(() => window.ready === true);
+    return { tab, info: await tab.evaluate(([n, o, h]) => window.setup(n, o, h), [name, other, holds]) };
+  };
+  const devicesOf = (side, name) => side.tab.evaluate((n) => window.peer.book.devicesOf(window.peer.hash(window.peer.text("identity " + n))).length, name);
+  const say = (side, words) => side.tab.evaluate(async (w) => {
+    const { engine, transport, hash, text } = window.peer;
+    const bytes = text(w);
+    const message = { address: hash(bytes), bytes, signature: null };
+    await engine.receive(message);
+    await transport.announce(message);
+  }, words);
+
+  // Dan and Fay share the room and are connected. Gus holds no room and knows only Dan's link.
+  const dan = await open("dan", ["fay"]);
+  const fay = await open("fay", ["dan"]);
+  await fay.tab.evaluate((l) => window.accept(l), await dan.tab.evaluate(() => window.invite()));
+  await Promise.all([dan, fay].map(({ tab }) => tab.evaluate(() => window.peer.transport.start())));
+  await fay.tab.waitForFunction((d) => window.peer.transport.peers().includes(d), dan.info.identity, { timeout: 30_000 });
+  await say(dan, "member dan");
+  await say(dan, "member fay");
+  const gus = await open("gus", [], false);
+  await gus.tab.evaluate((l) => window.accept(l), await dan.tab.evaluate(() => window.invite()));
+  await gus.tab.evaluate(() => window.peer.transport.start());
+  await dan.tab.waitForFunction((g) => window.peer.transport.peers().includes(g), gus.info.identity, { timeout: 30_000 });
+  assert.equal(await devicesOf(fay, "gus"), 0);
+
+  // Dan lists Gus while all three are connected: Fay is told of Gus before she lists him, and Gus of Fay
+  // before he holds the room. Each keeps the introduction until the event that lets it judge arrives.
+  await say(dan, "member gus");
+  await fay.tab.waitForFunction(() => window.peer.book.devicesOf(window.peer.hash(window.peer.text("identity gus"))).length === 1, null, { timeout: 15_000 });
+  await gus.tab.waitForFunction(() => window.peer.book.devicesOf(window.peer.hash(window.peer.text("identity fay"))).length === 1, null, { timeout: 15_000 });
+  await gus.tab.waitForFunction((f) => window.peer.transport.peers().includes(f), fay.info.identity, { timeout: 30_000 });
+  for (const side of [dan, fay, gus]) await side.tab.evaluate(() => window.peer.transport.stop());
   assert.deepEqual(errors, []);
 });
