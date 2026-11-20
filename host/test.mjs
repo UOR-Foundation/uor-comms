@@ -620,7 +620,7 @@ test("room settings: the kernel's defaults, changed by event, read by every peer
   await assert.rejects(ada.engine.changeSetting(pair, "open", true), { reason: "not allowed" });
 });
 
-test("content of a later version or unknown kind is listed as unknown, not lost, and never sent by this engine", async () => {
+test("content of a newer version or unknown kind is listed as unknown, not lost, and never sent by this engine", async () => {
   const wire = direct();
   const ada = await peer("ada", wire);
   const ben = await peer("ben", wire);

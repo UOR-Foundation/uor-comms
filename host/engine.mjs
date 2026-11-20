@@ -291,7 +291,7 @@ export function open({ identity, device, kernel, hash, store, signer, verdict, t
     // The store only: a page draws from what this device holds; fetching is `content`'s.
     const bytes = onlyRedacted(address) ? null : await store.get(address);
     if (!bytes) return undefined; // not held yet: asked again next time
-    // `unknown`: a later version or kind (`Comms.Content::newer`), shown as a message this engine cannot read.
+    // `unknown`: a newer version or kind (`Comms.Content::newer`), shown as a message this engine cannot read.
     const answer = await kernel.content(bytes);
     const fields = answer === "refused" ? null : answer === "unknown" ? { unknown: true, version: bytes[0], kind: bytes[1] } : decodeContent(bytes);
     read.set(key, fields);

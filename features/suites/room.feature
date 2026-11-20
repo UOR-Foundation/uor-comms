@@ -262,7 +262,7 @@ Feature: room
     And heldEarlierEventIsPlacedFirst in Comms/ResolveProofs.lex.tex states (((a <? b) && ((Comms.Resolve::place b arrivals) <? ((Comms.Resolve::place a arrivals) + (Comms.Resolve::copies a arrivals)))) = false)
 
   @RK-16 @build
-  Scenario: Message content version 1 is read only in its one form: a message, an edit or a reaction; an edit and a reaction name the event they concern; text has 1 to 4,096 bytes with no NUL and no carriage return; at most 50 mentions in ascending order; a reaction key of 1 to 32 bytes without whitespace; no attachment until the cipher exists; nothing after; content of a later version, or of version 1 with an unknown kind, is answered unknown and never read as version 1
+  Scenario: Message content version 1 is read only in its one form: a message, an edit or a reaction; an edit and a reaction name the event they concern; text has 1 to 4,096 bytes with no NUL and no carriage return; at most 50 mentions in ascending order; a reaction key of 1 to 32 bytes without whitespace; no attachment until the cipher exists; nothing after; content of a newer version, or of version 1 with an unknown kind, is answered unknown and never read as version 1
     Given message content in app/src/Comms/Content.lex.tex
     When the Lean kernel checks the theorems of ContentProofs during prismpm verify
     Then fieldsAllowed in Comms/Content.lex.tex contains body: ((version =? 1) && ((relates <=? 1) && (((kind =? 3) && ((relates =? 1) && ((1 <=? keyLength) && (keyLength <=? 32)))) || (((kind =? 1) || ((kind =? 2) && (relates =? 1))) && ((forwarded <=? 1) && ((everyone <=? 1) && ((mentions <=? 50) && ((1 <=? textLength) && ((textLength <=? 4096) && (attachments =? 0))))))))))
