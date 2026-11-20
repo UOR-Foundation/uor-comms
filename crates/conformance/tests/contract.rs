@@ -33,10 +33,8 @@ fn declaration<'a>(text: &'a str, name: &str) -> &'a str {
 /// Every pin of the scenario tagged `id` holds of the model.
 fn scenario(id: &str) {
     let feature = read("features/suites/room.feature");
-    let steps = feature
-        .split("\n  @")
-        .find(|s| s.starts_with(id))
-        .expect(id);
+    let steps = feature.split("\n  @").find(|s| s.starts_with(id));
+    let steps = steps.expect(id);
     assert!(steps.contains(".lex.tex "), "{id} pins nothing");
     for (step, exact) in steps.lines().map(|s| (s, s.contains(" states "))) {
         let mark = [" contains ", " states "][usize::from(exact)];
