@@ -84,7 +84,8 @@ host:
     shopt -s nullglob
     holos=(app/.prism/build/*/*.holo)
     if [[ ${#holos[@]} -eq 0 ]]; then
-      prismpm --project app build
+      # A reused proof keeps no holo. verify proves and builds it; build alone needs a lock beside the project.
+      prismpm --project app verify
       holos=(app/.prism/build/*/*.holo)
     fi
     if [[ ${#holos[@]} -ne 1 ]]; then
