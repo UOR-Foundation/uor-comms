@@ -48,7 +48,7 @@ async function peer(name, wire) {
   const engine = open(options);
   wire.peers.push(engine);
   wire.stores.push(store);
-  return { engine, identity, device, store, reopen: () => open(options) };
+  return { engine, identity, device, store, options, reopen: () => open(options) };
 }
 
 const direct = () => {
@@ -327,4 +327,52 @@ test("the kernel reads the largest valid content and refuses one byte more, with
   const out = encodeContent({ text: "x", sent: 1_800_000_000_000, mentions: mentions.slice(0, 2) });
   const swapped = out.slice(); swapped.set(out.slice(46, 78), 14); swapped.set(out.slice(14, 46), 46);
   assert.equal(await kernel.content(swapped), "refused");
+});
+
+test("the device book: an invite binds both ways once, a vouch adds a device, a key must match its device", async () => {
+  const { deviceBook, newDeviceKey, readInvite } = await import("./trust.mjs");
+  const ada = { identity: hash(text("identity ada")), ...(await newDeviceKey()) };
+  const ben = { identity: hash(text("identity ben")), ...(await newDeviceKey()) };
+  const adaBook = deviceBook({ hash, own: ada });
+  const benBook = deviceBook({ hash, own: ben });
+  const link = adaBook.invite("https://example.test/app");
+  assert.equal(hex(readInvite(link).identity), hex(ada.identity));
+  assert.equal(hex(benBook.accept(link)), hex(ada.identity));
+  assert.ok(await benBook.verdict(ada.identity, adaBook.device));
+  const nonce = crypto.getRandomValues(new Uint8Array(32));
+  const proof = { identity: ben.identity, device: benBook.device, rawKey: ben.rawKey, tickets: benBook.ticketsFor(nonce), nonce };
+  assert.ok(!(await adaBook.learn({ ...proof, rawKey: ada.rawKey })), "a key that does not hash to its device");
+  assert.ok(await adaBook.learn(proof));
+  const eve = { identity: ben.identity, ...(await newDeviceKey()) };
+  const eveBook = deviceBook({ hash, own: eve });
+  assert.ok(!(await adaBook.learn({ identity: ben.identity, device: eveBook.device, rawKey: eve.rawKey, tickets: proof.tickets, nonce })), "a spent token");
+  const phone = { identity: ben.identity, ...(await newDeviceKey()) };
+  const vouch = await benBook.vouchFor(phone.rawKey);
+  const phoneBook = deviceBook({ hash, own: { ...phone, vouch } });
+  assert.ok(await adaBook.learn({ identity: ben.identity, device: phoneBook.device, rawKey: phone.rawKey, vouch, nonce }));
+  assert.equal(adaBook.devicesOf(ben.identity).length, 2);
+  const bytes = text("signed");
+  assert.ok(await adaBook.verify(bytes, await phoneBook.sign(bytes), ben.identity, phoneBook.device));
+});
+
+test("the outbox holds this identity's events no peer has yet, and retry announces one again", async () => {
+  const wire = direct();
+  const ada = await peer("ada", wire);
+  const ben = await peer("ben", wire);
+  const held = new Set();
+  let reachable = false;
+  const announced = [];
+  const transport = {
+    announce: async (m) => { announced.push(hex(m.address)); if (reachable) held.add(hex(m.address)); },
+    fetch: async () => null,
+    delivered: (a) => held.has(hex(a)),
+  };
+  const lone = open({ ...ada.options, transport });
+  const room = await lone.createDirect(ben.identity);
+  await lone.send(room, message("while offline"));
+  assert.equal(lone.outbox().length, 2);
+  reachable = true;
+  for (const { address } of lone.outbox()) await lone.retry(address);
+  assert.deepEqual(lone.outbox(), []);
+  await assert.rejects(lone.retry(hash(text("nothing"))), { reason: "unknown event" });
 });

@@ -14,6 +14,7 @@ This folder is the one place in the repository where non-Prism code may grow (`a
 | `content.mjs` | Lays message content version 1 out and reads it back; the kernel judges it (operation 0d) |
 | `store.mjs` | Bytes by BLAKE3 address, one copy per address, checked on write, and every admitted event as it arrived. `memoryStore` in memory; `browserStore` in IndexedDB, across reloads and closed tabs, with `evicted` true when the browser cleared it |
 | `engine.mjs` | Rooms: create, join, leave, invite, kick, ban, unban, set power, send, receive, members, timeline |
+| `trust.mjs` | Which device key belongs to which person, until Prism ID: invite links carry a key and a one-time token, and a trusted device vouches for its person's new ones |
 | `transport.mjs` | WebRTC data channels between browsers, with ntfy.sh carrying only the setup on hourly BLAKE3-derived topics; peers prove their identity before any event moves |
 | `publish.mjs` | Publishes these modules and the holo on the site under `engine/<version>/`, named by their BLAKE3 |
 | `test.mjs` | Two or three peers in one process against the real holo |
@@ -44,8 +45,7 @@ Sending asks the kernel what to do next and does it: sign, store, announce.
 `open({ identity, device, kernel, hash, store, signer, verdict, transport })`. The host has no
 identity, no keys and no network of its own:
 
-- `signer` signs and verifies. The tests use a P-256 key from the platform.
-- `verdict(sender, device)` is Prism ID's answer on a device. The tests use a table.
+- `signer` signs and verifies; `verdict(sender, device)` says whether a device belongs to a person. Until Prism ID answers that, pass the device book from `trust.mjs` as both (next section).
 - `transport` has `announce(message)` and `fetch(address)`. The tests hand messages across directly.
 
 ## Asking and receiving
@@ -53,11 +53,31 @@ identity, no keys and no network of its own:
 - `engine.offered(room, target, { granted })` lists the actions this identity may take toward `target` (itself when absent), by name, as the kernel answers (`Comms.Queue::offered`, proved equal to the permission and direct-room rules). `setPower` depends on the level granted: ask once per level offered. Show controls from this list; a refusal's `reason` is the fallback.
 - `engine.receive(message)` answers `{ admitted: true }`, `{ admitted: false, held: true, reason: "parents unknown" }` when a cited event has not arrived (the kernel's verdict is `held`; it is admitted when the parent arrives), or `{ admitted: false, reason }` when refused. An event that fails its address, signature or device check is refused, never held (`badEventIsNeverHeld`). At most 1,000 events are held; past that the oldest is dropped, and arrives again only if a peer sends it again.
 
+## Whose key is whose
+
+A device's address is the BLAKE3 of its raw P-256 public key (65 bytes, uncompressed), so a key checks itself against the device an event names. What binds a device to a person, until Prism ID does (`docs/DESIGN.md` decision 19), is how its key arrived. The device book in `trust.mjs` learns a key in exactly three ways:
+
+1. **Accepting an invite link.** `book.invite(base)` returns `<base>#uc1.<identity>.<device key>.<token>` (base64url), to share as a link or QR. `book.accept(link)` records the inviter's key: you trust whoever gave you the link.
+2. **The invitee's first proof.** The link's token is one-time. When the invitee connects, its proof carries its key and a ticket, BLAKE3 over the token and the inviter's fresh nonce; the inviter records that key for the identity claimed and spends the token. The inviter trusts whoever it gave the link to.
+3. **A vouch.** A person's trusted device signs a new device's address with `book.vouchFor(newRawKey)`; the new device opens its book with that vouch, and peers who know the first device accept the second.
+
+Nothing else adds a key: a peer that knows someone's identity but holds no link is refused. `book.onLearn` hears each device learned; `saved` and `save` keep the book across reloads.
+
+## Sending, and what is sent
+
+- `send` and every other call reject with a named `reason` when refused (below); nothing is kept.
+- An admitted event of this identity is **sent** once a proven peer holds it, or it went to one over an open channel (`transport.delivered(address)`, `transport.onDelivered`). Until then it is in `engine.outbox()`, `{ room, address }`, oldest first.
+- The outbox needs no storage: after a reload or a lost connection, the sync on connect sends a peer every event it lacks, and the outbox empties as peers take them. `engine.retry(address)` announces one again.
+- Connection: `transport.status` is `offline`, `connecting` or `online`, with `transport.onStatus`.
+- One tick is honest at **sent**. Read and received are not tracked yet (receipts).
+
 ## Connecting two browsers
 
 ```js
-const transport = webrtcTransport({ rendezvous: ntfyRendezvous(), signer, verdict, hash, store });
-const engine = open({ identity, device, kernel, hash, store, signer, verdict, transport });
+const own = { identity, ...(await newDeviceKey()) };
+const book = deviceBook({ hash, own, saved: load(), save });
+const transport = webrtcTransport({ rendezvous: ntfyRendezvous(), signer: book, verdict: book.verdict, hash, store });
+const engine = open({ identity, device: book.device, kernel, hash, store, signer: book, verdict: book.verdict, transport });
 await engine.restore();
 await transport.start();
 transport.onStatus((status) => show(status)); // offline, connecting, online
@@ -67,11 +87,13 @@ transport.onStatus((status) => show(status)); // offline, connecting, online
 
 ## Refusals
 
-A refused call rejects with an error whose `reason` names the cause. From the kernel (`Comms.Reason`): `banned`, `closed`, `not joined`, `needs power`, `not allowed`, `unknown action`, and `direct` for an invitation in a direct room. From the host's own checks: `unknown room`, `malformed`, `content` (the kernel refused the content), and on receipt `tampered` (the address does not match the bytes), `signature`, `device`, or `not allowed`. A received event whose parents have not arrived is held, not refused: `{ held: true, reason: "parents unknown" }`.
+The invitee reaches the inviter with `transport.reach(book.accept(link))`, and either may then create the direct room (`createDirect`): the other is a member, so the transport shares it.
+
+A refused call rejects with an error whose `reason` names the cause. From the kernel (`Comms.Reason`): `banned`, `closed`, `not joined`, `needs power`, `not allowed`, `unknown action`, and `direct` for an invitation in a direct room. `needs power` is the room's required power for writing; a member below another's power who tries to remove or change them hears `not allowed`, since that rule is about the two members, not the room. From the host's own checks: `unknown room`, `a direct room names a target` (`createDirect` without one), `malformed`, `content` (the kernel refused the content), and on receipt `tampered` (the address does not match the bytes), `signature`, `device`, or `not allowed`. A received event whose parents have not arrived is held, not refused: `{ held: true, reason: "parents unknown" }`.
 
 ## Not done
 
-- **Restoring re-verifies.** `engine.restore()` rebuilds every room by admitting each kept event again, so a reload costs one signature check and one kernel answer per event. A page passes `browserStore(hash, { name })` to `open` and calls `restore` once.
+- **Restoring re-verifies.** `engine.restore()` rebuilds every room by admitting each kept event again, parents first, so a reload costs one signature check and one kernel answer per event. A page passes `browserStore(hash, { name })` to `open` and calls `restore` once.
 - **The transport has no relay.** Two peers that cannot find a direct path (both behind strict NATs) do not connect. A member-owned relay (`Comms.Reach::mayForward`) is not built.
 - **Meeting topics come from the room address, not a secret.** Anyone who has seen a room's address can derive its topic and see when its members set up connections, and the offers carry their network addresses. Topics move to the room's epoch secret when encryption lands.
 - **Sync sends every address a room holds** when two peers connect, so the first exchange grows with history.

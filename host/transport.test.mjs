@@ -17,19 +17,15 @@ const types = { ".html": "text/html; charset=utf-8", ".mjs": "text/javascript; c
 const page = `<!doctype html><meta charset="utf-8"><title>peer</title><script type="module">
 import { webrtcTransport, ntfyRendezvous } from "/host/transport.mjs";
 import { memoryStore } from "/host/store.mjs";
-import { hex } from "/host/event.mjs";
+import { hex, unhex } from "/host/event.mjs";
+import { deviceBook, newDeviceKey } from "/host/trust.mjs";
 import { blake3 } from "/try/vendor/prism-code/src/blake3.mjs";
 const hash = (b) => blake3(b);
 const text = (t) => new TextEncoder().encode(t);
-const algorithm = { name: "ECDSA", hash: "SHA-256" };
 window.setup = async (name, other) => {
-  const keys = await crypto.subtle.generateKey({ name: "ECDSA", namedCurve: "P-256" }, true, ["sign", "verify"]);
-  const raw = new Uint8Array(await crypto.subtle.exportKey("raw", keys.publicKey));
   const identity = hash(text("identity " + name));
-  const device = hash(raw);
-  const devices = new Map([[hex(device), { identity: hex(identity), key: keys.publicKey }]]);
-  window.addDevice = async (deviceHex, identityHex, rawKey) => devices.set(deviceHex, { identity: identityHex,
-    key: await crypto.subtle.importKey("raw", Uint8Array.from(rawKey), { name: "ECDSA", namedCurve: "P-256" }, true, ["verify"]) });
+  const book = deviceBook({ hash, own: { identity, ...(await newDeviceKey()) } });
+  const device = book.device;
   const room = hash(text("the room"));
   const members = [hex(identity), hex(hash(text("identity " + other)))];
   const events = [];
@@ -51,19 +47,16 @@ window.setup = async (name, other) => {
   };
   const transport = webrtcTransport({
     rendezvous: ntfyRendezvous({ base: location.origin + "/ntfy/" }),
-    signer: {
-      sign: async (bytes) => new Uint8Array(await crypto.subtle.sign(algorithm, keys.privateKey, bytes)),
-      verify: async (bytes, signature, sender, signedBy) => {
-        const known = devices.get(hex(signedBy));
-        return Boolean(known && known.identity === hex(sender)) && crypto.subtle.verify(algorithm, known.key, signature, bytes);
-      },
-    },
-    verdict: async (sender, signedBy) => devices.get(hex(signedBy))?.identity === hex(sender),
+    signer: book,
+    verdict: book.verdict,
     hash, store, helloEvery: 500,
   });
   transport.bind(engine);
-  window.peer = { engine, transport, store, events, hash, text, hex };
-  return { device: hex(device), identity: hex(identity), raw: Array.from(raw) };
+  window.peer = { engine, transport, store, events, hash, text, hex, book };
+  window.invite = () => book.invite(location.origin + "/");
+  window.accept = (link) => { const inviter = book.accept(link); transport.reach(inviter); return hex(inviter); };
+  window.reachOnly = (identityHex) => transport.reach(unhex(identityHex));
+  return { device: hex(device), identity: hex(identity) };
 };
 window.ready = true;
 </script>`;
@@ -120,8 +113,9 @@ test("two browsers meet over the rendezvous, prove their identities, sync, forwa
   };
   const ada = await open("ada", "ben");
   const ben = await open("ben", "ada");
-  await ada.tab.evaluate((i) => window.addDevice(i.device, i.identity, i.raw), ben.info);
-  await ben.tab.evaluate((i) => window.addDevice(i.device, i.identity, i.raw), ada.info);
+  // Ben accepts Ada's invite link: he learns her key from it, and she learns his from the token he shows.
+  const link = await ada.tab.evaluate(() => window.invite());
+  assert.equal(await ben.tab.evaluate((l) => window.accept(l), link), ada.info.identity);
 
   // Ada holds an event before Ben is connected: it must arrive by the sync on connect.
   await ada.tab.evaluate(async () => {
@@ -132,6 +126,7 @@ test("two browsers meet over the rendezvous, prove their identities, sync, forwa
   await Promise.all([ada, ben].map(({ tab }) => tab.evaluate(() => window.peer.transport.start())));
   for (const { tab } of [ada, ben]) await tab.waitForFunction(() => window.peer.transport.status === "online", null, { timeout: 30_000 });
   await ben.tab.waitForFunction(() => window.peer.events.length === 1, null, { timeout: 10_000 });
+  assert.equal(await ada.tab.evaluate(() => window.peer.transport.delivered(window.peer.events[0].address)), true);
 
   // A new event Ada announces reaches Ben; content Ada stores is fetched by Ben and checked.
   const contentAddress = await ada.tab.evaluate(async () => {
@@ -149,5 +144,14 @@ test("two browsers meet over the rendezvous, prove their identities, sync, forwa
   }, contentAddress);
   assert.equal(fetched, "some content");
   assert.deepEqual(await ben.tab.evaluate(() => window.peer.transport.peers()), [ada.info.identity]);
+  assert.deepEqual(await ada.tab.evaluate(() => window.peer.book.devicesOf(window.peer.hash(window.peer.text("identity ben"))).length), 1);
+
+  // Eve knows Ada's identity but holds no link: Ada never accepts her, and the spent token admits nobody else.
+  const eve = await open("eve", "ada");
+  await eve.tab.evaluate((i) => window.reachOnly(i), ada.info.identity);
+  await eve.tab.evaluate(() => window.peer.transport.start());
+  await eve.tab.waitForTimeout(5_000);
+  assert.notEqual(await eve.tab.evaluate(() => window.peer.transport.status), "online");
+  assert.equal(await eve.tab.evaluate(() => window.peer.events.length), 0);
   assert.deepEqual(errors, []);
 });

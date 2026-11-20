@@ -6,7 +6,7 @@ A messenger with the features of Matrix and no server. Every decision about a ro
 
 ## Decisions taken
 
-These were open in the map. Decisions 1 to 4 and 10 to 18 are the owner's instructions or rulings; 5 to 8 are assumptions made to start Phase 2 and can be reversed.
+These were open in the map. Decisions 1 to 4 and 10 to 19 are the owner's instructions or rulings; 5 to 8 are assumptions made to start Phase 2 and can be reversed.
 
 | # | Decision | Status |
 |---|---|---|
@@ -28,6 +28,7 @@ These were open in the map. Decisions 1 to 4 and 10 to 18 are the owner's instru
 | 16 | Encryption is post-quantum from the first key: room keys are wrapped to member devices with X-Wing (X25519 + ML-KEM-768). The browser library that provides it is to be pinned; it is not built | ruled 2026-11-19 |
 | 17 | Per-user data synced across one's own devices (notification levels, mutes, pinned chats) lives in a private room per identity that only its devices join | ruled 2026-11-19 |
 | 18 | A person's profile (name, picture by content address) lives in a public room per identity that only its devices write | ruled 2026-11-19 |
+| 19 | Until Prism ID is wired, a device key reaches another person in an invite link (or its QR), which also carries a one-time token that binds the invitee's key back to the inviter; a person's later devices are vouched for by a device already trusted (`host/trust.mjs`). A device's address is the BLAKE3 of its key | ruled 2026-11-20 |
 
 ## Phases
 
