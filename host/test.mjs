@@ -364,3 +364,15 @@ test("the outbox holds this identity's events no peer has yet, and retry announc
   assert.deepEqual(lone.outbox(), []);
   await assert.rejects(lone.retry(hash(text("nothing"))), { reason: "unknown event" });
 });
+
+test("each group room has its own address; a second direct room with the same person is the first", async () => {
+  const wire = direct();
+  const ada = await peer("ada", wire);
+  const ben = await peer("ben", wire);
+  const one = await ada.engine.createRoom();
+  const two = await ada.engine.createRoom();
+  assert.notEqual(hex(one), hex(two));
+  assert.equal(ada.engine.rooms().length, 2);
+  const direct1 = await ada.engine.createDirect(ben.identity);
+  assert.equal(hex(ada.engine.findDirect(ben.identity)), hex(direct1));
+});

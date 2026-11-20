@@ -145,6 +145,19 @@ export function deviceBook({ hash, own, saved = null, save = () => {}, random = 
       const signature = new Uint8Array(await crypto.subtle.sign(algorithm, own.privateKey, concat(VOUCH, own.identity, device)));
       return { by: hex(ownDevice), signature: hex(signature) };
     },
+    /** The raw keys known for a person, hex, as introductions carry them. */
+    keysOf: (identity) => [...(people.get(typeof identity === "string" ? identity : hex(identity))?.values() ?? [])],
+    /**
+     * Learns a member's key from another member (decision 20): the transport calls this only for a
+     * peer that is a joined member of a room listing the person. The key must be 65 bytes; its device
+     * is its BLAKE3.
+     */
+    introduce(identity, rawKeyHex) {
+      const rawKey = unhex(rawKeyHex);
+      if (rawKey.length !== 65) return false;
+      record(unhex(String(identity)), rawKey);
+      return true;
+    },
     /** The devices known for a person, by address. */
     devicesOf: (identity) => [...(people.get(hex(identity))?.keys() ?? [])],
     /** Hears each device learned: `{ identity, device }`, both hex. */

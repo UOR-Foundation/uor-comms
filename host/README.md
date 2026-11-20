@@ -61,7 +61,9 @@ A device's address is the BLAKE3 of its raw P-256 public key (65 bytes, uncompre
 2. **The invitee's first proof.** The link's token is one-time. When the invitee connects, its proof carries its key and a ticket, BLAKE3 over the token and the inviter's fresh nonce; the inviter records that key for the identity claimed and spends the token. The inviter trusts whoever it gave the link to.
 3. **A vouch.** A person's trusted device signs a new device's address with `book.vouchFor(newRawKey)`; the new device opens its book with that vouch, and peers who know the first device accept the second.
 
-Nothing else adds a key: a peer that knows someone's identity but holds no link is refused. `book.onLearn` hears each device learned; `saved` and `save` keep the book across reloads.
+4. **An introduction** (decision 20). When two proven peers share a room, each passes on the keys it knows of that room's other invited or joined members. A key is accepted only from a peer that is a joined member of that room, only for a person the room lists, and its device is its own BLAKE3. So in a group you trust whoever let you in to vouch for who else is there.
+
+Nothing else adds a key: a peer that knows someone's identity but holds no link, and shares no room with anyone you trust, is refused. `book.onLearn` hears each device learned; `saved` and `save` keep the book across reloads.
 
 ## Sending, and what is sent
 
@@ -96,6 +98,9 @@ A refused call rejects with an error whose `reason` names the cause. From the ke
 - **Restoring re-verifies.** `engine.restore()` rebuilds every room by admitting each kept event again, parents first, so a reload costs one signature check and one kernel answer per event. A page passes `browserStore(hash, { name })` to `open` and calls `restore` once.
 - **The transport has no relay.** Two peers that cannot find a direct path (both behind strict NATs) do not connect. A member-owned relay (`Comms.Reach::mayForward`) is not built.
 - **Meeting topics come from the room address, not a secret.** Anyone who has seen a room's address can derive its topic and see when its members set up connections, and the offers carry their network addresses. Topics move to the room's epoch secret when encryption lands.
+- **Rooms.** A group room's creating event carries a random salt in its content field, so each room has its own address. A direct room has none: creating a second one with the same person gives the first (`findDirect`).
+- **Who hears what, when.** A peer is offered a room's keys and history when it is proven, and again the moment an admitted event lets it see the room (an invitation), not only at the next meeting. A member who is removed or banned is sent the event that removed it, and nothing after.
+- **A concurrent ban.** An event that cites the room as it was before a ban is judged against its own parents, so a peer may admit a banned member's message written before the ban reached it. Matrix soft-fails such events; that is not modelled yet.
 - **Sync sends every address a room holds** when two peers connect, so the first exchange grows with history.
 - **No Prism ID.** The signer and the device verdict are supplied by the caller.
 - **No encryption.** Content is stored and fetched as given.
