@@ -84,11 +84,11 @@ test("a direct chat: create, join, and a message each way reach both peers in on
   const first = await ada.engine.send(room, message("hello"));
   const second = await ben.engine.send(room, message("hello back"));
   for (const side of [ada, ben]) {
-    const timeline = side.engine.timeline(room);
+    const timeline = side.engine.timeline(room).events;
     assert.deepEqual(timeline.map((event) => event.action), [ACTION.create, ACTION.join, ACTION.send, ACTION.send]);
     assert.deepEqual(timeline.slice(2).map((event) => hex(event.address)), [first, second].map(hex));
   }
-  const received = ben.engine.timeline(room)[2];
+  const received = ben.engine.timeline(room).events[2];
   assert.equal(decodeContent(await ben.engine.content(received.content)).text, "hello");
 });
 
@@ -101,12 +101,12 @@ test("a stranger cannot write, and a peer refuses an event the sender was not pe
   await assert.rejects(eve.engine.send(room, message("let me in")), { reason: "not joined" });
   await assert.rejects(eve.engine.join(room), { reason: "closed" });
   // Eve writes the bytes anyway and signs them with her own device.
-  const head = ada.engine.timeline(room).at(-1).address;
+  const head = ada.engine.timeline(room).events.at(-1).address;
   const bytes = encode({ action: ACTION.send, room, sender: eve.identity, device: eve.device, parents: [head] });
   const signature = new Uint8Array(64);
   const result = await ada.engine.receive({ address: hash(bytes), bytes, signature });
   assert.equal(result.admitted, false);
-  assert.equal(ada.engine.timeline(room).length, 1);
+  assert.equal(ada.engine.timeline(room).events.length, 1);
 });
 
 test("a tampered event, a wrong address and a device of another identity are refused", async () => {
@@ -143,8 +143,8 @@ test("events that arrive out of order are held and land in the same order on bot
   await ada.engine.send(room, message("one"));
   await ada.engine.send(room, message("two"));
   for (const message of [...sent].reverse()) await ben.engine.receive(message);
-  assert.deepEqual(ben.engine.timeline(room).map((e) => hex(e.address)), ada.engine.timeline(room).map((e) => hex(e.address)));
-  assert.equal(ben.engine.timeline(room).length, 3);
+  assert.deepEqual(ben.engine.timeline(room).events.map((e) => hex(e.address)), ada.engine.timeline(room).events.map((e) => hex(e.address)));
+  assert.equal(ben.engine.timeline(room).events.length, 3);
 });
 
 test("two peers who write at once agree on the order once each has the other's event", async () => {
@@ -158,14 +158,14 @@ test("two peers who write at once agree on the order once each has the other's e
   await ada.engine.send(room, message("from ada"));
   await ben.engine.send(room, message("from ben"));
   for (const [other, message] of held) await other.receive(message);
-  const order = (side) => side.engine.timeline(room).map((e) => hex(e.address));
+  const order = (side) => side.engine.timeline(room).events.map((e) => hex(e.address));
   assert.equal(order(ada).length, 4);
   assert.deepEqual(order(ada), order(ben));
   // The next event cites both heads.
   wire.deliver = (other, message) => other.receive(message);
   const next = await ada.engine.send(room, message("after both"));
-  assert.equal(ada.engine.timeline(room).at(-1).parents.length, 2);
-  assert.equal(hex(ben.engine.timeline(room).at(-1).address), hex(next));
+  assert.equal(ada.engine.timeline(room).events.at(-1).parents.length, 2);
+  assert.equal(hex(ben.engine.timeline(room).events.at(-1).address), hex(next));
 });
 
 test("moderation: the creator bans a member, whose later event every peer refuses", async () => {
@@ -265,7 +265,7 @@ test("the engine offers exactly what the kernel admits, and holds an event whose
   const late = await ben.engine.receive(second);
   assert.equal(late.held, true);
   assert.equal((await ben.engine.receive(first)).admitted, true);
-  assert.equal(ben.engine.timeline(room).length, 4);
+  assert.equal(ben.engine.timeline(room).events.length, 4);
 });
 
 test("an event whose parent list was tampered with is refused, not held", async () => {
@@ -296,10 +296,10 @@ test("an engine reopened on the same store rebuilds every room as it was", async
   assert.equal(again.rooms().length, 0);
   assert.equal(await again.restore(), 1);
   assert.equal(again.evicted, false);
-  const order = (engine) => engine.timeline(room).map((e) => hex(e.address));
+  const order = (engine) => engine.timeline(room).events.map((e) => hex(e.address));
   assert.deepEqual(order(again), order(ben.engine));
   assert.deepEqual(again.members(room), ben.engine.members(room));
-  assert.equal(decodeContent(await again.content(again.timeline(room)[2].content)).text, "one");
+  assert.equal(decodeContent(await again.content(again.timeline(room).events[2].content)).text, "one");
 });
 
 test("a refusal is named by its cause", async () => {
@@ -389,6 +389,32 @@ test("each group room has its own address; a second direct room with the same pe
   assert.equal(hex(ada.engine.findDirect(ben.identity)), hex(direct1));
 });
 
+test("a timeline window pages back through the fold order and says when earlier events remain", async () => {
+  const wire = direct();
+  const ada = await peer("ada", wire);
+  const ben = await peer("ben", wire);
+  const room = await ada.engine.createDirect(ben.identity);
+  for (const n of [1, 2, 3, 4, 5, 6]) await ada.engine.send(room, message(`message ${n}`));
+  const all = ada.engine.timeline(room).events.map((e) => hex(e.address));
+  assert.equal(all.length, 7);
+  const newest = ada.engine.timeline(room, { limit: 3 });
+  assert.deepEqual(newest.events.map((e) => hex(e.address)), all.slice(4));
+  assert.equal(newest.hasMore, true);
+  const middle = ada.engine.timeline(room, { before: newest.events[0].address, limit: 3 });
+  assert.deepEqual(middle.events.map((e) => hex(e.address)), all.slice(1, 4));
+  assert.equal(middle.hasMore, true);
+  // A window that reaches the first event exactly has nothing earlier.
+  const first = ada.engine.timeline(room, { before: middle.events[0].address, limit: 1 });
+  assert.deepEqual(first.events.map((e) => hex(e.address)), all.slice(0, 1));
+  assert.equal(first.hasMore, false);
+  assert.deepEqual(ada.engine.timeline(room, { before: first.events[0].address }), { events: [], hasMore: false });
+  // Both peers give the same window.
+  assert.deepEqual(ben.engine.timeline(room, { limit: 3 }).events.map((e) => hex(e.address)), all.slice(4));
+  for (const limit of [0, 1.5, 1001, "3"]) assert.throws(() => ada.engine.timeline(room, { limit }), { reason: "limit" });
+  assert.throws(() => ada.engine.timeline(room, { before: hash(text("nothing")) }), { reason: "unknown event" });
+  assert.throws(() => ada.engine.timeline(hash(text("no room"))), { reason: "unknown room" });
+});
+
 test("a parent and its child received at once are both admitted: admission is one at a time", async () => {
   const wire = direct();
   const sent = [];
@@ -401,7 +427,7 @@ test("a parent and its child received at once are both admitted: admission is on
   const [parent, child] = sent;
   const results = await Promise.all([ben.engine.receive(parent), ben.engine.receive(child)]);
   assert.deepEqual(results.map((r) => r.admitted), [true, true]);
-  assert.equal(ben.engine.timeline(room).length, 3);
+  assert.equal(ben.engine.timeline(room).events.length, 3);
 });
 
 test("a room carries the content its admitted messages name, and nothing else", async () => {
