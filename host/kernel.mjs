@@ -77,6 +77,12 @@ export function kernel(dispatch) {
         [room.required, 8], flag(room.open), [granted, 8], flag(direct)]);
       return [...bits].flatMap((bit, action) => (bit === "1" ? [action] : []));
     },
+    /**
+     * Whether a redaction may be composed or admitted against the sender's state (`Comms.Redact::composes`):
+     * a joined member with the power to send redacts their own event, another's only with the redaction power.
+     */
+    redaction: async (sender, room, own, eventBytes) =>
+      (await ask(0x0b, [[sender.status, 1], [sender.power, 8], [room.required, 8], [room.redact, 8], flag(own), eventBytes])) === "composed",
     /** What to do next in a send: `sign`, `store`, `announce` or `nothing`. */
     sendStep: (phase, report) => ask(0x08, [[phase, 1], [report, 1]]),
   };

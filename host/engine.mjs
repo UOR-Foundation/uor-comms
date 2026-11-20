@@ -10,10 +10,13 @@
 //
 // Three things here are computed, not asked: an event's depth (the rule is `Comms.Fold::depthOf`),
 // a member's standing at creation, and the power a change of power leaves. Each is named where it occurs.
+import { decodeContent, KIND } from "./content.mjs";
 import { ACTION, ZERO, decode, encode, hex, isZero } from "./event.mjs";
 
 const ABSENT = Object.freeze({ status: 0, power: 0 });
-const SETTINGS = Object.freeze({ required: 0, open: false });
+// Room settings until they are events (item 6). `redact` is the power to redact another member's event,
+// Matrix's default; the model has none.
+const SETTINGS = Object.freeze({ required: 0, open: false, redact: 50 });
 const CREATOR_POWER = 100;
 // Events held for a missing parent, at most; the oldest is dropped first. Not a model rule.
 const HELD_LIMIT = 1000;
@@ -23,6 +26,8 @@ const TIMELINE_MAX = 1000;
 const CREATED = new Set(["created", "created direct"]);
 const PHASE = Object.freeze({ sign: 1, store: 2, announce: 3 });
 const changesNoMember = (action) => action === ACTION.send || action === ACTION.redact || action === ACTION.create;
+
+const citedBy = (fields) => [...fields.parents, ...fields.authorities, ...(fields.action === ACTION.redact ? [fields.target] : [])];
 
 class Refused extends Error {
   constructor(reason) {
@@ -115,8 +120,13 @@ export function open({ identity, device, kernel, hash, store, signer, verdict, t
 
   async function permitted(room, fields, bytes) {
     if (fields.action === ACTION.create) return CREATED.has(await kernel.create(bytes));
-    if (fields.action === ACTION.redact) return false; // not wired yet
     const state = await stateBefore(room, fields.parents);
+    if (fields.action === ACTION.redact) {
+      // The target is cited, so it is held: whether it is the sender's own is read from it.
+      const own = hex(room.events.get(hex(fields.target)).fields.sender) === hex(fields.sender);
+      return (await kernel.redaction(standing(state, fields.sender), SETTINGS, own, bytes))
+        && kernel.direct(fields.action, Boolean(room.direct));
+    }
     const subject = fields.action < 2 ? fields.sender : fields.target;
     return (await kernel.compose(standing(state, fields.sender), standing(state, subject), SETTINGS, bytes))
       && kernel.direct(fields.action, Boolean(room.direct));
@@ -131,7 +141,8 @@ export function open({ identity, device, kernel, hash, store, signer, verdict, t
     const roomKey = hex(creates ? address : fields.room);
     const room = rooms.get(roomKey);
     if (room?.events.has(hex(address))) return { admitted: true, address, known: true };
-    const cited = [...fields.parents, ...fields.authorities];
+    // A redaction waits for the event it redacts, as an event waits for its parents.
+    const cited = citedBy(fields);
     const parentsKnown = creates ? cited.length === 0 : Boolean(room) && cited.every((a) => room.events.has(hex(a)));
     const checks = {
       signatureValid: await signer.verify(bytes, signature, fields.sender, fields.device),
@@ -154,14 +165,19 @@ export function open({ identity, device, kernel, hash, store, signer, verdict, t
     }
     await store.put(bytes, address);
     await store.putEvent?.({ address, bytes, signature });
-    const target = room ?? { id: address, events: new Map(), order: [], heads: new Set(), state: new Map(), contents: new Set(),
+    const target = room ?? { id: address, events: new Map(), order: [], heads: new Set(), state: new Map(), contents: new Map(), redacted: new Set(),
       direct: creates && !isZero(fields.target) ? [fields.sender, fields.target] : null };
     rooms.set(roomKey, target);
     // `Comms.Fold::depthOf`: one more than the deepest parent, 0 with none.
     const depth = fields.parents.reduce((most, a) => Math.max(most, target.events.get(hex(a)).depth + 1), 0);
     const event = { address, bytes, signature, fields, depth };
     target.events.set(hex(address), event);
-    if (fields.action === ACTION.send) target.contents.add(hex(fields.content));
+    if (fields.action === ACTION.send) {
+      const naming = target.contents.get(hex(fields.content)) ?? new Set();
+      target.contents.set(hex(fields.content), naming.add(hex(address)));
+    }
+    // `Comms.Redact`: the set of redacted events only grows, whatever order redactions arrive in.
+    if (fields.action === ACTION.redact) target.redacted.add(hex(fields.target));
     for (const parent of fields.parents) target.heads.delete(hex(parent));
     target.heads.add(hex(address));
     await insert(target, event);
@@ -205,6 +221,18 @@ export function open({ identity, device, kernel, hash, store, signer, verdict, t
     return publish(bytes, onStep);
   }
 
+  // Content read and judged once per address: its fields, or null when the kernel refuses it.
+  const read = new Map();
+  async function contentAt(address) {
+    const key = hex(address);
+    if (read.has(key)) return read.get(key);
+    const bytes = await api.content(address);
+    if (!bytes) return undefined; // not held and no peer served it: asked again next time
+    const fields = (await kernel.content(bytes)) === "refused" ? null : decodeContent(bytes);
+    read.set(key, fields);
+    return fields;
+  }
+
   const api = {
     Refused,
     /** Creates a room and returns its address. With `target` the room is direct and the target invited. */
@@ -227,6 +255,27 @@ export function open({ identity, device, kernel, hash, store, signer, verdict, t
     ban: (room, target, options) => act(room, ACTION.ban, { ...options, target }),
     unban: (room, target, options) => act(room, ACTION.unban, { ...options, target }),
     setPower: (room, target, granted, options) => act(room, ACTION.setPower, { ...options, target, granted }),
+    /**
+     * Redacts an event of the room: the event stays, its content is no longer shown or served. Your own
+     * with the power to send; another member's only with the room's redaction power (`Comms.Redact`).
+     */
+    async redact(roomId, address, { onStep } = {}) {
+      const room = rooms.get(hex(roomId));
+      if (!room) throw new Refused("unknown room");
+      const target = room.events.get(hex(address));
+      if (!target) throw new Refused("unknown event");
+      const parents = [...room.heads].map((key) => room.events.get(key).address);
+      const bytes = encode({ action: ACTION.redact, room: roomId, sender: identity, device, target: target.address, parents });
+      const me = standing(room.state, identity);
+      const own = hex(target.fields.sender) === hex(identity);
+      if (!(await kernel.redaction(me, SETTINGS, own, bytes))) {
+        // `Comms.Redact::allowed` asks what sending asks, and the redaction power for another's event:
+        // so the send rule's refusal names the cause, and when it permits, the power is what is missing.
+        const why = await kernel.reason(ACTION.send, me, me, SETTINGS, 0);
+        throw new Refused(why === "permitted" ? "not allowed" : why);
+      }
+      return publish(bytes, onStep);
+    },
     /** Sends content. The content is stored by address; the event carries only the address. */
     async send(room, contentBytes, options) {
       if ((await kernel.content(contentBytes)) === "refused") throw new Refused("content");
@@ -251,7 +300,7 @@ export function open({ identity, device, kernel, hash, store, signer, verdict, t
           if (ready) { done.add(key); await serially(message); continue; }
           stack.push([message, true]);
           const fields = decode(message.bytes);
-          for (const cited of fields ? [...fields.parents, ...fields.authorities] : []) {
+          for (const cited of fields ? citedBy(fields) : []) {
             const parent = byAddress.get(hex(cited));
             if (parent && !done.has(hex(cited))) stack.push([parent, false]);
           }
@@ -272,7 +321,10 @@ export function open({ identity, device, kernel, hash, store, signer, verdict, t
     },
     rooms: () => [...rooms.values()].map((room) => room.id),
     /** Whether an admitted message of the room names this content address: what a peer may fetch. */
-    carries: (roomId, address) => Boolean(rooms.get(hex(roomId))?.contents.has(hex(address))),
+    carries(roomId, address) {
+      const room = rooms.get(hex(roomId));
+      return [...(room?.contents.get(hex(address)) ?? [])].some((event) => !room.redacted.has(event));
+    },
     /**
      * This identity's events no peer holds yet, oldest first: `{ room, address }`. Empty when the
      * transport cannot say (it has no `delivered`). The sync on connect delivers them; `retry` asks again.
@@ -342,8 +394,55 @@ export function open({ identity, device, kernel, hash, store, signer, verdict, t
         end = room.order.indexOf(anchor);
       }
       const start = Math.max(0, end - limit);
-      const events = room.order.slice(start, end).map(({ address, fields, depth }) => ({ address, depth, ...fields }));
+      const events = room.order.slice(start, end)
+        .map(({ address, fields, depth }) => ({ address, depth, ...fields, redacted: room.redacted.has(hex(address)) }));
       return { events, hasMore: start > 0 };
+    },
+    /**
+     * A window of a room's messages as a page shows them, newest last, with edits and reactions applied.
+     * Rules here are host code, not model rules: an edit counts only from the message's sender and the
+     * last in the fold order wins; a reaction counts once per member and key; a redacted message, edit
+     * or reaction is left out, as is content the kernel refuses. `missing` counts events whose content
+     * no store or peer could give, so they could not be placed. Throws as `timeline` does.
+     */
+    async messages(roomId, { before, limit = TIMELINE_LIMIT } = {}) {
+      if (!Number.isInteger(limit) || limit < 1 || limit > TIMELINE_MAX) throw new Refused("limit");
+      const room = rooms.get(hex(roomId));
+      if (!room) throw new Refused("unknown room");
+      const sends = room.order.filter((e) => e.fields.action === ACTION.send && !room.redacted.has(hex(e.address)));
+      const contents = await Promise.all(sends.map((e) => contentAt(e.fields.content)));
+      const shown = [];
+      const byAddress = new Map();
+      let missing = 0;
+      sends.forEach((event, i) => {
+        const content = contents[i];
+        if (content === undefined) missing += 1;
+        if (!content || content.kind !== KIND.message) return;
+        const message = { address: event.address, sender: event.fields.sender, sent: Number(content.sent),
+          text: content.text, mentions: content.mentions, everyone: content.everyone, forwarded: content.forwarded,
+          replyTo: content.relates, edited: null, reactions: {} };
+        shown.push(message);
+        byAddress.set(hex(event.address), message);
+      });
+      sends.forEach((event, i) => {
+        const content = contents[i];
+        const message = content?.relates && byAddress.get(hex(content.relates));
+        if (!message) return;
+        if (content.kind === KIND.edit && hex(event.fields.sender) === hex(message.sender)) {
+          Object.assign(message, { text: content.text, mentions: content.mentions, everyone: content.everyone, edited: event.address });
+        }
+        if (content.kind === KIND.reaction) {
+          const members = new Set(message.reactions[content.key] ?? []);
+          message.reactions[content.key] = [...members.add(hex(event.fields.sender))];
+        }
+      });
+      let end = shown.length;
+      if (before !== undefined) {
+        end = shown.findIndex((m) => hex(m.address) === hex(before));
+        if (end < 0) throw new Refused("unknown event");
+      }
+      const start = Math.max(0, end - limit);
+      return { messages: shown.slice(start, end), hasMore: start > 0, missing };
     },
     subscribe(listener) {
       listeners.add(listener);
