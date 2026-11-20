@@ -17,7 +17,9 @@ theorem{
     isDirect : Nat
   ],
   statement: (((not (senderStatus =? 2)) && (Comms.Settings::mayChange key value contentZero senderStatus senderPower settingsPower isDirect)) = false),
-  proof: linear_arithmetic{definitions: [Comms.Settings::known, Comms.Settings::mayChange, Comms.Settings::valueFits]},
+  proof: linear_arithmetic{
+    definitions: [Comms.Settings::known, Comms.Settings::mayChange, Comms.Settings::valueFits]
+  },
   axioms: [Quot.sound, propext]
 }
 
@@ -33,7 +35,9 @@ theorem{
     isDirect : Nat
   ],
   statement: (((senderPower <? settingsPower) && (Comms.Settings::mayChange key value contentZero senderStatus senderPower settingsPower isDirect)) = false),
-  proof: linear_arithmetic{definitions: [Comms.Settings::known, Comms.Settings::mayChange, Comms.Settings::valueFits]},
+  proof: linear_arithmetic{
+    definitions: [Comms.Settings::known, Comms.Settings::mayChange, Comms.Settings::valueFits]
+  },
   axioms: [Quot.sound, propext]
 }
 
@@ -49,7 +53,9 @@ theorem{
     isDirect : Nat
   ],
   statement: (((not (isDirect =? 0)) && ((2 <? key) && (Comms.Settings::mayChange key value contentZero senderStatus senderPower settingsPower isDirect))) = false),
-  proof: linear_arithmetic{definitions: [Comms.Settings::known, Comms.Settings::mayChange, Comms.Settings::valueFits]},
+  proof: linear_arithmetic{
+    definitions: [Comms.Settings::known, Comms.Settings::mayChange, Comms.Settings::valueFits]
+  },
   axioms: [Quot.sound, propext]
 }
 
@@ -65,7 +71,9 @@ theorem{
     isDirect : Nat
   ],
   statement: (((4 <=? key) && ((senderPower <? value) && (Comms.Settings::mayChange key value contentZero senderStatus senderPower settingsPower isDirect))) = false),
-  proof: linear_arithmetic{definitions: [Comms.Settings::known, Comms.Settings::mayChange, Comms.Settings::valueFits]},
+  proof: linear_arithmetic{
+    definitions: [Comms.Settings::known, Comms.Settings::mayChange, Comms.Settings::valueFits]
+  },
   axioms: [Quot.sound, propext]
 }
 
@@ -81,7 +89,9 @@ theorem{
     isDirect : Nat
   ],
   statement: (((key =? 3) && ((1 <? value) && (Comms.Settings::mayChange key value contentZero senderStatus senderPower settingsPower isDirect))) = false),
-  proof: linear_arithmetic{definitions: [Comms.Settings::known, Comms.Settings::mayChange, Comms.Settings::valueFits]},
+  proof: linear_arithmetic{
+    definitions: [Comms.Settings::known, Comms.Settings::mayChange, Comms.Settings::valueFits]
+  },
   axioms: [Quot.sound, propext]
 }
 
@@ -97,7 +107,9 @@ theorem{
     isDirect : Nat
   ],
   statement: (((2 <? key) && ((not (contentZero =? 1)) && (Comms.Settings::mayChange key value contentZero senderStatus senderPower settingsPower isDirect))) = false),
-  proof: linear_arithmetic{definitions: [Comms.Settings::known, Comms.Settings::mayChange, Comms.Settings::valueFits]},
+  proof: linear_arithmetic{
+    definitions: [Comms.Settings::known, Comms.Settings::mayChange, Comms.Settings::valueFits]
+  },
   axioms: [Quot.sound, propext]
 }
 
@@ -113,7 +125,9 @@ theorem{
     isDirect : Nat
   ],
   statement: (((not (Comms.Settings::known key)) && (Comms.Settings::mayChange key value contentZero senderStatus senderPower settingsPower isDirect)) = false),
-  proof: linear_arithmetic{definitions: [Comms.Settings::known, Comms.Settings::mayChange, Comms.Settings::valueFits]},
+  proof: linear_arithmetic{
+    definitions: [Comms.Settings::known, Comms.Settings::mayChange, Comms.Settings::valueFits]
+  },
   axioms: [Classical.choice, Quot.sound, propext]
 }
 
@@ -130,7 +144,14 @@ theorem{
     isDirect : Nat
   ],
   statement: (((not (Comms.Settings::mayChange key value contentZero senderStatus senderPower settingsPower isDirect)) && (not ((Comms.Settings::after current key value contentZero senderStatus senderPower settingsPower isDirect) =? current))) = false),
-  proof: linear_arithmetic{definitions: [Comms.Settings::after, Comms.Settings::known, Comms.Settings::mayChange, Comms.Settings::valueFits]},
+  proof: linear_arithmetic{
+    definitions: [
+      Comms.Settings::after,
+      Comms.Settings::known,
+      Comms.Settings::mayChange,
+      Comms.Settings::valueFits
+    ]
+  },
   axioms: [Quot.sound, propext]
 }
 
@@ -147,7 +168,14 @@ theorem{
     isDirect : Nat
   ],
   statement: (((Comms.Settings::mayChange key value contentZero senderStatus senderPower settingsPower isDirect) && (not ((Comms.Settings::after current key value contentZero senderStatus senderPower settingsPower isDirect) =? value))) = false),
-  proof: linear_arithmetic{definitions: [Comms.Settings::after, Comms.Settings::known, Comms.Settings::mayChange, Comms.Settings::valueFits]},
+  proof: linear_arithmetic{
+    definitions: [
+      Comms.Settings::after,
+      Comms.Settings::known,
+      Comms.Settings::mayChange,
+      Comms.Settings::valueFits
+    ]
+  },
   axioms: [Quot.sound, propext]
 }
 
@@ -250,7 +278,14 @@ theorem{
     authorities : (List Nat)
   ],
   statement: (((not (Comms.Settings::mayChange key value contentZero senderStatus senderPower settingsPower isDirect)) && (Comms.Settings::composes action version key keyRest value contentZero senderStatus senderPower settingsPower isDirect parents authorities)) = false),
-  proof: linear_arithmetic{definitions: [Comms.Settings::composes, Comms.Settings::known, Comms.Settings::mayChange, Comms.Settings::valueFits]},
+  proof: linear_arithmetic{
+    definitions: [
+      Comms.Settings::composes,
+      Comms.Settings::known,
+      Comms.Settings::mayChange,
+      Comms.Settings::valueFits
+    ]
+  },
   axioms: [Quot.sound, propext]
 }
 
