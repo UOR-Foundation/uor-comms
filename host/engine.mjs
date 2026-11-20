@@ -17,6 +17,9 @@ const SETTINGS = Object.freeze({ required: 0, open: false });
 const CREATOR_POWER = 100;
 // Events held for a missing parent, at most; the oldest is dropped first. Not a model rule.
 const HELD_LIMIT = 1000;
+// A timeline window's default and largest size; not model rules.
+const TIMELINE_LIMIT = 50;
+const TIMELINE_MAX = 1000;
 const CREATED = new Set(["created", "created direct"]);
 const PHASE = Object.freeze({ sign: 1, store: 2, announce: 3 });
 const changesNoMember = (action) => action === ACTION.send || action === ACTION.redact || action === ACTION.create;
@@ -312,9 +315,24 @@ export function open({ identity, device, kernel, hash, store, signer, verdict, t
     /** This engine's identity and device. */
     identity,
     device,
-    timeline(roomId) {
+    /**
+     * A window of a room's events in the fold order (depth, then address: `Comms.Fold`), oldest first:
+     * at most `limit` events just before the event `before`, or the newest when `before` is absent.
+     * `hasMore` is true when earlier events exist. Taking the slice is host code, not a model rule.
+     */
+    timeline(roomId, { before, limit = TIMELINE_LIMIT } = {}) {
+      if (!Number.isInteger(limit) || limit < 1 || limit > TIMELINE_MAX) throw new Refused("limit");
       const room = rooms.get(hex(roomId));
-      return room ? room.order.map(({ address, fields, depth }) => ({ address, depth, ...fields })) : [];
+      if (!room) throw new Refused("unknown room");
+      let end = room.order.length;
+      if (before !== undefined) {
+        const anchor = room.events.get(hex(before));
+        if (!anchor) throw new Refused("unknown event");
+        end = room.order.indexOf(anchor);
+      }
+      const start = Math.max(0, end - limit);
+      const events = room.order.slice(start, end).map(({ address, fields, depth }) => ({ address, depth, ...fields }));
+      return { events, hasMore: start > 0 };
     },
     subscribe(listener) {
       listeners.add(listener);
