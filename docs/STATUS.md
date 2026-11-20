@@ -84,7 +84,7 @@ The holo's entry point, `RoomKernel.dispatch`, answers twenty-three operations. 
 | Forwarder | 4 | a member; a member-owned node; a stranger; a direct path |
 | Mailbox | 4 | a member; a member-owned node; a phone; a stranger |
 | Why refused | 6 | banned; closed; not joined; needs power; not allowed; permitted |
-| Change a setting | 3 | the creator names the room; a member below the settings power; a wrong length |
+| Change a setting | 3 | the creator names the room, every content word at its largest; a member below the settings power; a wrong length |
 | Default of a setting | 3 | the power to change settings (50); the power to send (0); a wrong length |
 | Invalid | 6 | empty; unknown operation; wrong length, three times; a request of 32,768 zero bytes, exactly the allocation bound, which prismpm requires |
 

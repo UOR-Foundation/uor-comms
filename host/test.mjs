@@ -311,7 +311,8 @@ test("a refusal is named by its cause", async () => {
   await assert.rejects(ben.engine.join(room), { reason: "closed" });
   await ada.engine.invite(room, ben.identity);
   await ben.engine.join(room);
-  await assert.rejects(ben.engine.kick(room, ada.identity), { reason: "not allowed" });
+  // Kicking needs 50 by default (`kickingNeedsFiftyByDefault`); Ben has 0.
+  await assert.rejects(ben.engine.kick(room, ada.identity), { reason: "needs power" });
   await ada.engine.ban(room, ben.identity);
   await assert.rejects(ben.engine.send(room, message("hi")), { reason: "banned" });
   await assert.rejects(ada.engine.send(hash(text("no such room")), message("hi")), { reason: "unknown room" });
