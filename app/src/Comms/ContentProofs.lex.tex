@@ -179,90 +179,50 @@ theorem{
 
 theorem{
   name: nulInTextIsRefused,
-  parameters: [value : Bytes, start : Nat, at : Nat, beyond : Nat],
-  statement: ((((Comms.Content::byteOf value (start + at)) =? 0) && (Comms.Content::textClean value start ((at + 1) + beyond))) = false),
-  proof: induction{
-    branches: [
-      {
-        proof: linear_arithmetic{definitions: [Comms.Content::textClean]},
-        binders: [],
-        constructor: zero
-      },
-      {
-        proof: linear_arithmetic{definitions: [Comms.Content::textClean]},
-        binders: [fewer, ih],
-        constructor: succ
-      }
-    ],
-    scrutinee: beyond
-  },
+  parameters: [value : Bytes, start : Nat, at : Nat],
+  statement: ((((Comms.Content::byteOf value (start + at)) =? 0) && (Comms.Content::textClean value start (at + 1))) = false),
+  proof: linear_arithmetic{definitions: [Comms.Content::textClean]},
   axioms: [Quot.sound, propext]
 }
 
 theorem{
   name: carriageReturnInTextIsRefused,
-  parameters: [value : Bytes, start : Nat, at : Nat, beyond : Nat],
-  statement: ((((Comms.Content::byteOf value (start + at)) =? 13) && (Comms.Content::textClean value start ((at + 1) + beyond))) = false),
-  proof: induction{
-    branches: [
-      {
-        proof: linear_arithmetic{definitions: [Comms.Content::textClean]},
-        binders: [],
-        constructor: zero
-      },
-      {
-        proof: linear_arithmetic{definitions: [Comms.Content::textClean]},
-        binders: [fewer, ih],
-        constructor: succ
-      }
-    ],
-    scrutinee: beyond
-  },
+  parameters: [value : Bytes, start : Nat, at : Nat],
+  statement: ((((Comms.Content::byteOf value (start + at)) =? 13) && (Comms.Content::textClean value start (at + 1))) = false),
+  proof: linear_arithmetic{definitions: [Comms.Content::textClean]},
   axioms: [Quot.sound, propext]
 }
 
 theorem{
   name: spaceInReactionKeyIsRefused,
-  parameters: [value : Bytes, start : Nat, at : Nat, beyond : Nat],
-  statement: ((((Comms.Content::byteOf value (start + at)) =? 32) && (Comms.Content::keyClean value start ((at + 1) + beyond))) = false),
-  proof: induction{
-    branches: [
-      {
-        proof: linear_arithmetic{definitions: [Comms.Content::keyClean]},
-        binders: [],
-        constructor: zero
-      },
-      {
-        proof: linear_arithmetic{definitions: [Comms.Content::keyClean]},
-        binders: [fewer, ih],
-        constructor: succ
-      }
-    ],
-    scrutinee: beyond
-  },
+  parameters: [value : Bytes, start : Nat, at : Nat],
+  statement: ((((Comms.Content::byteOf value (start + at)) =? 32) && (Comms.Content::keyClean value start (at + 1))) = false),
+  proof: linear_arithmetic{definitions: [Comms.Content::keyClean]},
   axioms: [Quot.sound, propext]
 }
 
 theorem{
   name: lineEndInReactionKeyIsRefused,
-  parameters: [value : Bytes, start : Nat, at : Nat, beyond : Nat],
-  statement: ((((Comms.Content::byteOf value (start + at)) =? 10) && (Comms.Content::keyClean value start ((at + 1) + beyond))) = false),
-  proof: induction{
-    branches: [
-      {
-        proof: linear_arithmetic{definitions: [Comms.Content::keyClean]},
-        binders: [],
-        constructor: zero
-      },
-      {
-        proof: linear_arithmetic{definitions: [Comms.Content::keyClean]},
-        binders: [fewer, ih],
-        constructor: succ
-      }
-    ],
-    scrutinee: beyond
-  },
+  parameters: [value : Bytes, start : Nat, at : Nat],
+  statement: ((((Comms.Content::byteOf value (start + at)) =? 10) && (Comms.Content::keyClean value start (at + 1))) = false),
+  proof: linear_arithmetic{definitions: [Comms.Content::keyClean]},
   axioms: [Quot.sound, propext]
+}
+
+theorem{
+  name: textScanStepsDown,
+  parameters: [value : Bytes, start : Nat, remaining : Nat],
+  statement: ((Comms.Content::textClean value start (remaining + 1)) = ((not (((Comms.Content::byteOf value (start + remaining)) =? 0) || ((Comms.Content::byteOf value (start + remaining)) =? 13))) && (Comms.Content::textClean value start remaining))),
+  proof: simplify{definitions: [Comms.Content::textClean]},
+  axioms: [propext]
+}
+
+theorem{
+  name: keyScanStepsDown,
+  parameters: [value : Bytes, start : Nat, remaining : Nat],
+  statement: ((Comms.Content::keyClean value start (remaining + 1)) = ((not (((Comms.Content::byteOf value (start + remaining)) =? 0) || (((Comms.Content::byteOf value (start + remaining)) =? 9) || (((Comms.Content::byteOf value (start + remaining)) =? 10) || (((Comms.Content::byteOf value (start + remaining)) =? 13) || ((Comms.Content::byteOf value (start + remaining)) =? 32)))))) && (Comms.Content::keyClean value start remaining))),
+  proof: simplify{definitions: [Comms.Content::keyClean]},
+  axioms: [propext]
 }
 \end{semanticmodule}
 \end{lexlean}

@@ -316,3 +316,15 @@ test("a refusal is named by its cause", async () => {
   await assert.rejects(ben.engine.send(room, message("hi")), { reason: "banned" });
   await assert.rejects(ada.engine.send(hash(text("no such room")), message("hi")), { reason: "unknown room" });
 });
+
+test("the kernel reads the largest valid content and refuses one byte more, without trapping", async () => {
+  const mentions = Array.from({ length: 50 }, (_, i) => hash(text("member " + i)));
+  const largest = encodeContent({ text: "x".repeat(4096), sent: 1_800_000_000_000, relates: hash(text("an event")), mentions });
+  assert.equal(largest.length + 1, 5748);
+  assert.equal(await kernel.content(largest), "message");
+  assert.equal(await kernel.content(encodeContent({ text: "x".repeat(4097), sent: 1_800_000_000_000 })), "refused");
+  assert.equal(await kernel.content(encodeContent({ text: "y".repeat(2000), sent: 1_800_000_000_000 })), "message");
+  const out = encodeContent({ text: "x", sent: 1_800_000_000_000, mentions: mentions.slice(0, 2) });
+  const swapped = out.slice(); swapped.set(out.slice(46, 78), 14); swapped.set(out.slice(14, 46), 46);
+  assert.equal(await kernel.content(swapped), "refused");
+});

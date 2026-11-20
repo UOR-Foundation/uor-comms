@@ -46,7 +46,7 @@ definition{
   result: Bool,
   body: (match remaining
     | Nat.zero => true
-    | Nat.succ rest => (if (((byteOf value (start + rest)) =? 0) || ((byteOf value (start + rest)) =? 13)) then false else (textClean value start rest))),
+    | Nat.succ rest => ((not (((byteOf value (start + rest)) =? 0) || ((byteOf value (start + rest)) =? 13))) && (textClean value start rest))),
   recursive_argument: remaining
 }
 
@@ -56,7 +56,7 @@ definition{
   result: Bool,
   body: (match remaining
     | Nat.zero => true
-    | Nat.succ rest => (if (((byteOf value (start + rest)) =? 0) || (((byteOf value (start + rest)) =? 9) || (((byteOf value (start + rest)) =? 10) || (((byteOf value (start + rest)) =? 13) || ((byteOf value (start + rest)) =? 32))))) then false else (keyClean value start rest))),
+    | Nat.succ rest => ((not (((byteOf value (start + rest)) =? 0) || (((byteOf value (start + rest)) =? 9) || (((byteOf value (start + rest)) =? 10) || (((byteOf value (start + rest)) =? 13) || ((byteOf value (start + rest)) =? 32)))))) && (keyClean value start rest))),
   recursive_argument: remaining
 }
 
