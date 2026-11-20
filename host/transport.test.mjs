@@ -126,6 +126,7 @@ test("two browsers meet over the rendezvous, prove their identities, sync, forwa
   await Promise.all([ada, ben].map(({ tab }) => tab.evaluate(() => window.peer.transport.start())));
   for (const { tab } of [ada, ben]) await tab.waitForFunction(() => window.peer.transport.status === "online", null, { timeout: 30_000 });
   await ben.tab.waitForFunction(() => window.peer.events.length === 1, null, { timeout: 10_000 });
+  assert.equal(await ada.tab.evaluate(() => window.peer.transport.delivered(window.peer.events[0].address)), true);
 
   // A new event Ada announces reaches Ben; content Ada stores is fetched by Ben and checked.
   const contentAddress = await ada.tab.evaluate(async () => {

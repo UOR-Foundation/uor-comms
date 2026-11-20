@@ -48,7 +48,7 @@ async function peer(name, wire) {
   const engine = open(options);
   wire.peers.push(engine);
   wire.stores.push(store);
-  return { engine, identity, device, store, reopen: () => open(options) };
+  return { engine, identity, device, store, options, reopen: () => open(options) };
 }
 
 const direct = () => {
@@ -341,4 +341,26 @@ test("the device book: an invite binds both ways once, a vouch adds a device, a 
   assert.equal(adaBook.devicesOf(ben.identity).length, 2);
   const bytes = text("signed");
   assert.ok(await adaBook.verify(bytes, await phoneBook.sign(bytes), ben.identity, phoneBook.device));
+});
+
+test("the outbox holds this identity's events no peer has yet, and retry announces one again", async () => {
+  const wire = direct();
+  const ada = await peer("ada", wire);
+  const ben = await peer("ben", wire);
+  const held = new Set();
+  let reachable = false;
+  const announced = [];
+  const transport = {
+    announce: async (m) => { announced.push(hex(m.address)); if (reachable) held.add(hex(m.address)); },
+    fetch: async () => null,
+    delivered: (a) => held.has(hex(a)),
+  };
+  const lone = open({ ...ada.options, transport });
+  const room = await lone.createDirect(ben.identity);
+  await lone.send(room, message("while offline"));
+  assert.equal(lone.outbox().length, 2);
+  reachable = true;
+  for (const { address } of lone.outbox()) await lone.retry(address);
+  assert.deepEqual(lone.outbox(), []);
+  await assert.rejects(lone.retry(hash(text("nothing"))), { reason: "unknown event" });
 });

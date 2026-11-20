@@ -79,6 +79,8 @@ export function webrtcTransport({
   let engine = null;
   let timer = null;
   let status = "offline";
+  const delivered = new Set(); // addresses a proven peer holds or was sent over an open channel
+  const deliveryListeners = new Set();
   const reached = new Set(); // identities to meet though no room is shared yet
   const unhexId = (h) => Uint8Array.from(h.match(/../g), (x) => parseInt(x, 16));
 
@@ -98,11 +100,19 @@ export function webrtcTransport({
     if (peer.channel?.readyState === "open") peer.channel.send(JSON.stringify(message));
   };
 
+  /** Records that a peer holds an event; the first proven peer to hold it makes it delivered. */
+  const mark = (peer, key) => {
+    peer.sent.add(key);
+    if (!peer.identity || delivered.has(key)) return;
+    delivered.add(key);
+    for (const listener of deliveryListeners) listener({ address: key });
+  };
+
   const sendEvent = (peer, { address, bytes, signature }) => {
     const key = hex(address);
-    if (peer.sent.has(key)) return;
-    peer.sent.add(key);
+    if (peer.sent.has(key) || peer.channel?.readyState !== "open") return;
     send(peer, { t: "event", bytes: b64(bytes), signature: signature ? b64(signature) : null, address: b64(address) });
+    mark(peer, key);
   };
 
   async function publish(topic, message) {
@@ -216,7 +226,7 @@ export function webrtcTransport({
     if (message.t === "have") {
       const room = unb64(message.room);
       const held = new Set(engine.eventsOf(room).map((e) => hex(e.address)));
-      for (const a of message.addresses) peer.sent.add(a); // the peer has these
+      for (const a of message.addresses) mark(peer, a); // the peer has these
       const wanted = message.addresses.filter((a) => !held.has(a));
       if (wanted.length) send(peer, { t: "want", room: message.room, addresses: wanted });
       return;
@@ -230,7 +240,7 @@ export function webrtcTransport({
     }
     if (message.t === "event") {
       const address = unb64(message.address);
-      peer.sent.add(hex(address));
+      mark(peer, hex(address));
       await engine.receive({ address, bytes: unb64(message.bytes), signature: message.signature ? unb64(message.signature) : null });
       return;
     }
@@ -324,6 +334,10 @@ export function webrtcTransport({
     /** `offline`, `connecting` (meeting topics held, no proven peer) or `online` (at least one proven peer). */
     get status() { return status; },
     onStatus(listener) { statusListeners.add(listener); return () => statusListeners.delete(listener); },
+    /** Whether a proven peer holds the event, or was sent it over an open channel, since this page loaded. */
+    delivered: (address) => delivered.has(hex(address)),
+    /** Hears each event delivered for the first time: `{ address }`, hex. */
+    onDelivered(listener) { deliveryListeners.add(listener); return () => deliveryListeners.delete(listener); },
     /** The identities of the proven peers connected now. */
     peers: () => [...peers.values()].filter((p) => p.identity).map((p) => p.identity),
   };

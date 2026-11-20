@@ -63,6 +63,14 @@ A device's address is the BLAKE3 of its raw P-256 public key (65 bytes, uncompre
 
 Nothing else adds a key: a peer that knows someone's identity but holds no link is refused. `book.onLearn` hears each device learned; `saved` and `save` keep the book across reloads.
 
+## Sending, and what is sent
+
+- `send` and every other call reject with a named `reason` when refused (below); nothing is kept.
+- An admitted event of this identity is **sent** once a proven peer holds it, or it went to one over an open channel (`transport.delivered(address)`, `transport.onDelivered`). Until then it is in `engine.outbox()`, `{ room, address }`, oldest first.
+- The outbox needs no storage: after a reload or a lost connection, the sync on connect sends a peer every event it lacks, and the outbox empties as peers take them. `engine.retry(address)` announces one again.
+- Connection: `transport.status` is `offline`, `connecting` or `online`, with `transport.onStatus`.
+- One tick is honest at **sent**. Read and received are not tracked yet (receipts).
+
 ## Connecting two browsers
 
 ```js
