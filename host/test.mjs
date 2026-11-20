@@ -441,3 +441,86 @@ test("a room carries the content its admitted messages name, and nothing else", 
   assert.equal(ben.engine.carries(room, hash(message("never sent"))), false);
   assert.equal(ben.engine.carries(hash(text("no room")), hash(bytes)), false);
 });
+
+test("redaction: your own with the power to send, another's only with the redaction power, judged again on receipt", async () => {
+  const wire = direct();
+  const ada = await peer("ada", wire);
+  const ben = await peer("ben", wire);
+  const room = await ada.engine.createRoom();
+  await ada.engine.invite(room, ben.identity);
+  await ben.engine.join(room);
+  const fromAda = await ada.engine.send(room, message("ada's"));
+  const fromBen = await ben.engine.send(room, message("ben's"));
+  const own = await ben.engine.redact(room, fromBen);
+  for (const side of [ada, ben]) {
+    const events = side.engine.timeline(room).events;
+    assert.equal(events.find((e) => hex(e.address) === hex(fromBen)).redacted, true);
+    assert.equal(hex(events.at(-1).address), hex(own));
+    assert.equal(side.engine.carries(room, hash(message("ben's"))), false);
+  }
+  // Ben has power 0; the redaction power is 50.
+  await assert.rejects(ben.engine.redact(room, fromAda), { reason: "not allowed" });
+  await assert.rejects(ben.engine.redact(room, hash(text("nothing"))), { reason: "unknown event" });
+  // Ben writes the bytes anyway: Ada judges them on receipt and refuses them.
+  const heads = ben.engine.timeline(room).events.at(-1).address;
+  const bytes = encode({ action: ACTION.redact, room, sender: ben.identity, device: ben.device, target: fromAda, parents: [heads] });
+  const signature = await ben.options.signer.sign(bytes);
+  const result = await ada.engine.receive({ address: hash(bytes), bytes, signature });
+  assert.deepEqual([result.admitted, result.reason], [false, "not allowed"]);
+  // Ada, the creator, may redact Ben's message.
+  const second = await ben.engine.send(room, message("again"));
+  await ada.engine.redact(room, second);
+  assert.equal(ben.engine.timeline(room).events.find((e) => hex(e.address) === hex(second)).redacted, true);
+});
+
+test("a redaction that arrives before the event it redacts is held, then admitted", async () => {
+  const wire = direct();
+  const sent = [];
+  const ada = await peer("ada", wire);
+  const ben = await peer("ben", wire);
+  const room = await ada.engine.createDirect(ben.identity);
+  wire.deliver = async (_other, m) => { sent.push(m); };
+  const target = await ada.engine.send(room, message("soon gone"));
+  await ada.engine.redact(room, target);
+  const [send, redaction] = sent;
+  assert.equal((await ben.engine.receive(redaction)).held, true);
+  assert.equal((await ben.engine.receive(send)).admitted, true);
+  assert.equal(ben.engine.timeline(room).events.find((e) => hex(e.address) === hex(target)).redacted, true);
+});
+
+test("messages: edits from the sender only, the last wins; one reaction per member and key; redacted ones left out", async () => {
+  const wire = direct();
+  const ada = await peer("ada", wire);
+  const ben = await peer("ben", wire);
+  const room = await ada.engine.createDirect(ben.identity);
+  await ben.engine.join(room);
+  const say = (side, fields) => side.engine.send(room, encodeContent({ sent: 1_800_000_000_000, ...fields }));
+  const first = await say(ada, { text: "frist" });
+  await say(ada, { kind: KIND.edit, relates: first, text: "first?" });
+  await say(ada, { kind: KIND.edit, relates: first, text: "first" });
+  await say(ben, { kind: KIND.edit, relates: first, text: "ben rewrites ada" });
+  await say(ben, { kind: KIND.reaction, relates: first, key: "+1" });
+  await say(ben, { kind: KIND.reaction, relates: first, key: "+1" });
+  await say(ada, { kind: KIND.reaction, relates: first, key: "+1" });
+  const heart = await say(ben, { kind: KIND.reaction, relates: first, key: "heart" });
+  await ben.engine.redact(room, heart);
+  const reply = await say(ben, { text: "a reply", relates: first });
+  const gone = await say(ben, { text: "deleted" });
+  await ben.engine.redact(room, gone);
+  for (const side of [ada, ben]) {
+    const { messages, hasMore, missing } = await side.engine.messages(room);
+    assert.deepEqual(messages.map((m) => m.text), ["first", "a reply"]);
+    assert.equal(messages[0].edited !== null, true);
+    assert.deepEqual(Object.keys(messages[0].reactions), ["+1"]);
+    assert.deepEqual(messages[0].reactions["+1"].sort(), [hex(ada.identity), hex(ben.identity)].sort());
+    assert.equal(hex(messages[1].replyTo), hex(first));
+    assert.equal(hex(messages[1].address), hex(reply));
+    assert.deepEqual([hasMore, missing], [false, 0]);
+  }
+  const page = await ada.engine.messages(room, { limit: 1 });
+  assert.deepEqual([page.messages.map((m) => m.text), page.hasMore], [["a reply"], true]);
+  const earlier = await ada.engine.messages(room, { before: page.messages[0].address, limit: 1 });
+  assert.deepEqual([earlier.messages.map((m) => m.text), earlier.hasMore], [["first"], false]);
+  await assert.rejects(ada.engine.messages(room, { before: gone }), { reason: "unknown event" });
+  await assert.rejects(ada.engine.messages(room, { limit: 0 }), { reason: "limit" });
+});
