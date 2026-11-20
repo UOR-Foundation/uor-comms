@@ -85,7 +85,7 @@ Feature: room
     And heldContentIsNotFetchedAgain in Comms/SyncProofs.lex.tex states ((Comms.Sync::wanted (cons kappa offered) (cons kappa rest)) = (Comms.Sync::wanted offered (cons kappa rest)))
 
   @RK-09 @build
-  Scenario: The kernel answers each of its twenty-one questions with the function the theorems are about, and invalid request for anything else
+  Scenario: The kernel answers each of its twenty-three questions with the function the theorems are about, and invalid request for anything else
     Given the kernel in app/src/RoomKernel.lex.tex
     When prismpm verify replays the acceptance vectors in the compiled guest
     Then admitAnswer in RoomKernel.lex.tex contains (if ((Comms.Admission::verdict (flag (sameAddress value 1 33))
@@ -128,6 +128,10 @@ Feature: room
     And routeHigh in RoomKernel.lex.tex contains (if ((operation =? 20) && (length =? 5)) then (mailAnswer value)
     And reasonAnswer in RoomKernel.lex.tex contains (Comms.Reason::refusalOf (natAt value 1 1 0) (natAt value 2 1 0) (natAt value 3 8 0) (natAt value 20 8 0))
     And routeHigh in RoomKernel.lex.tex contains (if ((operation =? 21) && (length =? 37)) then (reasonAnswer value)
+    And settingAnswer in RoomKernel.lex.tex contains (Comms.Settings::changeComposes (Comms.Event::wordAt words 1) (Comms.Event::wordAt words 0) (Comms.Event::wordAt words 14)
+    And routeHigh in RoomKernel.lex.tex contains (if ((operation =? 22) && (19 <=? length)) then (settingAnswer value length)
+    And defaultAnswer in RoomKernel.lex.tex contains (if ((Comms.Settings::defaultOf (natAt value 1 8 0)) =? 50) then (prim utf8_encode "50" : Bytes) else (prim utf8_encode "0" : Bytes))
+    And routeHigh in RoomKernel.lex.tex contains (if ((operation =? 23) && (length =? 9)) then (defaultAnswer value)
     And routeLow in RoomKernel.lex.tex contains else (prim utf8_encode "invalid request" : Bytes)
     And routeHigh in RoomKernel.lex.tex contains else (prim utf8_encode "invalid request" : Bytes)
     And route in RoomKernel.lex.tex contains (if (operation <=? 10) then (routeLow operation length value) else (routeHigh operation length value))
@@ -324,3 +328,27 @@ Feature: room
     And aPhoneNeverHoldsMail in Comms/ReachProofs.lex.tex states ((Comms.Reach::mayHoldMail holderStatus ownedByMember alwaysOn 1) = false)
     And aStrangerNeverHoldsMail in Comms/ReachProofs.lex.tex states (((Comms.Reach::mayHoldMail holderStatus 0 alwaysOn isPhone) && (not (holderStatus =? 2))) = false)
     And aSleepingNodeNeverHoldsMail in Comms/ReachProofs.lex.tex states ((Comms.Reach::mayHoldMail holderStatus ownedByMember 0 isPhone) = false)
+
+  @RK-18 @build
+  Scenario: Room settings change by event: only a joined member with the power to change settings changes one, never to a power above their own; who may join is invited-only or open; a direct room changes only its name, description and picture; a refused change keeps the value; a setting never changed keeps its default, and every default is 0 or 50
+    Given the settings rule in app/src/Comms/Settings.lex.tex
+    When the Lean kernel checks the theorems of SettingsProofs during prismpm verify
+    Then mayChange in Comms/Settings.lex.tex contains body: ((senderStatus =? 2) && ((settingsPower <=? senderPower) && ((known key) && ((valueFits key value contentZero senderPower) && ((isDirect =? 0) || (key <=? 2))))))
+    And onlyJoinedMembersChangeSettings in Comms/SettingsProofs.lex.tex states (((not (senderStatus =? 2)) && (Comms.Settings::mayChange key value contentZero senderStatus senderPower settingsPower isDirect)) = false)
+    And belowTheSettingsPowerNothingChanges in Comms/SettingsProofs.lex.tex states (((senderPower <? settingsPower) && (Comms.Settings::mayChange key value contentZero senderStatus senderPower settingsPower isDirect)) = false)
+    And aDirectRoomChangesOnlyItsNameDescriptionAndPicture in Comms/SettingsProofs.lex.tex states (((not (isDirect =? 0)) && ((2 <? key) && (Comms.Settings::mayChange key value contentZero senderStatus senderPower settingsPower isDirect))) = false)
+    And noPowerSetAboveYourOwn in Comms/SettingsProofs.lex.tex states (((4 <=? key) && ((senderPower <? value) && (Comms.Settings::mayChange key value contentZero senderStatus senderPower settingsPower isDirect))) = false)
+    And whoMayJoinIsZeroOrOne in Comms/SettingsProofs.lex.tex states (((key =? 3) && ((1 <? value) && (Comms.Settings::mayChange key value contentZero senderStatus senderPower settingsPower isDirect))) = false)
+    And aNumberSettingNamesNoContent in Comms/SettingsProofs.lex.tex states (((2 <? key) && ((not (contentZero =? 1)) && (Comms.Settings::mayChange key value contentZero senderStatus senderPower settingsPower isDirect))) = false)
+    And anUnknownSettingIsRefused in Comms/SettingsProofs.lex.tex states (((not (Comms.Settings::known key)) && (Comms.Settings::mayChange key value contentZero senderStatus senderPower settingsPower isDirect)) = false)
+    And aRefusedChangeKeepsTheValue in Comms/SettingsProofs.lex.tex states (((not (Comms.Settings::mayChange key value contentZero senderStatus senderPower settingsPower isDirect)) && (not ((Comms.Settings::after current key value contentZero senderStatus senderPower settingsPower isDirect) =? current))) = false)
+    And aPermittedChangeSetsTheValue in Comms/SettingsProofs.lex.tex states (((Comms.Settings::mayChange key value contentZero senderStatus senderPower settingsPower isDirect) && (not ((Comms.Settings::after current key value contentZero senderStatus senderPower settingsPower isDirect) =? value))) = false)
+    And everyDefaultIsZeroOrFifty in Comms/SettingsProofs.lex.tex states (((not ((Comms.Settings::defaultOf key) =? 0)) && (not ((Comms.Settings::defaultOf key) =? 50))) = false)
+    And sendingNeedsNoPowerByDefault in Comms/SettingsProofs.lex.tex states ((Comms.Settings::defaultOf (Comms.Settings::requiredKey 6)) = 0)
+    And kickingNeedsFiftyByDefault in Comms/SettingsProofs.lex.tex states ((Comms.Settings::defaultOf (Comms.Settings::requiredKey 3)) = 50)
+    And aRoomIsInvitedOnlyByDefault in Comms/SettingsProofs.lex.tex states ((Comms.Settings::defaultOf 3) = 0)
+    And changingSettingsNeedsFiftyByDefault in Comms/SettingsProofs.lex.tex states ((Comms.Settings::defaultOf 4) = 50)
+    And aChangeNeedsItsOwnAction in Comms/SettingsProofs.lex.tex states (((not (action =? 10)) && (Comms.Settings::changeComposes action version key keyRest value contentZero senderStatus senderPower settingsPower isDirect parents authorities)) = false)
+    And aChangeNamesOneKeyWord in Comms/SettingsProofs.lex.tex states (((not (keyRest =? 0)) && (Comms.Settings::changeComposes action version key keyRest value contentZero senderStatus senderPower settingsPower isDirect parents authorities)) = false)
+    And aChangeIsComposedOnlyWhenPermitted in Comms/SettingsProofs.lex.tex states (((not (Comms.Settings::mayChange key value contentZero senderStatus senderPower settingsPower isDirect)) && (Comms.Settings::changeComposes action version key keyRest value contentZero senderStatus senderPower settingsPower isDirect parents authorities)) = false)
+    And aChangeNeedsCanonicalForm in Comms/SettingsProofs.lex.tex states ((Comms.Settings::changeComposes action 2 key keyRest value contentZero senderStatus senderPower settingsPower isDirect parents authorities) = false)

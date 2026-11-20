@@ -83,7 +83,7 @@ statement = "Equal heads move no bytes and content already held is not requested
 id = "RK-09"
 level = "build"
 suite = "room"
-statement = "The kernel answers each of its twenty-one questions with the function the theorems are about, and invalid request for anything else"
+statement = "The kernel answers each of its twenty-three questions with the function the theorems are about, and invalid request for anything else"
 
 [[id]]
 id = "RK-10"
@@ -132,6 +132,12 @@ id = "RK-17"
 level = "build"
 suite = "room"
 statement = "The engine offers a member exactly the actions it admits, holds an event whose parents have not arrived, places every member in one relay tree of fan-out four that every peer computes alike, picks each sender's layer within the receiver's share, and lets only a consenting member forward or an always-on member node hold mail"
+
+[[id]]
+id = "RK-18"
+level = "build"
+suite = "room"
+statement = "Room settings change by event: only a joined member with the power to change settings changes one, never to a power above their own; who may join is invited-only or open; a direct room changes only its name, description and picture; a refused change keeps the value; a setting never changed keeps its default, and every default is 0 or 50"
 
 [[id]]
 id = "FR-01"

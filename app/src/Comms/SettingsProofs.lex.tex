@@ -1,0 +1,312 @@
+\begin{lexlean}{Comms.SettingsProofs}
+\useglossary{lexlean.std.bool@1.2.0}
+\useglossary{lexlean.std.nat@1.2.0}
+\importmodule{Comms.Event}
+\importmodule{Comms.Settings}
+\title{Boolean}
+\begin{semanticmodule}
+theorem{
+  name: onlyJoinedMembersChangeSettings,
+  parameters: [
+    key : Nat,
+    value : Nat,
+    contentZero : Nat,
+    senderStatus : Nat,
+    senderPower : Nat,
+    settingsPower : Nat,
+    isDirect : Nat
+  ],
+  statement: (((not (senderStatus =? 2)) && (Comms.Settings::mayChange key value contentZero senderStatus senderPower settingsPower isDirect)) = false),
+  proof: linear_arithmetic{
+    definitions: [Comms.Settings::known, Comms.Settings::mayChange, Comms.Settings::valueFits]
+  },
+  axioms: [Quot.sound, propext]
+}
+
+theorem{
+  name: belowTheSettingsPowerNothingChanges,
+  parameters: [
+    key : Nat,
+    value : Nat,
+    contentZero : Nat,
+    senderStatus : Nat,
+    senderPower : Nat,
+    settingsPower : Nat,
+    isDirect : Nat
+  ],
+  statement: (((senderPower <? settingsPower) && (Comms.Settings::mayChange key value contentZero senderStatus senderPower settingsPower isDirect)) = false),
+  proof: linear_arithmetic{
+    definitions: [Comms.Settings::known, Comms.Settings::mayChange, Comms.Settings::valueFits]
+  },
+  axioms: [Quot.sound, propext]
+}
+
+theorem{
+  name: aDirectRoomChangesOnlyItsNameDescriptionAndPicture,
+  parameters: [
+    key : Nat,
+    value : Nat,
+    contentZero : Nat,
+    senderStatus : Nat,
+    senderPower : Nat,
+    settingsPower : Nat,
+    isDirect : Nat
+  ],
+  statement: (((not (isDirect =? 0)) && ((2 <? key) && (Comms.Settings::mayChange key value contentZero senderStatus senderPower settingsPower isDirect))) = false),
+  proof: linear_arithmetic{
+    definitions: [Comms.Settings::known, Comms.Settings::mayChange, Comms.Settings::valueFits]
+  },
+  axioms: [Quot.sound, propext]
+}
+
+theorem{
+  name: noPowerSetAboveYourOwn,
+  parameters: [
+    key : Nat,
+    value : Nat,
+    contentZero : Nat,
+    senderStatus : Nat,
+    senderPower : Nat,
+    settingsPower : Nat,
+    isDirect : Nat
+  ],
+  statement: (((4 <=? key) && ((senderPower <? value) && (Comms.Settings::mayChange key value contentZero senderStatus senderPower settingsPower isDirect))) = false),
+  proof: linear_arithmetic{
+    definitions: [Comms.Settings::known, Comms.Settings::mayChange, Comms.Settings::valueFits]
+  },
+  axioms: [Quot.sound, propext]
+}
+
+theorem{
+  name: whoMayJoinIsZeroOrOne,
+  parameters: [
+    key : Nat,
+    value : Nat,
+    contentZero : Nat,
+    senderStatus : Nat,
+    senderPower : Nat,
+    settingsPower : Nat,
+    isDirect : Nat
+  ],
+  statement: (((key =? 3) && ((1 <? value) && (Comms.Settings::mayChange key value contentZero senderStatus senderPower settingsPower isDirect))) = false),
+  proof: linear_arithmetic{
+    definitions: [Comms.Settings::known, Comms.Settings::mayChange, Comms.Settings::valueFits]
+  },
+  axioms: [Quot.sound, propext]
+}
+
+theorem{
+  name: aNumberSettingNamesNoContent,
+  parameters: [
+    key : Nat,
+    value : Nat,
+    contentZero : Nat,
+    senderStatus : Nat,
+    senderPower : Nat,
+    settingsPower : Nat,
+    isDirect : Nat
+  ],
+  statement: (((2 <? key) && ((not (contentZero =? 1)) && (Comms.Settings::mayChange key value contentZero senderStatus senderPower settingsPower isDirect))) = false),
+  proof: linear_arithmetic{
+    definitions: [Comms.Settings::known, Comms.Settings::mayChange, Comms.Settings::valueFits]
+  },
+  axioms: [Quot.sound, propext]
+}
+
+theorem{
+  name: anUnknownSettingIsRefused,
+  parameters: [
+    key : Nat,
+    value : Nat,
+    contentZero : Nat,
+    senderStatus : Nat,
+    senderPower : Nat,
+    settingsPower : Nat,
+    isDirect : Nat
+  ],
+  statement: (((not (Comms.Settings::known key)) && (Comms.Settings::mayChange key value contentZero senderStatus senderPower settingsPower isDirect)) = false),
+  proof: linear_arithmetic{
+    definitions: [Comms.Settings::known, Comms.Settings::mayChange, Comms.Settings::valueFits]
+  },
+  axioms: [Classical.choice, Quot.sound, propext]
+}
+
+theorem{
+  name: aRefusedChangeKeepsTheValue,
+  parameters: [
+    current : Nat,
+    key : Nat,
+    value : Nat,
+    contentZero : Nat,
+    senderStatus : Nat,
+    senderPower : Nat,
+    settingsPower : Nat,
+    isDirect : Nat
+  ],
+  statement: (((not (Comms.Settings::mayChange key value contentZero senderStatus senderPower settingsPower isDirect)) && (not ((Comms.Settings::after current key value contentZero senderStatus senderPower settingsPower isDirect) =? current))) = false),
+  proof: linear_arithmetic{
+    definitions: [
+      Comms.Settings::after,
+      Comms.Settings::known,
+      Comms.Settings::mayChange,
+      Comms.Settings::valueFits
+    ]
+  },
+  axioms: [Classical.choice, Quot.sound, propext]
+}
+
+theorem{
+  name: aPermittedChangeSetsTheValue,
+  parameters: [
+    current : Nat,
+    key : Nat,
+    value : Nat,
+    contentZero : Nat,
+    senderStatus : Nat,
+    senderPower : Nat,
+    settingsPower : Nat,
+    isDirect : Nat
+  ],
+  statement: (((Comms.Settings::mayChange key value contentZero senderStatus senderPower settingsPower isDirect) && (not ((Comms.Settings::after current key value contentZero senderStatus senderPower settingsPower isDirect) =? value))) = false),
+  proof: linear_arithmetic{
+    definitions: [
+      Comms.Settings::after,
+      Comms.Settings::known,
+      Comms.Settings::mayChange,
+      Comms.Settings::valueFits
+    ]
+  },
+  axioms: [Classical.choice, Quot.sound, propext]
+}
+
+theorem{
+  name: everyDefaultIsZeroOrFifty,
+  parameters: [key : Nat],
+  statement: (((not ((Comms.Settings::defaultOf key) =? 0)) && (not ((Comms.Settings::defaultOf key) =? 50))) = false),
+  proof: linear_arithmetic{definitions: [Comms.Settings::defaultOf]},
+  axioms: [Quot.sound, propext]
+}
+
+theorem{
+  name: sendingNeedsNoPowerByDefault,
+  parameters: [],
+  statement: ((Comms.Settings::defaultOf (Comms.Settings::requiredKey 6)) = 0),
+  proof: reflexivity{},
+  axioms: []
+}
+
+theorem{
+  name: kickingNeedsFiftyByDefault,
+  parameters: [],
+  statement: ((Comms.Settings::defaultOf (Comms.Settings::requiredKey 3)) = 50),
+  proof: reflexivity{},
+  axioms: []
+}
+
+theorem{
+  name: aRoomIsInvitedOnlyByDefault,
+  parameters: [],
+  statement: ((Comms.Settings::defaultOf 3) = 0),
+  proof: reflexivity{},
+  axioms: []
+}
+
+theorem{
+  name: changingSettingsNeedsFiftyByDefault,
+  parameters: [],
+  statement: ((Comms.Settings::defaultOf 4) = 50),
+  proof: reflexivity{},
+  axioms: []
+}
+
+theorem{
+  name: aChangeNeedsItsOwnAction,
+  parameters: [
+    action : Nat,
+    version : Nat,
+    key : Nat,
+    keyRest : Nat,
+    value : Nat,
+    contentZero : Nat,
+    senderStatus : Nat,
+    senderPower : Nat,
+    settingsPower : Nat,
+    isDirect : Nat,
+    parents : (List Nat),
+    authorities : (List Nat)
+  ],
+  statement: (((not (action =? 10)) && (Comms.Settings::changeComposes action version key keyRest value contentZero senderStatus senderPower settingsPower isDirect parents authorities)) = false),
+  proof: linear_arithmetic{definitions: [Comms.Settings::changeComposes]},
+  axioms: [Quot.sound, propext]
+}
+
+theorem{
+  name: aChangeNamesOneKeyWord,
+  parameters: [
+    action : Nat,
+    version : Nat,
+    key : Nat,
+    keyRest : Nat,
+    value : Nat,
+    contentZero : Nat,
+    senderStatus : Nat,
+    senderPower : Nat,
+    settingsPower : Nat,
+    isDirect : Nat,
+    parents : (List Nat),
+    authorities : (List Nat)
+  ],
+  statement: (((not (keyRest =? 0)) && (Comms.Settings::changeComposes action version key keyRest value contentZero senderStatus senderPower settingsPower isDirect parents authorities)) = false),
+  proof: linear_arithmetic{definitions: [Comms.Settings::changeComposes]},
+  axioms: [Quot.sound, propext]
+}
+
+theorem{
+  name: aChangeIsComposedOnlyWhenPermitted,
+  parameters: [
+    action : Nat,
+    version : Nat,
+    key : Nat,
+    keyRest : Nat,
+    value : Nat,
+    contentZero : Nat,
+    senderStatus : Nat,
+    senderPower : Nat,
+    settingsPower : Nat,
+    isDirect : Nat,
+    parents : (List Nat),
+    authorities : (List Nat)
+  ],
+  statement: (((not (Comms.Settings::mayChange key value contentZero senderStatus senderPower settingsPower isDirect)) && (Comms.Settings::changeComposes action version key keyRest value contentZero senderStatus senderPower settingsPower isDirect parents authorities)) = false),
+  proof: linear_arithmetic{
+    definitions: [
+      Comms.Settings::changeComposes,
+      Comms.Settings::known,
+      Comms.Settings::mayChange,
+      Comms.Settings::valueFits
+    ]
+  },
+  axioms: [Classical.choice, Quot.sound, propext]
+}
+
+theorem{
+  name: aChangeNeedsCanonicalForm,
+  parameters: [
+    action : Nat,
+    key : Nat,
+    keyRest : Nat,
+    value : Nat,
+    contentZero : Nat,
+    senderStatus : Nat,
+    senderPower : Nat,
+    settingsPower : Nat,
+    isDirect : Nat,
+    parents : (List Nat),
+    authorities : (List Nat)
+  ],
+  statement: ((Comms.Settings::changeComposes action 2 key keyRest value contentZero senderStatus senderPower settingsPower isDirect parents authorities) = false),
+  proof: linear_arithmetic{definitions: [Comms.Event::canonical, Comms.Settings::changeComposes]},
+  axioms: [Quot.sound, propext]
+}
+\end{semanticmodule}
+\end{lexlean}

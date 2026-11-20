@@ -399,6 +399,8 @@ to ask, so it asks the kernel: one request, one decision.
 | Permit a forwarder | `13` | 5 | `forward`, `refused` |
 | Permit a mailbox | `14` | 5 | `hold`, `refused` |
 | Why an action is refused | `15` | 37 | `permitted`, `banned`, `closed`, `not joined`, `needs power`, `not allowed`, `unknown action` |
+| Change a room setting | `16` | 19 + event | `composed`, `refused` |
+| Default of a setting | `17` | 9 | `0`, `50` |
 
 Anything else is answered `invalid request`. Numbers are big-endian; an
 address is 32 bytes. The field layout of each request is in

@@ -3,7 +3,7 @@
 // the kernel does, on these exact bytes.
 
 export const ACTION = Object.freeze({
-  join: 0, leave: 1, invite: 2, kick: 3, ban: 4, unban: 5, send: 6, setPower: 7, redact: 8, create: 9,
+  join: 0, leave: 1, invite: 2, kick: 3, ban: 4, unban: 5, send: 6, setPower: 7, redact: 8, create: 9, change: 10,
 });
 export const ZERO = new Uint8Array(32);
 const FIXED = 25;

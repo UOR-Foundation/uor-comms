@@ -1,0 +1,83 @@
+\begin{lexlean}{Comms.Settings}
+\useglossary{lexlean.std.bool@1.2.0}
+\useglossary{lexlean.std.nat@1.2.0}
+\importmodule{Comms.Event}
+\title{Boolean}
+\begin{semanticmodule}
+definition{name: actChange, parameters: [], result: Nat, body: 10}
+
+definition{
+  name: known,
+  parameters: [key : Nat],
+  result: Bool,
+  body: ((key <=? 5) || ((12 <=? key) && (key <=? 17)))
+}
+
+definition{
+  name: defaultOf,
+  parameters: [key : Nat],
+  result: Nat,
+  body: (if ((key =? 4) || ((key =? 5) || ((key =? 13) || ((key =? 14) || ((key =? 15) || (key =? 17)))))) then 50 else 0)
+}
+
+definition{name: requiredKey, parameters: [action : Nat], result: Nat, body: (10 + action)}
+
+definition{
+  name: valueFits,
+  parameters: [key : Nat, value : Nat, contentZero : Nat, senderPower : Nat],
+  result: Bool,
+  body: (((key <=? 2) && (value =? 0)) || ((2 <? key) && ((contentZero =? 1) && (((key =? 3) && (value <=? 1)) || ((not (key =? 3)) && (value <=? senderPower))))))
+}
+
+definition{
+  name: mayChange,
+  parameters: [
+    key : Nat,
+    value : Nat,
+    contentZero : Nat,
+    senderStatus : Nat,
+    senderPower : Nat,
+    settingsPower : Nat,
+    isDirect : Nat
+  ],
+  result: Bool,
+  body: ((senderStatus =? 2) && ((settingsPower <=? senderPower) && ((known key) && ((valueFits key value contentZero senderPower) && ((isDirect =? 0) || (key <=? 2))))))
+}
+
+definition{
+  name: after,
+  parameters: [
+    current : Nat,
+    key : Nat,
+    value : Nat,
+    contentZero : Nat,
+    senderStatus : Nat,
+    senderPower : Nat,
+    settingsPower : Nat,
+    isDirect : Nat
+  ],
+  result: Nat,
+  body: (if (mayChange key value contentZero senderStatus senderPower settingsPower isDirect) then value else current)
+}
+
+definition{
+  name: changeComposes,
+  parameters: [
+    action : Nat,
+    version : Nat,
+    key : Nat,
+    keyRest : Nat,
+    value : Nat,
+    contentZero : Nat,
+    senderStatus : Nat,
+    senderPower : Nat,
+    settingsPower : Nat,
+    isDirect : Nat,
+    parents : (List Nat),
+    authorities : (List Nat)
+  ],
+  result: Bool,
+  body: ((action =? 10) && ((keyRest =? 0) && ((mayChange key value contentZero senderStatus senderPower settingsPower isDirect) && (Comms.Event::canonical version 0 parents authorities))))
+}
+\end{semanticmodule}
+\end{lexlean}
