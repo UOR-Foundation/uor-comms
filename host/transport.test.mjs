@@ -22,7 +22,7 @@ import { deviceBook, newDeviceKey } from "/host/trust.mjs";
 import { blake3 } from "/try/vendor/prism-code/src/blake3.mjs";
 const hash = (b) => blake3(b);
 const text = (t) => new TextEncoder().encode(t);
-window.setup = async (name, other, holds = true) => {
+window.setup = async (name, other, holds = true, lossy = false) => {
   const identity = hash(text("identity " + name));
   const book = deviceBook({ hash, own: { identity, ...(await newDeviceKey()) } });
   const device = book.device;
@@ -56,11 +56,18 @@ window.setup = async (name, other, holds = true) => {
       return { admitted: true };
     },
   };
+  // A lossy relay loses this peer's first offer, as a reply can be lost before the other side's stream listens.
+  const relay = ntfyRendezvous({ base: location.origin + "/ntfy/" });
+  let lost = !lossy;
+  const rendezvous = { ...relay, publish: (topic, text) => {
+    if (!lost && JSON.parse(text).t === "offer") { lost = true; return Promise.resolve(); }
+    return relay.publish(topic, text);
+  } };
   const transport = webrtcTransport({
-    rendezvous: ntfyRendezvous({ base: location.origin + "/ntfy/" }),
+    rendezvous,
     signer: book,
     verdict: book.verdict,
-    hash, store, helloEvery: 500,
+    hash, store, helloEvery: 500, setupWithin: 10_000,
   });
   transport.bind(engine);
   window.peer = { engine, transport, store, events, contents, hash, text, hex, book };
@@ -241,5 +248,29 @@ test("a member invited while connected is introduced to the others, and they to 
   await gus.tab.waitForFunction(() => window.peer.book.devicesOf(window.peer.hash(window.peer.text("identity fay"))).length === 1, null, { timeout: 15_000 });
   await gus.tab.waitForFunction((f) => window.peer.transport.peers().includes(f), fay.info.identity, { timeout: 30_000 });
   for (const side of [dan, fay, gus]) await side.tab.evaluate(() => window.peer.transport.stop());
+  assert.deepEqual(errors, []);
+});
+
+test("a peer whose offer was lost is set up again once the setup deadline passes", async (t) => {
+  const { url, close } = await serve();
+  t.after(close);
+  const browser = await chromium.launch();
+  t.after(() => browser.close());
+  const errors = [];
+  const open = async (name, other) => {
+    const tab = await (await browser.newContext()).newPage();
+    tab.on("pageerror", (e) => errors.push(e));
+    await tab.goto(url);
+    await tab.waitForFunction(() => window.ready === true);
+    return { tab, info: await tab.evaluate(([n, o]) => window.setup(n, o, true, true), [name, other]) };
+  };
+  // Both relays lose their first offer, so whichever side offers loses one, and the first setup never completes.
+  const ivy = await open("ivy", ["joe"]);
+  const joe = await open("joe", ["ivy"]);
+  await joe.tab.evaluate((l) => window.accept(l), await ivy.tab.evaluate(() => window.invite()));
+  await Promise.all([ivy, joe].map(({ tab }) => tab.evaluate(() => window.peer.transport.start())));
+  await joe.tab.waitForFunction((i) => window.peer.transport.peers().includes(i), ivy.info.identity, { timeout: 40_000 });
+  await ivy.tab.waitForFunction((j) => window.peer.transport.peers().includes(j), joe.info.identity, { timeout: 10_000 });
+  for (const side of [ivy, joe]) await side.tab.evaluate(() => window.peer.transport.stop());
   assert.deepEqual(errors, []);
 });

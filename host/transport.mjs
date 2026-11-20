@@ -67,7 +67,8 @@ export function ntfyRendezvous({ base = "https://ntfy.sh", fetcher = globalThis.
 export function webrtcTransport({
   rendezvous, signer, verdict, hash, store,
   RTCPeerConnectionClass = globalThis.RTCPeerConnection,
-  iceServers = PUBLIC_STUN, helloEvery = 10_000, now = () => Date.now(), random = (n) => crypto.getRandomValues(new Uint8Array(n)),
+  iceServers = PUBLIC_STUN, helloEvery = 10_000, setupWithin = 15_000, now = () => Date.now(),
+  random = (n) => crypto.getRandomValues(new Uint8Array(n)),
 }) {
   const self = hex(random(16));
   const peers = new Map(); // session id -> peer
@@ -195,6 +196,10 @@ export function webrtcTransport({
     pc.addEventListener("connectionstatechange", () => {
       if (["failed", "closed", "disconnected"].includes(pc.connectionState)) drop(from);
     });
+    // An offer or answer lost on the way (the relay is best effort, and a stream may not be listening
+    // yet when a reply comes) would hold this peer half set up for good, and every later hello from it
+    // would be ignored. A peer not proven in time is dropped, so the next hello starts setup again.
+    setTimeout(() => { if (peers.get(from) === peer && !peer.identity) drop(from); }, setupWithin);
     setStatus();
     return peer;
   }
