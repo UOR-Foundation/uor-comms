@@ -316,3 +316,29 @@ test("a refusal is named by its cause", async () => {
   await assert.rejects(ben.engine.send(room, message("hi")), { reason: "banned" });
   await assert.rejects(ada.engine.send(hash(text("no such room")), message("hi")), { reason: "unknown room" });
 });
+
+test("the device book: an invite binds both ways once, a vouch adds a device, a key must match its device", async () => {
+  const { deviceBook, newDeviceKey, readInvite } = await import("./trust.mjs");
+  const ada = { identity: hash(text("identity ada")), ...(await newDeviceKey()) };
+  const ben = { identity: hash(text("identity ben")), ...(await newDeviceKey()) };
+  const adaBook = deviceBook({ hash, own: ada });
+  const benBook = deviceBook({ hash, own: ben });
+  const link = adaBook.invite("https://example.test/app");
+  assert.equal(hex(readInvite(link).identity), hex(ada.identity));
+  assert.equal(hex(benBook.accept(link)), hex(ada.identity));
+  assert.ok(await benBook.verdict(ada.identity, adaBook.device));
+  const nonce = crypto.getRandomValues(new Uint8Array(32));
+  const proof = { identity: ben.identity, device: benBook.device, rawKey: ben.rawKey, tickets: benBook.ticketsFor(nonce), nonce };
+  assert.ok(!(await adaBook.learn({ ...proof, rawKey: ada.rawKey })), "a key that does not hash to its device");
+  assert.ok(await adaBook.learn(proof));
+  const eve = { identity: ben.identity, ...(await newDeviceKey()) };
+  const eveBook = deviceBook({ hash, own: eve });
+  assert.ok(!(await adaBook.learn({ identity: ben.identity, device: eveBook.device, rawKey: eve.rawKey, tickets: proof.tickets, nonce })), "a spent token");
+  const phone = { identity: ben.identity, ...(await newDeviceKey()) };
+  const vouch = await benBook.vouchFor(phone.rawKey);
+  const phoneBook = deviceBook({ hash, own: { ...phone, vouch } });
+  assert.ok(await adaBook.learn({ identity: ben.identity, device: phoneBook.device, rawKey: phone.rawKey, vouch, nonce }));
+  assert.equal(adaBook.devicesOf(ben.identity).length, 2);
+  const bytes = text("signed");
+  assert.ok(await adaBook.verify(bytes, await phoneBook.sign(bytes), ben.identity, phoneBook.device));
+});

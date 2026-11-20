@@ -222,7 +222,26 @@ export function open({ identity, device, kernel, hash, store, signer, verdict, t
     receive: admit,
     /** Rebuilds every room from the events the store kept, admitting each again. Returns the number of rooms. */
     async restore() {
-      for (const message of (await store.events?.()) ?? []) await admit(message);
+      // Parents first, so each event is checked once: a store returns events by address, and an event
+      // admitted before its parent is held and checked again with every later admission.
+      const kept = (await store.events?.()) ?? [];
+      const byAddress = new Map(kept.map((m) => [hex(m.address), m]));
+      const done = new Set();
+      for (const start of kept) {
+        const stack = [[start, false]];
+        while (stack.length) {
+          const [message, ready] = stack.pop();
+          const key = hex(message.address);
+          if (done.has(key)) continue;
+          if (ready) { done.add(key); await admit(message); continue; }
+          stack.push([message, true]);
+          const fields = decode(message.bytes);
+          for (const cited of fields ? [...fields.parents, ...fields.authorities] : []) {
+            const parent = byAddress.get(hex(cited));
+            if (parent && !done.has(hex(cited))) stack.push([parent, false]);
+          }
+        }
+      }
       return rooms.size;
     },
     /** True when the browser cleared the store this engine was opened on. */
