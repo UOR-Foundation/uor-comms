@@ -524,3 +524,29 @@ test("messages: edits from the sender only, the last wins; one reaction per memb
   await assert.rejects(ada.engine.messages(room, { before: gone }), { reason: "unknown event" });
   await assert.rejects(ada.engine.messages(room, { limit: 0 }), { reason: "limit" });
 });
+
+test("redacted content is deleted from every store and not fetched again, unless another message names the same bytes", async () => {
+  const wire = direct();
+  const ada = await peer("ada", wire);
+  const ben = await peer("ben", wire);
+  const room = await ada.engine.createDirect(ben.identity);
+  await ben.engine.join(room);
+  const secret = message("take this back");
+  const shared = message("said twice");
+  const gone = await ada.engine.send(room, secret);
+  const once = await ada.engine.send(room, shared);
+  await ben.engine.send(room, shared);
+  assert.ok(await ben.engine.content(hash(secret))); // Ben fetched it before the redaction
+  await ada.engine.redact(room, gone);
+  await ada.engine.redact(room, once);
+  for (const side of [ada, ben]) {
+    assert.equal(await side.store.has(hash(secret)), false);
+    assert.equal(await side.engine.content(hash(secret)), null);
+    // Ben's copy of the same bytes is not redacted: the bytes stay.
+    assert.equal(await side.store.has(hash(shared)), true);
+  }
+  // Reopened on the same store, the room is rebuilt and the content is still gone.
+  const again = ben.reopen();
+  await again.restore();
+  assert.equal(await again.content(hash(secret)), null);
+});

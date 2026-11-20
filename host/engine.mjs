@@ -177,7 +177,11 @@ export function open({ identity, device, kernel, hash, store, signer, verdict, t
       target.contents.set(hex(fields.content), naming.add(hex(address)));
     }
     // `Comms.Redact`: the set of redacted events only grows, whatever order redactions arrive in.
-    if (fields.action === ACTION.redact) target.redacted.add(hex(fields.target));
+    if (fields.action === ACTION.redact) {
+      target.redacted.add(hex(fields.target));
+      const redacted = target.events.get(hex(fields.target));
+      if (redacted.fields.action === ACTION.send) await withdraw(redacted.fields.content);
+    }
     for (const parent of fields.parents) target.heads.delete(hex(parent));
     target.heads.add(hex(address));
     await insert(target, event);
@@ -219,6 +223,25 @@ export function open({ identity, device, kernel, hash, store, signer, verdict, t
     }
     if (!(await kernel.direct(action, Boolean(room.direct)))) throw new Refused("direct");
     return publish(bytes, onStep);
+  }
+
+  /** Whether any room names this content only in redacted messages: then it is not kept or fetched. */
+  const onlyRedacted = (content) => {
+    let named = false;
+    for (const room of rooms.values()) {
+      const naming = room.contents.get(hex(content));
+      if (!naming) continue;
+      named = true;
+      if ([...naming].some((event) => !room.redacted.has(event))) return false;
+    }
+    return named;
+  };
+
+  /** Deletes redacted content from the store, unless an unredacted message still names the same bytes. */
+  async function withdraw(content) {
+    if (!onlyRedacted(content)) return;
+    read.delete(hex(content));
+    await store.delete?.(content);
   }
 
   // Content read and judged once per address: its fields, or null when the kernel refuses it.
@@ -312,6 +335,7 @@ export function open({ identity, device, kernel, hash, store, signer, verdict, t
     evicted: Boolean(store.evicted),
     /** The content behind an address: from the store, else fetched and checked against the address. */
     async content(address) {
+      if (onlyRedacted(address)) return null;
       const held = await store.get(address);
       if (held) return held;
       const fetched = await transport.fetch(address);
