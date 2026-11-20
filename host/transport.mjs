@@ -13,7 +13,7 @@
 // identity. After that, each side offers the addresses it holds per room, and sends what the other
 // lacks; new events follow as they are admitted. A member relays what it admits to the members it
 // is connected to, so two members need not be connected to each other.
-import { hex } from "./event.mjs";
+import { ACTION, decode, hex } from "./event.mjs";
 
 const encoder = new TextEncoder();
 const DOMAIN = "uor-comms rendezvous v1";
@@ -79,6 +79,7 @@ export function webrtcTransport({
   let engine = null;
   let timer = null;
   let status = "offline";
+  let stopped = false;
   const delivered = new Set(); // addresses a proven peer holds or was sent over an open channel
   const deliveryListeners = new Set();
   const reached = new Set(); // identities to meet though no room is shared yet
@@ -124,6 +125,7 @@ export function webrtcTransport({
   }
 
   function onSignal(topic, text) {
+    if (stopped) return;
     let message;
     try { message = JSON.parse(text); } catch { return; }
     if (message.t === "part") {
@@ -135,8 +137,8 @@ export function webrtcTransport({
       return onSignal(topic, got.join(""));
     }
     if (message.from === self || (message.to && message.to !== self)) return;
-    if (message.t === "hello") return hello(topic, message.from);
-    if (message.t === "offer") return answer(topic, message.from, message.sdp);
+    if (message.t === "hello") return hello(topic, message.from).catch(() => drop(message.from));
+    if (message.t === "offer") return answer(topic, message.from, message.sdp).catch(() => drop(message.from));
     if (message.t === "answer") return peers.get(message.from)?.pc.setRemoteDescription({ type: "answer", sdp: message.sdp }).catch(() => drop(message.from));
   }
 
@@ -150,7 +152,7 @@ export function webrtcTransport({
   }
 
   function peerFor(from, pc) {
-    const peer = { id: from, pc, channel: null, identity: null, nonce: random(32), sent: new Set(), early: [] };
+    const peer = { id: from, pc, channel: null, identity: null, nonce: random(32), sent: new Set(), early: [], offered: new Set() };
     peers.set(from, peer);
     pc.addEventListener("connectionstatechange", () => {
       if (["failed", "closed", "disconnected"].includes(pc.connectionState)) drop(from);
@@ -217,12 +219,20 @@ export function webrtcTransport({
       setStatus();
       // What arrived before this side had checked the proof is handled now, in order.
       for (const data of peer.early.splice(0)) await onPeerMessage(peer, data);
-      for (const room of engine.rooms()) {
-        if (mayShare(peer, room)) send(peer, { t: "have", room: b64(room), addresses: engine.eventsOf(room).map((e) => hex(e.address)) });
-      }
+      for (const room of engine.rooms()) offerRoom(peer, room);
       return;
     }
     if (!peer.identity) { peer.early.push(data); return; } // held until the proof is checked
+    if (message.t === "introduce") {
+      // Accepted only from a joined member of the room, and only for members it lists.
+      const room = unb64(message.room);
+      const members = engine.members(room);
+      if (!members.some((m) => m.member === peer.identity && m.status === 2)) return;
+      for (const { identity, key } of message.keys ?? []) {
+        if (members.some((m) => m.member === identity && SHARED.has(m.status))) await signer.introduce?.(identity, key);
+      }
+      return;
+    }
     if (message.t === "have") {
       const room = unb64(message.room);
       const held = new Set(engine.eventsOf(room).map((e) => hex(e.address)));
@@ -251,7 +261,24 @@ export function webrtcTransport({
     if (message.t === "got") pending.get(message.id)?.(message.bytes ? unb64(message.bytes) : null);
   }
 
+  /**
+   * Once per room a peer may see: the keys of its other members this device knows (introductions,
+   * decision 20), then the addresses held, so the peer can ask for what it lacks.
+   */
+  function offerRoom(peer, room) {
+    if (!mayShare(peer, room) || peer.offered.has(hex(room))) return;
+    peer.offered.add(hex(room));
+    const keys = [];
+    for (const m of engine.members(room)) {
+      if (!SHARED.has(m.status) || m.member === peer.identity) continue;
+      for (const k of signer.keysOf?.(m.member) ?? []) keys.push({ identity: m.member, key: k });
+    }
+    if (keys.length) send(peer, { t: "introduce", room: b64(room), keys });
+    send(peer, { t: "have", room: b64(room), addresses: engine.eventsOf(room).map((e) => hex(e.address)) });
+  }
+
   function refreshTopics() {
+    if (stopped) return [];
     const hour = Math.floor(now() / HOUR);
     const wanted = new Set();
     const ids = [["identity", engine.identity], ...[...reached].map((i) => ["identity", unhexId(i)]), ...engine.rooms().map((room) => ["room", room])];
@@ -274,6 +301,7 @@ export function webrtcTransport({
   }
 
   async function sayHello() {
+    if (stopped) return;
     for (const topic of refreshTopics()) await publish(topic, { t: "hello", from: self }).catch(() => {});
   }
 
@@ -282,10 +310,17 @@ export function webrtcTransport({
     bind(api) {
       engine = api;
       engine.subscribe(({ room, address }) => {
-        const event = engine.eventsOf(room).find((e) => hex(e.address) === hex(address));
+        if (stopped || !room || !address) return;
+        const event = engine.eventOf(room, address);
         if (!event) return;
-        for (const peer of peers.values()) if (mayShare(peer, room)) sendEvent(peer, event);
-        refreshTopics();
+        const fields = decode(event.bytes);
+        for (const peer of peers.values()) {
+          if (mayShare(peer, room)) { offerRoom(peer, room); sendEvent(peer, event); }
+          // A member removed or banned is still told: it receives the event that removed it.
+          else if (fields && peer.identity === hex(fields.target)) sendEvent(peer, event);
+        }
+        // Who may see a room changes only with membership: then the topics are refreshed.
+        if (fields && fields.action !== ACTION.send) refreshTopics();
       });
     },
     /** Starts meeting peers: says hello on every topic now and every `helloEvery` milliseconds. */
@@ -294,6 +329,7 @@ export function webrtcTransport({
       timer = setInterval(() => sayHello().catch(() => {}), helloEvery);
     },
     stop() {
+      stopped = true;
       clearInterval(timer);
       closeStream?.();
       closeStream = null;

@@ -197,7 +197,10 @@ export function open({ identity, device, kernel, hash, store, signer, verdict, t
     Refused,
     /** Creates a room and returns its address. With `target` the room is direct and the target invited. */
     async createRoom({ target = ZERO, onStep } = {}) {
-      const bytes = encode({ action: ACTION.create, sender: identity, device, target });
+      // A group room's creating event carries a random salt in its content field (no rule reads it), so
+      // each room has its own address. A direct room has none: a second one with the same person is the first.
+      const salt = isZero(target) ? crypto.getRandomValues(new Uint8Array(32)) : undefined;
+      const bytes = encode({ action: ACTION.create, sender: identity, device, target, content: salt });
       if (!CREATED.has(await kernel.create(bytes))) throw new Refused("malformed");
       return publish(bytes, onStep);
     },
@@ -295,6 +298,11 @@ export function open({ identity, device, kernel, hash, store, signer, verdict, t
     members(roomId) {
       const room = rooms.get(hex(roomId));
       return room ? [...room.state].map(([member, { status, power }]) => ({ member, status, power })) : [];
+    },
+    /** One admitted event of a room as it travels, or null. */
+    eventOf(roomId, address) {
+      const event = rooms.get(hex(roomId))?.events.get(hex(address));
+      return event ? { address: event.address, bytes: event.bytes, signature: event.signature } : null;
     },
     /** Every admitted event of a room as it travels (address, bytes, signature), in the fold order. */
     eventsOf(roomId) {

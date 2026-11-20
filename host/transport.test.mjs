@@ -27,7 +27,7 @@ window.setup = async (name, other) => {
   const book = deviceBook({ hash, own: { identity, ...(await newDeviceKey()) } });
   const device = book.device;
   const room = hash(text("the room"));
-  const members = [hex(identity), hex(hash(text("identity " + other)))];
+  const members = [hex(identity), ...[].concat(other).map((o) => hex(hash(text("identity " + o))))];
   const events = [];
   const listeners = new Set();
   const store = memoryStore(hash);
@@ -36,6 +36,7 @@ window.setup = async (name, other) => {
     rooms: () => [room],
     members: () => members.map((member) => ({ member, status: 2 })),
     eventsOf: () => events.slice(),
+    eventOf: (_room, address) => events.find((e) => hex(e.address) === hex(address)) ?? null,
     subscribe: (l) => { listeners.add(l); return () => listeners.delete(l); },
     async receive(message) {
       if (events.some((e) => hex(e.address) === hex(message.address))) return { admitted: true, known: true };
@@ -111,8 +112,8 @@ test("two browsers meet over the rendezvous, prove their identities, sync, forwa
     await tab.waitForFunction(() => window.ready === true);
     return { tab, info: await tab.evaluate(([n, o]) => window.setup(n, o), [name, other]) };
   };
-  const ada = await open("ada", "ben");
-  const ben = await open("ben", "ada");
+  const ada = await open("ada", ["ben", "cam"]);
+  const ben = await open("ben", ["ada", "cam"]);
   // Ben accepts Ada's invite link: he learns her key from it, and she learns his from the token he shows.
   const link = await ada.tab.evaluate(() => window.invite());
   assert.equal(await ben.tab.evaluate((l) => window.accept(l), link), ada.info.identity);
@@ -145,6 +146,20 @@ test("two browsers meet over the rendezvous, prove their identities, sync, forwa
   assert.equal(fetched, "some content");
   assert.deepEqual(await ben.tab.evaluate(() => window.peer.transport.peers()), [ada.info.identity]);
   assert.deepEqual(await ada.tab.evaluate(() => window.peer.book.devicesOf(window.peer.hash(window.peer.text("identity ben"))).length), 1);
+
+  // Cam accepts only Ada's link. Ada introduces Ben to Cam (decision 20), so Cam and Ben meet and prove themselves.
+  const cam = await open("cam", ["ada", "ben"]);
+  const camLink = await ada.tab.evaluate(() => window.invite());
+  await cam.tab.evaluate((l) => window.accept(l), camLink);
+  await cam.tab.evaluate(() => window.peer.transport.start());
+  await cam.tab.waitForFunction((b) => window.peer.book.devicesOf(window.peer.hash(window.peer.text("identity ben"))).length === 1, null, { timeout: 30_000 });
+  await cam.tab.waitForFunction((b) => window.peer.transport.peers().includes(b), ben.info.identity, { timeout: 30_000 });
+  await cam.tab.waitForFunction(() => window.peer.events.length === 2, null, { timeout: 10_000 });
+
+  // stop() is final: no hello or event brings the transport back.
+  await cam.tab.evaluate(() => window.peer.transport.stop());
+  await cam.tab.waitForTimeout(1_500);
+  assert.equal(await cam.tab.evaluate(() => window.peer.transport.status), "offline");
 
   // Eve knows Ada's identity but holds no link: Ada never accepts her, and the spent token admits nobody else.
   const eve = await open("eve", "ada");
