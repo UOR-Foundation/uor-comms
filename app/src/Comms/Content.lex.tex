@@ -27,7 +27,8 @@ definition{
   result: Nat,
   body: (match (Foundation.Bytes::byteAt value at)
     | Option.none => 256
-    | Option.some byte => (prim to_nat byte : Nat))
+    | Option.some byte => (prim to_nat byte : Nat)),
+  axioms: [Quot.sound, propext]
 }
 
 definition{
