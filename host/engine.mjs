@@ -291,7 +291,9 @@ export function open({ identity, device, kernel, hash, store, signer, verdict, t
     // The store only: a page draws from what this device holds; fetching is `content`'s.
     const bytes = onlyRedacted(address) ? null : await store.get(address);
     if (!bytes) return undefined; // not held yet: asked again next time
-    const fields = (await kernel.content(bytes)) === "refused" ? null : decodeContent(bytes);
+    // `unknown`: a later version or kind (`Comms.Content::newer`), shown as a message this engine cannot read.
+    const answer = await kernel.content(bytes);
+    const fields = answer === "refused" ? null : answer === "unknown" ? { unknown: true, version: bytes[0], kind: bytes[1] } : decodeContent(bytes);
     read.set(key, fields);
     return fields;
   }
@@ -411,7 +413,7 @@ export function open({ identity, device, kernel, hash, store, signer, verdict, t
     },
     /** Sends content. The content is stored by address; the event carries only the address. */
     async send(room, contentBytes, options) {
-      if ((await kernel.content(contentBytes)) === "refused") throw new Refused("content");
+      if (["refused", "unknown"].includes(await kernel.content(contentBytes))) throw new Refused("content");
       const content = await store.put(contentBytes);
       return act(room, ACTION.send, { ...options, content });
     },
@@ -562,6 +564,11 @@ export function open({ identity, device, kernel, hash, store, signer, verdict, t
       sends.forEach((event, i) => {
         const content = contents[i];
         if (content === undefined) missing += 1;
+        if (content?.unknown) {
+          const message = { address: event.address, sender: event.fields.sender, unknown: true, version: content.version, kind: content.kind };
+          shown.push(message); // not in byAddress: what an unknown kind relates to is unknown too
+          return;
+        }
         if (!content || content.kind !== KIND.message) return;
         const message = { address: event.address, sender: event.fields.sender, sent: Number(content.sent),
           text: content.text, mentions: content.mentions, everyone: content.everyone, forwarded: content.forwarded,
