@@ -249,11 +249,25 @@ export function open({ identity, device, kernel, hash, store, signer, verdict, t
   async function contentAt(address) {
     const key = hex(address);
     if (read.has(key)) return read.get(key);
-    const bytes = await api.content(address);
-    if (!bytes) return undefined; // not held and no peer served it: asked again next time
+    // The store only: a page draws from what this device holds; fetching is `content`'s.
+    const bytes = onlyRedacted(address) ? null : await store.get(address);
+    if (!bytes) return undefined; // not held yet: asked again next time
     const fields = (await kernel.content(bytes)) === "refused" ? null : decodeContent(bytes);
     read.set(key, fields);
     return fields;
+  }
+
+  /** The redaction this identity would send now, and whether the kernel admits it (`Comms.Redact::composes`). */
+  async function redaction(roomId, address) {
+    const room = rooms.get(hex(roomId));
+    if (!room) throw new Refused("unknown room");
+    const target = room.events.get(hex(address));
+    if (!target) throw new Refused("unknown event");
+    const parents = [...room.heads].map((key) => room.events.get(key).address);
+    const bytes = encode({ action: ACTION.redact, room: roomId, sender: identity, device, target: target.address, parents });
+    const me = standing(room.state, identity);
+    const own = hex(target.fields.sender) === hex(identity);
+    return { bytes, me, allowed: await kernel.redaction(me, SETTINGS, own, bytes) };
   }
 
   const api = {
@@ -283,21 +297,18 @@ export function open({ identity, device, kernel, hash, store, signer, verdict, t
      * with the power to send; another member's only with the room's redaction power (`Comms.Redact`).
      */
     async redact(roomId, address, { onStep } = {}) {
-      const room = rooms.get(hex(roomId));
-      if (!room) throw new Refused("unknown room");
-      const target = room.events.get(hex(address));
-      if (!target) throw new Refused("unknown event");
-      const parents = [...room.heads].map((key) => room.events.get(key).address);
-      const bytes = encode({ action: ACTION.redact, room: roomId, sender: identity, device, target: target.address, parents });
-      const me = standing(room.state, identity);
-      const own = hex(target.fields.sender) === hex(identity);
-      if (!(await kernel.redaction(me, SETTINGS, own, bytes))) {
+      const { bytes, allowed, me } = await redaction(roomId, address);
+      if (!allowed) {
         // `Comms.Redact::allowed` asks what sending asks, and the redaction power for another's event:
         // so the send rule's refusal names the cause, and when it permits, the power is what is missing.
         const why = await kernel.reason(ACTION.send, me, me, SETTINGS, 0);
         throw new Refused(why === "permitted" ? "not allowed" : why);
       }
       return publish(bytes, onStep);
+    },
+    /** Whether `redact` would be accepted now: the kernel's answer on the redaction this identity would send. */
+    async mayRedact(roomId, address) {
+      return (await redaction(roomId, address)).allowed;
     },
     /** Sends content. The content is stored by address; the event carries only the address. */
     async send(room, contentBytes, options) {
@@ -444,7 +455,7 @@ export function open({ identity, device, kernel, hash, store, signer, verdict, t
         if (!content || content.kind !== KIND.message) return;
         const message = { address: event.address, sender: event.fields.sender, sent: Number(content.sent),
           text: content.text, mentions: content.mentions, everyone: content.everyone, forwarded: content.forwarded,
-          replyTo: content.relates, edited: null, reactions: {} };
+          replyTo: content.relates, edited: null, reactions: {}, mine: {} };
         shown.push(message);
         byAddress.set(hex(event.address), message);
       });
@@ -458,6 +469,7 @@ export function open({ identity, device, kernel, hash, store, signer, verdict, t
         if (content.kind === KIND.reaction) {
           const members = new Set(message.reactions[content.key] ?? []);
           message.reactions[content.key] = [...members.add(hex(event.fields.sender))];
+          if (hex(event.fields.sender) === hex(identity)) (message.mine[content.key] ??= []).push(event.address);
         }
       });
       let end = shown.length;
