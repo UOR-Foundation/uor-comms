@@ -36,6 +36,14 @@ export function open({ identity, device, kernel, hash, store, signer, verdict, t
   const rooms = new Map();
   const orphans = new Map();
   const listeners = new Set();
+  // One admission at a time: an event checked while its parent is being admitted would otherwise be
+  // held after the parent had already retried the held events, and wait for an unrelated admission.
+  let admitting = Promise.resolve();
+  const serially = (message) => {
+    const run = admitting.then(() => admit(message));
+    admitting = run.catch(() => {});
+    return run;
+  };
 
   const standing = (state, member) => state.get(hex(member)) ?? ABSENT;
 
@@ -146,13 +154,14 @@ export function open({ identity, device, kernel, hash, store, signer, verdict, t
     }
     await store.put(bytes, address);
     await store.putEvent?.({ address, bytes, signature });
-    const target = room ?? { id: address, events: new Map(), order: [], heads: new Set(), state: new Map(),
+    const target = room ?? { id: address, events: new Map(), order: [], heads: new Set(), state: new Map(), contents: new Set(),
       direct: creates && !isZero(fields.target) ? [fields.sender, fields.target] : null };
     rooms.set(roomKey, target);
     // `Comms.Fold::depthOf`: one more than the deepest parent, 0 with none.
     const depth = fields.parents.reduce((most, a) => Math.max(most, target.events.get(hex(a)).depth + 1), 0);
     const event = { address, bytes, signature, fields, depth };
     target.events.set(hex(address), event);
+    if (fields.action === ACTION.send) target.contents.add(hex(fields.content));
     for (const parent of fields.parents) target.heads.delete(hex(parent));
     target.heads.add(hex(address));
     await insert(target, event);
@@ -170,7 +179,7 @@ export function open({ identity, device, kernel, hash, store, signer, verdict, t
       const phase = PHASE[instruction];
       if (instruction === "sign") message.signature = await signer.sign(bytes);
       if (instruction === "store") {
-        const result = await admit(message);
+        const result = await serially(message);
         if (!result.admitted) throw new Refused(result.reason);
       }
       if (instruction === "announce") await transport.announce(message);
@@ -225,7 +234,7 @@ export function open({ identity, device, kernel, hash, store, signer, verdict, t
       return act(room, ACTION.send, { ...options, content });
     },
     /** What a peer's announce reaches. */
-    receive: admit,
+    receive: serially,
     /** Rebuilds every room from the events the store kept, admitting each again. Returns the number of rooms. */
     async restore() {
       // Parents first, so each event is checked once: a store returns events by address, and an event
@@ -239,7 +248,7 @@ export function open({ identity, device, kernel, hash, store, signer, verdict, t
           const [message, ready] = stack.pop();
           const key = hex(message.address);
           if (done.has(key)) continue;
-          if (ready) { done.add(key); await admit(message); continue; }
+          if (ready) { done.add(key); await serially(message); continue; }
           stack.push([message, true]);
           const fields = decode(message.bytes);
           for (const cited of fields ? [...fields.parents, ...fields.authorities] : []) {
@@ -262,6 +271,8 @@ export function open({ identity, device, kernel, hash, store, signer, verdict, t
       return fetched;
     },
     rooms: () => [...rooms.values()].map((room) => room.id),
+    /** Whether an admitted message of the room names this content address: what a peer may fetch. */
+    carries: (roomId, address) => Boolean(rooms.get(hex(roomId))?.contents.has(hex(address))),
     /**
      * This identity's events no peer holds yet, oldest first: `{ room, address }`. Empty when the
      * transport cannot say (it has no `delivered`). The sync on connect delivers them; `retry` asks again.
