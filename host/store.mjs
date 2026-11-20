@@ -26,6 +26,10 @@ export function memoryStore(hash) {
     async has(address) {
       return held.has(hex(address));
     },
+    /** Forgets the bytes at an address (redacted content). Kept events are not touched. */
+    async delete(address) {
+      held.delete(hex(address));
+    },
     /** Keeps an admitted event as it arrived. */
     async putEvent({ address, bytes, signature }) {
       events.set(hex(address), { address: address.slice(), bytes: bytes.slice(), signature: signature?.slice() ?? null });
@@ -87,6 +91,9 @@ export async function browserStore(hash, { name = "default" } = {}) {
     },
     async has(address) {
       return (await request(tx("bytes", "readonly").count(hex(address)))) > 0;
+    },
+    async delete(address) {
+      await request(tx("bytes", "readwrite").delete(hex(address)));
     },
     async putEvent({ address, bytes, signature }) {
       await request(tx("events", "readwrite").put({ bytes: bytes.slice(), signature: signature?.slice() ?? null }, hex(address)));

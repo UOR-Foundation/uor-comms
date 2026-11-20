@@ -107,7 +107,7 @@ A refused call rejects with an error whose `reason` names the cause. From the ke
 - **A concurrent ban.** An event that cites the room as it was before a ban is judged against its own parents, so a peer may admit a banned member's message written before the ban reached it. Matrix soft-fails such events; that is not modelled yet.
 - **Sync sends every address a room holds** when two peers connect, so the first exchange grows with history.
 - **No Prism ID.** The signer and the device verdict are supplied by the caller.
-- **No encryption.** Content is stored and fetched as given. A peer serves content by address only to a proven peer that may see a room in which an admitted message names it. Once an event is redacted its content is no longer served, unless another unredacted message names the same bytes. A peer that fetched it before keeps its copy.
+- **No encryption.** Content is stored and fetched as given. A peer serves content by address only to a proven peer that may see a room in which an admitted message names it. Once an event is redacted its content is no longer served, fetched or kept: each peer deletes it from its store (`store.delete`) when it admits the redaction, unless another unredacted message names the same bytes. A copy taken out of the engine before that, by a page or a peer that has not yet admitted the redaction, is beyond its reach.
 - **Three rules are computed here, not asked.** An event's depth (`Comms.Fold::depthOf`, proved in
   the model; that this code matches it is tested, not proved); a member's standing at creation; the
   power a change of power leaves. Each is marked in `engine.mjs`.

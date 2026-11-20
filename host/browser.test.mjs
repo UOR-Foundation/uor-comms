@@ -71,6 +71,24 @@ test("the browser store keeps bytes and events across a reload and reports an ev
   }, written.address);
   assert.deepEqual(read, { text: "hello", events: 1, signature: [1, 2, 3], size: 1, evicted: false });
 
+  // Deleting bytes (redacted content) removes them across a reload and leaves the kept events.
+  await tab.evaluate(async (address) => {
+    const store = await window.open_("test");
+    const extra = await store.put(new TextEncoder().encode("redacted later"));
+    await store.delete(extra);
+    store.close();
+    window.deleted = Array.from(extra);
+  }, written.address);
+  const deleted = await tab.evaluate(() => window.deleted);
+  await load();
+  const afterDelete = await tab.evaluate(async (address) => {
+    const store = await window.open_("test");
+    const result = { gone: !(await store.has(Uint8Array.from(address))), events: (await store.events()).length };
+    store.close();
+    return result;
+  }, deleted);
+  assert.deepEqual(afterDelete, { gone: true, events: 1 });
+
   // The browser clears the database but not the marker: the next open reports the eviction.
   await tab.evaluate(() => new Promise((resolve, reject) => {
     const req = indexedDB.deleteDatabase("uor-comms:test");
