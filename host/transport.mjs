@@ -321,6 +321,12 @@ export function webrtcTransport({
       return send(peer, { t: "got", id: message.id, bytes: bytes ? b64(bytes) : null });
     }
     if (message.t === "got") pending.get(message.id)?.(message.bytes ? unb64(message.bytes) : null);
+    // A receipt, signed by its reader's device and checked by the engine: relayed on if it moved a marker.
+    if (message.t === "read" && mayShare(peer, unb64(message.room))) {
+      const receipt = fromWire(message);
+      if (await engine.receiveReceipt(receipt)) shareReceipt(receipt, peer);
+      return;
+    }
     // Only from a peer that may see the room, and for its own proven identity.
     if (message.t === "typing" && mayShare(peer, unb64(message.room))) typed(hex(unb64(message.room)), peer.identity, Boolean(message.on));
   }
@@ -348,6 +354,14 @@ export function webrtcTransport({
     });
   }
 
+  const toWire = (r) => ({ t: "read", room: b64(r.room), identity: b64(r.identity), device: b64(r.device), address: b64(r.address), signature: b64(r.signature) });
+  const fromWire = (m) => ({ room: unb64(m.room), identity: unb64(m.identity), device: unb64(m.device), address: unb64(m.address), signature: unb64(m.signature) });
+
+  /** Sends a receipt to every connected peer that may see its room, but the one it came from. */
+  function shareReceipt(receipt, from = null) {
+    for (const peer of peers.values()) if (peer !== from && mayShare(peer, receipt.room)) send(peer, toWire(receipt));
+  }
+
   /** The keys of a room's other members this device knows (introductions, decision 20). */
   function introduce(peer, room) {
     const keys = [];
@@ -364,6 +378,8 @@ export function webrtcTransport({
     peer.offered.add(hex(room));
     introduce(peer, room);
     send(peer, { t: "have", room: b64(room), addresses: engine.eventsOf(room).map((e) => hex(e.address)) });
+    // Markers are not stored by peers that did not see them: each meeting offers every one held.
+    for (const receipt of engine.receipts?.(room) ?? []) send(peer, toWire(receipt));
   }
 
   function refreshTopics() {
@@ -438,6 +454,8 @@ export function webrtcTransport({
       const room = engine.rooms().find((r) => engine.eventsOf(r).some((e) => hex(e.address) === hex(message.address)));
       for (const peer of peers.values()) if (!room || mayShare(peer, room)) sendEvent(peer, message);
     },
+    /** The engine gives this identity's receipts here; they go to every connected peer that may see the room. */
+    receipt(r) { shareReceipt(r); },
     /** Tells the room's connected members this identity is typing (`on`) or stopped. Nothing is kept. */
     typing(room, on) {
       for (const peer of peers.values()) if (mayShare(peer, room)) send(peer, { t: "typing", room: b64(room), on: Boolean(on) });

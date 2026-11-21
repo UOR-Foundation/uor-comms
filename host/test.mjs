@@ -43,6 +43,7 @@ async function peer(name, wire) {
     transport: {
       announce: async (message) => { for (const other of wire.peers) if (other !== engine) await wire.deliver(other, message); },
       fetch: async (address) => { for (const other of wire.stores) { const held = await other.get(address); if (held) return held; } return null; },
+      receipt: async (r) => { for (const other of wire.peers) if (other !== engine) await other.receiveReceipt(r); },
     },
   };
   const engine = open(options);
@@ -661,4 +662,54 @@ test("a device forwards for a member only with consent, as a joined member, and 
   assert.equal(await ben.engine.mayForward(room, { consented: true }), false);
   assert.equal(await eve.engine.mayForward(room, { consented: true }), false);
   assert.equal(await ada.engine.mayForward(hash(text("no room")), { consented: true }), false);
+});
+
+test("read markers: signed, forward only, read by every member; unread and mentions over the whole room; a setting not to send", async () => {
+  const wire = direct();
+  const ada = await peer("ada", wire);
+  const ben = await peer("ben", wire);
+  const eve = await peer("eve", wire);
+  const room = await ada.engine.createDirect(ben.identity);
+  await ben.engine.join(room);
+  const say = (fields) => ada.engine.send(room, encodeContent({ sent: 1_800_000_000_000, ...fields }));
+  const one = await say({ text: "one" });
+  const two = await say({ text: "two" });
+  const three = await say({ text: "for ben", mentions: [ben.identity] });
+  for (const e of ben.engine.timeline(room).events) if (e.action === ACTION.send) await ben.engine.content(e.content);
+  assert.deepEqual(await ben.engine.unread(room), { count: 3, mentions: 1, missing: 0 });
+  assert.equal(await ben.engine.markRead(room, two), true);
+  assert.deepEqual(ada.engine.readers(room, one), [hex(ben.identity)]);
+  assert.deepEqual(ada.engine.readers(room, two), [hex(ben.identity)]);
+  assert.deepEqual(ada.engine.readers(room, three), []);
+  assert.deepEqual(await ben.engine.unread(room), { count: 1, mentions: 1, missing: 0 });
+  // A marker never moves back.
+  assert.equal(await ben.engine.markRead(room, one), false);
+  // A receipt signed by another identity's device, or by someone the room does not list, is refused.
+  const forged = { room, identity: ben.identity, device: eve.device, address: three, signature: await eve.options.signer.sign(text("anything")) };
+  assert.equal(await ada.engine.receiveReceipt(forged), false);
+  assert.deepEqual(ada.engine.readers(room, three), []);
+  // With receipts off the marker moves here, and nobody else hears it.
+  ben.engine.sendReceipts(false);
+  assert.equal(await ben.engine.markRead(room, three), true);
+  assert.deepEqual(await ben.engine.unread(room), { count: 0, mentions: 0, missing: 0 });
+  assert.deepEqual(ada.engine.readers(room, three), []);
+  // Reopened on the same store, Ben's own marker is still there.
+  const again = ben.reopen();
+  await again.restore();
+  assert.deepEqual(await again.unread(room), { count: 0, mentions: 0, missing: 0 });
+});
+
+test("a receipt for an event not held yet waits for it", async () => {
+  const wire = direct();
+  const sent = [];
+  const ada = await peer("ada", wire);
+  const ben = await peer("ben", wire);
+  const room = await ada.engine.createDirect(ben.identity);
+  await ben.engine.join(room);
+  wire.deliver = async (_other, m) => { sent.push(m); };
+  const late = await ben.engine.send(room, message("late"));
+  const signature = await ben.options.signer.sign(Uint8Array.from([...new TextEncoder().encode("uor-comms receipt v1"), ...room, ...ben.identity, ...late]));
+  assert.equal(await ada.engine.receiveReceipt({ room, identity: ben.identity, device: ben.device, address: late, signature }), false);
+  for (const m of sent) await ada.engine.receive(m);
+  assert.deepEqual(ada.engine.readers(room, late), [hex(ben.identity)]);
 });
