@@ -1,4 +1,6 @@
-![UOR COMMS visual banner: MODELED PEER MESSAGING · EXPERIMENTAL](assets/readme-banner.svg)
+![UOR Foundation placeholder artwork used for UOR Comms, not an approved product banner](assets/readme-banner-PLACEHOLDER.png)
+
+*Illustrative UOR Foundation placeholder while a UOR Comms-specific PNG awaits asset availability and brand approval.*
 
 # UOR Comms
 
@@ -12,14 +14,9 @@
 
 ## Contents
 
-- [Why this exists](#why-this-exists)
-- [What the repository currently contains](#what-the-repository-currently-contains)
-- [Known boundaries](#known-boundaries)
-- [Developer quick start](#developer-quick-start)
-- [Kernel operations](#kernel-operations)
-- [Everyday development commands](#everyday-development-commands)
-- [Architecture and navigation](#architecture-and-navigation)
-- [Contributing, authority, and license](#contributing-authority-and-license)
+**Start here:** [Why](#why-this-exists) · [What exists](#what-the-repository-currently-contains) · [Known boundaries](#known-boundaries) · [Quick start](#developer-quick-start)
+
+**Reference:** [Kernel operations](#kernel-operations) · [Development commands](#everyday-development-commands) · [Architecture](#architecture-and-navigation) · [Contributing and license](#contributing-authority-and-license)
 
 ## Why this exists
 
