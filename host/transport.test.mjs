@@ -67,7 +67,7 @@ window.setup = async (name, other, holds = true, lossy = false) => {
     rendezvous,
     signer: book,
     verdict: book.verdict,
-    hash, store, helloEvery: 500, setupWithin: 10_000,
+    hash, store, helloEvery: 500, setupWithin: 10_000, typingFor: 1_500,
   });
   transport.bind(engine);
   window.peer = { engine, transport, store, events, contents, hash, text, hex, book };
@@ -170,6 +170,18 @@ test("two browsers meet over the rendezvous, prove their identities, sync, forwa
     return transport.fetch(hash(text("named by no event")));
   }), null);
   assert.deepEqual(await ben.tab.evaluate(() => window.peer.transport.peers()), [ada.info.identity]);
+
+  // Typing is ephemeral: Ben hears Ada start and stop, and a notice not renewed runs out.
+  const typingIn = (side) => side.tab.evaluate(() => window.peer.transport.typingIn(window.peer.engine.rooms()[0]));
+  await ada.tab.evaluate(() => window.peer.transport.typing(window.peer.engine.rooms()[0], true));
+  await ben.tab.waitForFunction((a) => window.peer.transport.typingIn(window.peer.engine.rooms()[0]).includes(a), ada.info.identity, { timeout: 5_000 });
+  await ada.tab.evaluate(() => window.peer.transport.typing(window.peer.engine.rooms()[0], false));
+  await ben.tab.waitForFunction(() => window.peer.transport.typingIn(window.peer.engine.rooms()[0]).length === 0, null, { timeout: 5_000 });
+  await ada.tab.evaluate(() => window.peer.transport.typing(window.peer.engine.rooms()[0], true));
+  await ben.tab.waitForFunction(() => window.peer.transport.typingIn(window.peer.engine.rooms()[0]).length === 1, null, { timeout: 5_000 });
+  await ben.tab.waitForTimeout(2_000);
+  assert.deepEqual(await typingIn(ben), []);
+  assert.equal(await ben.tab.evaluate(() => window.peer.events.length), 2); // nothing typed became an event
   assert.deepEqual(await ada.tab.evaluate(() => window.peer.book.devicesOf(window.peer.hash(window.peer.text("identity ben"))).length), 1);
 
   // Cam accepts only Ada's link. Once Ada announces Cam as a member, she introduces Ben to Cam and Cam to Ben

@@ -111,6 +111,7 @@ Feature: room
     And createAnswer in RoomKernel.lex.tex contains ((Comms.Event::shaped words) && (Comms.Create::mayCreate (Comms.Event::wordAt words 0) (Comms.Event::wordAt words 1)
     And routeHigh in RoomKernel.lex.tex contains (if ((operation =? 12) && (201 <=? length)) then (createAnswer value length)
     And contentAnswer in RoomKernel.lex.tex contains (Comms.Content::kindIn value 1 (prim subtract length 1 : Nat))
+    And contentAnswer in RoomKernel.lex.tex contains (if (Comms.Content::newerIn value 1 (prim subtract length 1 : Nat)) then (prim utf8_encode "newer" : Bytes)
     And routeHigh in RoomKernel.lex.tex contains (if ((operation =? 13) && (2 <=? length)) then (contentAnswer value length)
     And directAnswer in RoomKernel.lex.tex contains (Comms.Create::directAllows (natAt value 1 1 0) (natAt value 2 1 0))
     And routeHigh in RoomKernel.lex.tex contains (if ((operation =? 14) && (length =? 3)) then (directAnswer value)
@@ -261,7 +262,7 @@ Feature: room
     And heldEarlierEventIsPlacedFirst in Comms/ResolveProofs.lex.tex states (((a <? b) && ((Comms.Resolve::place b arrivals) <? ((Comms.Resolve::place a arrivals) + (Comms.Resolve::copies a arrivals)))) = false)
 
   @RK-16 @build
-  Scenario: Message content version 1 is read only in its one form: a message, an edit or a reaction; an edit and a reaction name the event they concern; text has 1 to 4,096 bytes with no NUL and no carriage return; at most 50 mentions in ascending order; a reaction key of 1 to 32 bytes without whitespace; no attachment until the cipher exists; nothing after
+  Scenario: Message content version 1 is read only in its one form: a message, an edit or a reaction; an edit and a reaction name the event they concern; text has 1 to 4,096 bytes with no NUL and no carriage return; at most 50 mentions in ascending order; a reaction key of 1 to 32 bytes without whitespace; no attachment until the cipher exists; nothing after; content of a newer version, or of version 1 with an unknown kind, is answered unknown and never read as version 1
     Given message content in app/src/Comms/Content.lex.tex
     When the Lean kernel checks the theorems of ContentProofs during prismpm verify
     Then fieldsAllowed in Comms/Content.lex.tex contains body: ((version =? 1) && ((relates <=? 1) && (((kind =? 3) && ((relates =? 1) && ((1 <=? keyLength) && (keyLength <=? 32)))) || (((kind =? 1) || ((kind =? 2) && (relates =? 1))) && ((forwarded <=? 1) && ((everyone <=? 1) && ((mentions <=? 50) && ((1 <=? textLength) && ((textLength <=? 4096) && (attachments =? 0))))))))))
@@ -271,6 +272,11 @@ Feature: room
     And mentionsAscend in Comms/Content.lex.tex contains | Nat.succ rest => (if (wordsBefore value (start + (prim multiply 32 rest : Nat)) ((start + (prim multiply 32 rest : Nat)) + 32) 4) then (mentionsAscend value start rest) else false)),
     And onlyVersionOneIsRead in Comms/ContentProofs.lex.tex states ((Comms.Content::fieldsAllowed 2 kind relates forwarded everyone mentions textLength attachments keyLength) = false)
     And unknownKindIsRefused in Comms/ContentProofs.lex.tex states ((((kind =? 0) || (3 <? kind)) && (Comms.Content::fieldsAllowed version kind relates forwarded everyone mentions textLength attachments keyLength)) = false)
+    And newerContentIsNeverReadAsVersionOne in Comms/ContentProofs.lex.tex states (((Comms.Content::newer version kind) && (Comms.Content::fieldsAllowed version kind relates forwarded everyone mentions textLength attachments keyLength)) = false)
+    And aKnownKindOfVersionOneIsNotNewer in Comms/ContentProofs.lex.tex states (((version =? 1) && ((kind <=? 3) && (Comms.Content::newer version kind))) = false)
+    And versionZeroIsNotNewer in Comms/ContentProofs.lex.tex states (((version =? 0) && (Comms.Content::newer version kind)) = false)
+    And aLaterVersionIsNewer in Comms/ContentProofs.lex.tex states (((1 <? version) && (not (Comms.Content::newer version kind))) = false)
+    And anUnknownKindOfVersionOneIsNewer in Comms/ContentProofs.lex.tex states (((version =? 1) && ((3 <? kind) && (not (Comms.Content::newer version kind)))) = false)
     And editNamesWhatItReplaces in Comms/ContentProofs.lex.tex states ((Comms.Content::fieldsAllowed version 2 0 forwarded everyone mentions textLength attachments keyLength) = false)
     And reactionNamesWhatItAnswers in Comms/ContentProofs.lex.tex states ((Comms.Content::fieldsAllowed version 3 0 forwarded everyone mentions textLength attachments keyLength) = false)
     And messageHasText in Comms/ContentProofs.lex.tex states (((not (kind =? 3)) && (Comms.Content::fieldsAllowed version kind relates forwarded everyone mentions 0 attachments keyLength)) = false)

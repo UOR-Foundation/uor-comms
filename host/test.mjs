@@ -191,7 +191,9 @@ test("content version 1: the kernel reads a message, an edit and a reaction, and
   assert.equal(await kernel.content(encodeContent({ kind: KIND.reaction, key: "👍", relates: target })), "reaction");
   assert.equal(await kernel.content(encodeContent({ kind: KIND.edit, text: "fixed" })), "refused");
   assert.equal(await kernel.content(encodeContent({ text: "" })), "refused");
-  assert.equal(await kernel.content(text("plain bytes")), "refused");
+  // Its first byte reads as version 112: content a newer engine might write is newer, not refused.
+  assert.equal(await kernel.content(text("plain bytes")), "newer");
+  assert.equal(await kernel.content(Uint8Array.from([0, 1])), "refused");
   const wire = direct();
   const peerA = await peer("ada", wire);
   const peerB = await peer("ben", wire);
@@ -616,4 +618,27 @@ test("room settings: the kernel's defaults, changed by event, read by every peer
   await ben.engine.join(pair);
   await ada.engine.changeSetting(pair, "name", text("us"));
   await assert.rejects(ada.engine.changeSetting(pair, "open", true), { reason: "not allowed" });
+});
+
+test("content of a newer version or unknown kind is listed as unknown, not lost, and never sent by this engine", async () => {
+  const wire = direct();
+  const ada = await peer("ada", wire);
+  const ben = await peer("ben", wire);
+  const room = await ada.engine.createDirect(ben.identity);
+  await ben.engine.join(room);
+  const later = Uint8Array.from([2, 1, ...new Uint8Array(8), 0, 0, 0, 0, 0, 0, 0, 1, 104, 0]);
+  const unknownKind = Uint8Array.from([1, 9, ...new Uint8Array(8), 0]);
+  await assert.rejects(ada.engine.send(room, later), { reason: "content" });
+  // A newer engine wrote them: the events are admitted, and the content shows as a placeholder.
+  for (const bytes of [later, unknownKind]) {
+    const content = await ada.store.put(bytes);
+    await ben.store.put(bytes);
+    const head = ada.engine.timeline(room).events.at(-1).address;
+    const event = encode({ action: ACTION.send, room, sender: ada.identity, device: ada.device, content, parents: [head] });
+    const signature = await ada.options.signer.sign(event);
+    assert.equal((await ada.engine.receive({ address: hash(event), bytes: event, signature })).admitted, true);
+    assert.equal((await ben.engine.receive({ address: hash(event), bytes: event, signature })).admitted, true);
+  }
+  const { messages } = await ben.engine.messages(room);
+  assert.deepEqual(messages.map((m) => [m.unknown, m.version, m.kind]), [[true, 2, 1], [true, 1, 9]]);
 });

@@ -67,7 +67,7 @@ export function ntfyRendezvous({ base = "https://ntfy.sh", fetcher = globalThis.
 export function webrtcTransport({
   rendezvous, signer, verdict, hash, store,
   RTCPeerConnectionClass = globalThis.RTCPeerConnection,
-  iceServers = PUBLIC_STUN, helloEvery = 10_000, setupWithin = 15_000, now = () => Date.now(),
+  iceServers = PUBLIC_STUN, helloEvery = 10_000, setupWithin = 15_000, typingFor = 6_000, now = () => Date.now(),
   random = (n) => crypto.getRandomValues(new Uint8Array(n)),
 }) {
   const self = hex(random(16));
@@ -84,6 +84,17 @@ export function webrtcTransport({
   const delivered = new Set(); // addresses a proven peer holds or was sent over an open channel
   const deliveryListeners = new Set();
   const reached = new Set(); // identities to meet though no room is shared yet
+  // Typing (item 12): never stored or ordered. A notice lasts `typingFor` unless renewed.
+  const typists = new Map(); // room hex -> Map(identity hex -> timer)
+  const typingListeners = new Set();
+  const typed = (room, identity, on) => {
+    const inRoom = typists.get(room) ?? new Map();
+    clearTimeout(inRoom.get(identity));
+    if (on) inRoom.set(identity, setTimeout(() => typed(room, identity, false), typingFor));
+    else if (!inRoom.delete(identity)) return;
+    typists.set(room, inRoom);
+    for (const listener of typingListeners) listener({ room, identity, on });
+  };
   const unhexId = (h) => Uint8Array.from(h.match(/../g), (x) => parseInt(x, 16));
 
   const setStatus = () => {
@@ -302,6 +313,8 @@ export function webrtcTransport({
       return send(peer, { t: "got", id: message.id, bytes: bytes ? b64(bytes) : null });
     }
     if (message.t === "got") pending.get(message.id)?.(message.bytes ? unb64(message.bytes) : null);
+    // Only from a peer that may see the room, and for its own proven identity.
+    if (message.t === "typing" && mayShare(peer, unb64(message.room))) typed(hex(unb64(message.room)), peer.identity, Boolean(message.on));
   }
 
   /** The keys of a room's other members this device knows (introductions, decision 20). */
@@ -394,6 +407,14 @@ export function webrtcTransport({
       const room = engine.rooms().find((r) => engine.eventsOf(r).some((e) => hex(e.address) === hex(message.address)));
       for (const peer of peers.values()) if (!room || mayShare(peer, room)) sendEvent(peer, message);
     },
+    /** Tells the room's connected members this identity is typing (`on`) or stopped. Nothing is kept. */
+    typing(room, on) {
+      for (const peer of peers.values()) if (mayShare(peer, room)) send(peer, { t: "typing", room: b64(room), on: Boolean(on) });
+    },
+    /** The identities (hex) typing in a room now, as their notices say. */
+    typingIn: (room) => [...(typists.get(hex(room))?.keys() ?? [])],
+    /** Hears `{ room, identity, on }` (hex) when someone starts or stops, or a notice runs out. */
+    onTyping(listener) { typingListeners.add(listener); return () => typingListeners.delete(listener); },
     /** Bytes by address from any connected peer, checked against the address; null after five seconds. */
     async fetch(address) {
       const ready = [...peers.values()].filter((p) => p.identity);

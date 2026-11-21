@@ -119,6 +119,21 @@ definition{
 }
 
 definition{
+  name: newer,
+  parameters: [version : Nat, kind : Nat],
+  result: Bool,
+  body: ((1 <? version) || ((version =? 1) && (3 <? kind)))
+}
+
+definition{
+  name: newerIn,
+  parameters: [value : Bytes, base : Nat, length : Nat],
+  result: Bool,
+  body: ((2 <=? length) && (newer (byteOf value base) (byteOf value (base + 1)))),
+  axioms: [Quot.sound, propext]
+}
+
+definition{
   name: kindIn,
   parameters: [value : Bytes, base : Nat, length : Nat],
   result: Nat,

@@ -224,5 +224,55 @@ theorem{
   proof: simplify{definitions: [Comms.Content::keyClean]},
   axioms: [Quot.sound, propext]
 }
+
+theorem{
+  name: newerContentIsNeverReadAsVersionOne,
+  parameters: [
+    version : Nat,
+    kind : Nat,
+    relates : Nat,
+    forwarded : Nat,
+    everyone : Nat,
+    mentions : Nat,
+    textLength : Nat,
+    attachments : Nat,
+    keyLength : Nat
+  ],
+  statement: (((Comms.Content::newer version kind) && (Comms.Content::fieldsAllowed version kind relates forwarded everyone mentions textLength attachments keyLength)) = false),
+  proof: linear_arithmetic{definitions: [Comms.Content::fieldsAllowed, Comms.Content::newer]},
+  axioms: [Quot.sound, propext]
+}
+
+theorem{
+  name: aKnownKindOfVersionOneIsNotNewer,
+  parameters: [version : Nat, kind : Nat],
+  statement: (((version =? 1) && ((kind <=? 3) && (Comms.Content::newer version kind))) = false),
+  proof: linear_arithmetic{definitions: [Comms.Content::newer]},
+  axioms: [Quot.sound, propext]
+}
+
+theorem{
+  name: versionZeroIsNotNewer,
+  parameters: [version : Nat, kind : Nat],
+  statement: (((version =? 0) && (Comms.Content::newer version kind)) = false),
+  proof: linear_arithmetic{definitions: [Comms.Content::newer]},
+  axioms: [Quot.sound, propext]
+}
+
+theorem{
+  name: aLaterVersionIsNewer,
+  parameters: [version : Nat, kind : Nat],
+  statement: (((1 <? version) && (not (Comms.Content::newer version kind))) = false),
+  proof: linear_arithmetic{definitions: [Comms.Content::newer]},
+  axioms: [Quot.sound, propext]
+}
+
+theorem{
+  name: anUnknownKindOfVersionOneIsNewer,
+  parameters: [version : Nat, kind : Nat],
+  statement: (((version =? 1) && ((3 <? kind) && (not (Comms.Content::newer version kind)))) = false),
+  proof: linear_arithmetic{definitions: [Comms.Content::newer]},
+  axioms: [Classical.choice, Quot.sound, propext]
+}
 \end{semanticmodule}
 \end{lexlean}

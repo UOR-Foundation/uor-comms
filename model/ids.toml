@@ -125,7 +125,7 @@ statement = "An event is folded after every parent: its depth is one more than i
 id = "RK-16"
 level = "build"
 suite = "room"
-statement = "Message content version 1 is read only in its one form: a message, an edit or a reaction; an edit and a reaction name the event they concern; text has 1 to 4,096 bytes with no NUL and no carriage return; at most 50 mentions in ascending order; a reaction key of 1 to 32 bytes without whitespace; no attachment until the cipher exists; nothing after"
+statement = "Message content version 1 is read only in its one form: a message, an edit or a reaction; an edit and a reaction name the event they concern; text has 1 to 4,096 bytes with no NUL and no carriage return; at most 50 mentions in ascending order; a reaction key of 1 to 32 bytes without whitespace; no attachment until the cipher exists; nothing after; content of a newer version, or of version 1 with an unknown kind, is answered unknown and never read as version 1"
 
 [[id]]
 id = "RK-17"
