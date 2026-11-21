@@ -89,6 +89,23 @@ test("the browser store keeps bytes and events across a reload and reports an ev
   }, deleted);
   assert.deepEqual(afterDelete, { gone: true, events: 1 });
 
+  // This device's read marker survives a reload, one per room.
+  await tab.evaluate(async () => {
+    const store = await window.open_("test");
+    const room = new Uint8Array(32).fill(7);
+    await store.putMark({ room, address: new Uint8Array(32).fill(1), signature: new Uint8Array([9]) });
+    await store.putMark({ room, address: new Uint8Array(32).fill(2), signature: new Uint8Array([9]) });
+    store.close();
+  });
+  await load();
+  const marks = await tab.evaluate(async () => {
+    const store = await window.open_("test");
+    const kept = (await store.marks()).map((m) => [m.room[0], m.address[0], m.signature[0]]);
+    store.close();
+    return kept;
+  });
+  assert.deepEqual(marks, [[7, 2, 9]]);
+
   // The browser clears the database but not the marker: the next open reports the eviction.
   await tab.evaluate(() => new Promise((resolve, reject) => {
     const req = indexedDB.deleteDatabase("uor-comms:test");

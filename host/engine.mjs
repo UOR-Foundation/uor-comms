@@ -46,10 +46,26 @@ class Refused extends Error {
   }
 }
 
-export function open({ identity, device, kernel, hash, store, signer, verdict, transport }) {
+// What a receipt's signature covers: the domain, the room, the reader and the event read up to.
+const RECEIPT = new TextEncoder().encode("uor-comms receipt v1");
+const receiptBytes = (room, reader, address) => {
+  const out = new Uint8Array(RECEIPT.length + 96);
+  out.set(RECEIPT);
+  out.set(room, RECEIPT.length);
+  out.set(reader, RECEIPT.length + 32);
+  out.set(address, RECEIPT.length + 64);
+  return out;
+};
+
+export function open({ identity, device, kernel, hash, store, signer, verdict, transport, receipts = true }) {
   const rooms = new Map();
   const orphans = new Map();
   const listeners = new Set();
+  // Read markers (item 11): signed receipts, never events, never in the order or the proofs. Each room
+  // keeps the latest marker per reader; one naming an event not held yet waits for it.
+  let sendingReceipts = Boolean(receipts);
+  const receiptListeners = new Set();
+  const waitingReceipts = new Map(); // room hex -> Map(reader hex -> receipt)
   // One admission at a time: an event checked while its parent is being admitted would otherwise be
   // held after the parent had already retried the held events, and wait for an unrelated admission.
   let admitting = Promise.resolve();
@@ -203,7 +219,7 @@ export function open({ identity, device, kernel, hash, store, signer, verdict, t
     }
     await store.put(bytes, address);
     await store.putEvent?.({ address, bytes, signature });
-    const target = room ?? { id: address, events: new Map(), order: [], heads: new Set(), state: newState(), contents: new Map(), redacted: new Set(),
+    const target = room ?? { id: address, events: new Map(), order: [], heads: new Set(), state: newState(), contents: new Map(), redacted: new Set(), marks: new Map(),
       direct: creates && !isZero(fields.target) ? [fields.sender, fields.target] : null };
     rooms.set(roomKey, target);
     // `Comms.Fold::depthOf`: one more than the deepest parent, 0 with none.
@@ -227,6 +243,8 @@ export function open({ identity, device, kernel, hash, store, signer, verdict, t
     await insert(target, event);
     orphans.delete(hex(address));
     for (const listener of listeners) listener({ room: target.id, address });
+    const waiting = waitingReceipts.get(hex(target.id));
+    if (waiting) for (const [reader, receipt] of [...waiting]) if (await takeReceipt(receipt, false)) waiting.delete(reader);
     for (const waiting of [...orphans.values()]) await admit(waiting);
     return { admitted: true, address };
   }
@@ -339,6 +357,34 @@ export function open({ identity, device, kernel, hash, store, signer, verdict, t
     return { room, bytes, allowed: await settingComposes(room.state, identity, bytes, Boolean(room.direct)) };
   }
 
+  const placeOf = (room, address) => room.order.findIndex((e) => hex(e.address) === hex(address));
+
+  /**
+   * Keeps a receipt if it is signed by a device of a reader the room lists as invited or joined, for an
+   * event the room holds, and moves that reader's marker forward. One for an event not held yet waits.
+   */
+  async function takeReceipt(receipt, keepWaiting = true) {
+    const { room: roomId, identity: reader, device: signedBy, address, signature } = receipt;
+    const room = rooms.get(hex(roomId));
+    if (!room || !signature) return false;
+    if (!room.events.has(hex(address))) {
+      if (keepWaiting) {
+        const waiting = waitingReceipts.get(hex(roomId)) ?? new Map();
+        waitingReceipts.set(hex(roomId), waiting.set(hex(reader), receipt));
+      }
+      return false;
+    }
+    if (![1, 2].includes(standing(room.state, reader).status)) return false;
+    const signed = (await signer.verify(receiptBytes(roomId, reader, address), signature, reader, signedBy))
+      && (await verdict(reader, signedBy));
+    if (!signed) return false;
+    const current = room.marks.get(hex(reader));
+    if (current && placeOf(room, current.address) >= placeOf(room, address)) return false;
+    room.marks.set(hex(reader), { identity: reader, device: signedBy, address, signature });
+    for (const listener of receiptListeners) listener({ room: room.id, identity: hex(reader), address });
+    return true;
+  }
+
   const api = {
     Refused,
     /** Creates a room and returns its address. With `target` the room is direct and the target invited. */
@@ -427,6 +473,68 @@ export function open({ identity, device, kernel, hash, store, signer, verdict, t
       if (!room) return false;
       return kernel.forward(standing(room.state, identity).status, false, consented, directPath);
     },
+    /**
+     * Marks the room read up to an event (`address`): signed, kept on this device, and sent to the room's
+     * members unless receipts are off. A marker only moves forward in the fold order.
+     */
+    async markRead(roomId, address) {
+      const room = rooms.get(hex(roomId));
+      if (!room) throw new Refused("unknown room");
+      if (!room.events.has(hex(address))) throw new Refused("unknown event");
+      const current = room.marks.get(hex(identity));
+      if (current && placeOf(room, current.address) >= placeOf(room, address)) return false;
+      const event = room.events.get(hex(address));
+      const signature = await signer.sign(receiptBytes(room.id, identity, event.address));
+      const receipt = { room: room.id, identity, device, address: event.address, signature };
+      room.marks.set(hex(identity), receipt);
+      await store.putMark?.({ room: room.id, address: event.address, signature });
+      for (const listener of receiptListeners) listener({ room: room.id, identity: hex(identity), address: event.address });
+      if (sendingReceipts) await transport.receipt?.(receipt);
+      return true;
+    },
+    /** The members (hex) whose marker is at or past an event, this identity left out: who has read it. */
+    readers(roomId, address) {
+      const room = rooms.get(hex(roomId));
+      if (!room) throw new Refused("unknown room");
+      const at = placeOf(room, address);
+      if (at < 0) throw new Refused("unknown event");
+      return [...room.marks.values()]
+        .filter((m) => hex(m.identity) !== hex(identity) && placeOf(room, m.address) >= at)
+        .map((m) => hex(m.identity));
+    },
+    /**
+     * Messages from others after this identity's marker, over the whole room: `count`, and `mentions`,
+     * those that mention it or everyone. Read from the store only; `missing` counts content not held yet.
+     */
+    async unread(roomId) {
+      const room = rooms.get(hex(roomId));
+      if (!room) throw new Refused("unknown room");
+      const mark = room.marks.get(hex(identity));
+      const from = mark ? placeOf(room, mark.address) + 1 : 0;
+      let count = 0;
+      let mentions = 0;
+      let missing = 0;
+      for (const event of room.order.slice(from)) {
+        if (event.fields.action !== ACTION.send || room.redacted.has(hex(event.address))) continue;
+        if (hex(event.fields.sender) === hex(identity)) continue;
+        const content = await contentAt(event.fields.content);
+        if (content === undefined) { missing += 1; continue; }
+        if (!content || !(content.unknown || content.kind === KIND.message)) continue;
+        count += 1;
+        if (content.everyone || content.mentions?.some((m) => hex(m) === hex(identity))) mentions += 1;
+      }
+      return { count, mentions, missing };
+    },
+    /** Every marker this device holds for a room, as they travel: what the transport offers a peer. */
+    receipts(roomId) {
+      return [...(rooms.get(hex(roomId))?.marks.values() ?? [])].map((m) => ({ room: rooms.get(hex(roomId)).id, ...m }));
+    },
+    /** What a peer's receipt reaches: true when it moved a marker forward (then it is worth relaying). */
+    receiveReceipt: (receipt) => takeReceipt(receipt),
+    /** Sends this identity's receipts (true, the default) or keeps them on this device (false). */
+    sendReceipts(on) { sendingReceipts = Boolean(on); },
+    /** Hears `{ room, identity, address }` (identity hex) each time a marker moves forward. */
+    onReceipt(listener) { receiptListeners.add(listener); return () => receiptListeners.delete(listener); },
     /** Sends content. The content is stored by address; the event carries only the address. */
     async send(room, contentBytes, options) {
       if (["refused", "newer"].includes(await kernel.content(contentBytes))) throw new Refused("content");
@@ -456,6 +564,10 @@ export function open({ identity, device, kernel, hash, store, signer, verdict, t
             if (parent && !done.has(hex(cited))) stack.push([parent, false]);
           }
         }
+      }
+      // This device's own markers come back from the store; others' come back from peers on connect.
+      for (const mark of (await store.marks?.()) ?? []) {
+        await takeReceipt({ room: mark.room, identity, device, address: mark.address, signature: mark.signature });
       }
       return rooms.size;
     },

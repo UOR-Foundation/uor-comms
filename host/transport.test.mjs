@@ -31,6 +31,7 @@ window.setup = async (name, other, holds = true, lossy = false, { refuse = [], f
   const members = holds ? [hex(identity), ...[].concat(other).map((o) => hex(hash(text("identity " + o))))] : [];
   let held = holds;
   const contents = new Set();
+  const marks = new Map();
   const events = [];
   const listeners = new Set();
   const store = memoryStore(hash);
@@ -39,6 +40,14 @@ window.setup = async (name, other, holds = true, lossy = false, { refuse = [], f
     rooms: () => (held ? [room] : []),
     members: () => members.map((member) => ({ member, status: 2 })),
     carries: (_room, address) => contents.has(hex(address)),
+    // Receipts are checked by the engine (host/test.mjs); here the latest per reader is kept.
+    receiveReceipt: async (r) => {
+      const key = hex(r.identity);
+      if (marks.has(key) && hex(marks.get(key).address) === hex(r.address)) return false;
+      marks.set(key, r);
+      return true;
+    },
+    receipts: () => [...marks.values()],
     // The kernel's mayForward is tested in host/test.mjs; here a member that consents may forward.
     mayForward: async (_room, { consented }) => consented && held,
     eventsOf: () => events.slice(),
@@ -75,7 +84,12 @@ window.setup = async (name, other, holds = true, lossy = false, { refuse = [], f
     hash, store, helloEvery: 500, setupWithin: 10_000, typingFor: 1_500, forward,
   });
   transport.bind(engine);
-  window.peer = { engine, transport, store, events, contents, hash, text, hex, book };
+  window.peer = { engine, transport, store, events, contents, marks, hash, text, hex, book };
+  window.markRead = async (address) => {
+    const receipt = { room, identity, device, address: Uint8Array.from(address), signature: new Uint8Array(64) };
+    await engine.receiveReceipt(receipt);
+    transport.receipt(receipt);
+  };
   window.invite = () => book.invite(location.origin + "/");
   window.accept = (link) => { const inviter = book.accept(link); transport.reach(inviter); return hex(inviter); };
   window.reachOnly = (identityHex) => transport.reach(unhex(identityHex));
@@ -176,6 +190,10 @@ test("two browsers meet over the rendezvous, prove their identities, sync, forwa
   }), null);
   assert.deepEqual(await ben.tab.evaluate(() => window.peer.transport.peers()), [ada.info.identity]);
 
+  // A receipt reaches a connected member at once, and a member who connects later on connect.
+  await ada.tab.evaluate(() => window.markRead(Array.from(window.peer.events[0].address)));
+  await ben.tab.waitForFunction(() => window.peer.marks.size === 1, null, { timeout: 5_000 });
+
   // Typing is ephemeral: Ben hears Ada start and stop, and a notice not renewed runs out.
   const typingIn = (side) => side.tab.evaluate(() => window.peer.transport.typingIn(window.peer.engine.rooms()[0]));
   await ada.tab.evaluate(() => window.peer.transport.typing(window.peer.engine.rooms()[0], true));
@@ -206,6 +224,7 @@ test("two browsers meet over the rendezvous, prove their identities, sync, forwa
   await cam.tab.waitForFunction((b) => window.peer.book.devicesOf(window.peer.hash(window.peer.text("identity ben"))).length === 1, null, { timeout: 30_000 });
   await cam.tab.waitForFunction((b) => window.peer.transport.peers().includes(b), ben.info.identity, { timeout: 30_000 });
   await cam.tab.waitForFunction(() => window.peer.events.length === 3, null, { timeout: 10_000 });
+  await cam.tab.waitForFunction(() => window.peer.marks.size >= 1, null, { timeout: 10_000 });
 
   // stop() is final: no hello or event brings the transport back.
   await cam.tab.evaluate(() => window.peer.transport.stop());
@@ -332,6 +351,9 @@ test("a consenting member fetches content for a member with no direct path to it
     await transport.announce(message);
   });
   await cy.tab.waitForFunction(() => window.peer.events.some((e) => new TextDecoder().decode(e.bytes) === "an event across networks"), null, { timeout: 10_000 });
+  // So do receipts: signed by their reader, they are relayed like events.
+  await ana.tab.evaluate(() => window.markRead(Array.from(window.peer.events.at(-1).address)));
+  await cy.tab.waitForFunction((a) => window.peer.marks.has(a), ana.info.identity, { timeout: 10_000 });
   const fetched = await cy.tab.evaluate(async (a) => {
     const bytes = await window.peer.transport.fetch(Uint8Array.from(a));
     return bytes && new TextDecoder().decode(bytes);

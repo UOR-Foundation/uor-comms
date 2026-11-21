@@ -11,6 +11,7 @@ import { hex, unhex } from "./event.mjs";
 export function memoryStore(hash) {
   const held = new Map();
   const events = new Map();
+  const marks = new Map();
   return {
     /** Stores the bytes and returns their address. Storing the same bytes twice keeps one copy. */
     async put(bytes, claimed) {
@@ -38,6 +39,14 @@ export function memoryStore(hash) {
     async events() {
       return [...events.values()];
     },
+    /** Keeps this device's read marker for a room (a signed receipt), replacing the room's last one. */
+    async putMark(mark) {
+      marks.set(hex(mark.room), { ...mark });
+    },
+    /** This device's read markers, one per room. */
+    async marks() {
+      return [...marks.values()];
+    },
     evicted: false,
     get size() {
       return held.size;
@@ -59,10 +68,10 @@ function request(req) {
  */
 export async function browserStore(hash, { name = "default" } = {}) {
   const db = await new Promise((resolve, reject) => {
-    const open = indexedDB.open("uor-comms:" + name, 1);
+    const open = indexedDB.open("uor-comms:" + name, 2);
     open.onupgradeneeded = () => {
-      open.result.createObjectStore("bytes");
-      open.result.createObjectStore("events");
+      const names = open.result.objectStoreNames;
+      for (const store of ["bytes", "events", "marks"]) if (!names.contains(store)) open.result.createObjectStore(store);
     };
     open.onsuccess = () => resolve(open.result);
     open.onerror = () => reject(open.error);
@@ -98,6 +107,14 @@ export async function browserStore(hash, { name = "default" } = {}) {
     async putEvent({ address, bytes, signature }) {
       await request(tx("events", "readwrite").put({ bytes: bytes.slice(), signature: signature?.slice() ?? null }, hex(address)));
       remember();
+    },
+    async putMark(mark) {
+      await request(tx("marks", "readwrite").put({ room: mark.room.slice(), address: mark.address.slice(),
+        signature: mark.signature?.slice() ?? null }, hex(mark.room)));
+    },
+    async marks() {
+      return (await request(tx("marks", "readonly").getAll()))
+        .map((m) => ({ room: new Uint8Array(m.room), address: new Uint8Array(m.address), signature: m.signature ? new Uint8Array(m.signature) : null }));
     },
     async events() {
       const store = tx("events", "readonly");
