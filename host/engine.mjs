@@ -417,6 +417,16 @@ export function open({ identity, device, kernel, hash, store, signer, verdict, t
     async mayChangeSetting(roomId, setting, value) {
       return (await settingChange(roomId, setting, value)).allowed;
     },
+    /**
+     * Whether this device may forward for a member of the room who has no direct path to the holder:
+     * the kernel's answer (`Comms.Reach::mayForward`) on this identity's standing, the consent given and
+     * the path. A device of this identity is its own member, so it is never forwarding for someone else's.
+     */
+    async mayForward(roomId, { consented = false, directPath = false } = {}) {
+      const room = rooms.get(hex(roomId));
+      if (!room) return false;
+      return kernel.forward(standing(room.state, identity).status, false, consented, directPath);
+    },
     /** Sends content. The content is stored by address; the event carries only the address. */
     async send(room, contentBytes, options) {
       if (["refused", "newer"].includes(await kernel.content(contentBytes))) throw new Refused("content");

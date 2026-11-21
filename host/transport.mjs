@@ -67,7 +67,7 @@ export function ntfyRendezvous({ base = "https://ntfy.sh", fetcher = globalThis.
 export function webrtcTransport({
   rendezvous, signer, verdict, hash, store,
   RTCPeerConnectionClass = globalThis.RTCPeerConnection,
-  iceServers = PUBLIC_STUN, helloEvery = 10_000, setupWithin = 15_000, typingFor = 6_000, now = () => Date.now(),
+  iceServers = PUBLIC_STUN, helloEvery = 10_000, setupWithin = 15_000, typingFor = 6_000, forward = false, now = () => Date.now(),
   random = (n) => crypto.getRandomValues(new Uint8Array(n)),
 }) {
   const self = hex(random(16));
@@ -84,6 +84,9 @@ export function webrtcTransport({
   const delivered = new Set(); // addresses a proven peer holds or was sent over an open channel
   const deliveryListeners = new Set();
   const reached = new Set(); // identities to meet though no room is shared yet
+  // Whether this device forwards content for members with no direct path to its holder: the person's
+  // consent (`Comms.Reach::mayForward` needs it), off unless given.
+  let forwarding = Boolean(forward);
   // Typing (item 12): never stored or ordered. A notice lasts `typingFor` unless renewed.
   const typists = new Map(); // room hex -> Map(identity hex -> timer)
   const typingListeners = new Set();
@@ -308,13 +311,41 @@ export function webrtcTransport({
     if (message.t === "get") {
       // Only content an admitted message names in a room this peer may see.
       const address = unb64(message.address);
-      const visible = engine.rooms().some((room) => mayShare(peer, room) && engine.carries(room, address));
-      const bytes = visible ? await store.get(address) : null;
+      const room = engine.rooms().find((r) => mayShare(peer, r) && engine.carries(r, address));
+      let bytes = room ? await store.get(address) : null;
+      // The asker found no peer holding it (no direct path): a consenting member may fetch it one hop on.
+      if (!bytes && room && message.relay && forwarding
+        && (await engine.mayForward(room, { consented: true, directPath: false }))) {
+        bytes = await ask([...peers.values()].filter((p) => p.identity && p !== peer), address, false);
+      }
       return send(peer, { t: "got", id: message.id, bytes: bytes ? b64(bytes) : null });
     }
     if (message.t === "got") pending.get(message.id)?.(message.bytes ? unb64(message.bytes) : null);
     // Only from a peer that may see the room, and for its own proven identity.
     if (message.t === "typing" && mayShare(peer, unb64(message.room))) typed(hex(unb64(message.room)), peer.identity, Boolean(message.on));
+  }
+
+  /**
+   * Bytes by address from the given peers, checked against the address; null after five seconds.
+   * With `relay`, a peer that lacks them may forward the request one hop (it is sent on without `relay`).
+   */
+  function ask(ready, address, relay) {
+    if (!ready.length) return Promise.resolve(null);
+    return new Promise((resolve) => {
+      let open = ready.length;
+      const ids = [];
+      const finish = (bytes) => { for (const id of ids) pending.delete(id); resolve(bytes); };
+      const timeout = setTimeout(() => finish(null), 5_000);
+      for (const peer of ready) {
+        const id = hex(random(8));
+        ids.push(id);
+        pending.set(id, (bytes) => {
+          if (bytes && hex(hash(bytes)) === hex(address)) { clearTimeout(timeout); finish(bytes); }
+          else if (--open === 0) { clearTimeout(timeout); finish(null); }
+        });
+        send(peer, { t: "get", id, address: b64(address), relay });
+      }
+    });
   }
 
   /** The keys of a room's other members this device knows (introductions, decision 20). */
@@ -415,26 +446,16 @@ export function webrtcTransport({
     typingIn: (room) => [...(typists.get(hex(room))?.keys() ?? [])],
     /** Hears `{ room, identity, on }` (hex) when someone starts or stops, or a notice runs out. */
     onTyping(listener) { typingListeners.add(listener); return () => typingListeners.delete(listener); },
-    /** Bytes by address from any connected peer, checked against the address; null after five seconds. */
+    /**
+     * Bytes by address from connected peers, checked against the address. When none holds them, asks
+     * again for a consenting member to fetch them one hop on (the member relay); null if that fails too.
+     */
     async fetch(address) {
       const ready = [...peers.values()].filter((p) => p.identity);
-      if (!ready.length) return null;
-      return new Promise((resolve) => {
-        let open = ready.length;
-        const ids = [];
-        const finish = (bytes) => { for (const id of ids) pending.delete(id); resolve(bytes); };
-        const timeout = setTimeout(() => finish(null), 5_000);
-        for (const peer of ready) {
-          const id = hex(random(8));
-          ids.push(id);
-          pending.set(id, (bytes) => {
-            if (bytes && hex(hash(bytes)) === hex(address)) { clearTimeout(timeout); finish(bytes); }
-            else if (--open === 0) { clearTimeout(timeout); finish(null); }
-          });
-          send(peer, { t: "get", id, address: b64(address) });
-        }
-      });
+      return (await ask(ready, address, false)) ?? ask(ready, address, true);
     },
+    /** Gives or withdraws this person's consent to forward content for members with no direct path. */
+    forwarding(on) { forwarding = Boolean(on); },
     /** Meets a person by identity though no room is shared yet: after accepting their invite. */
     reach(identity) {
       reached.add(hex(identity));

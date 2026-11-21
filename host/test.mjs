@@ -647,3 +647,18 @@ test("content of a newer version or unknown kind is listed as unknown, not lost,
   const { messages } = await ben.engine.messages(room);
   assert.deepEqual(messages.map((m) => [m.unknown, m.version, m.kind]), [[true, 2, 1], [true, 1, 9]]);
 });
+
+test("a device forwards for a member only with consent, as a joined member, and only without a direct path", async () => {
+  const wire = direct();
+  const ada = await peer("ada", wire);
+  const ben = await peer("ben", wire);
+  const eve = await peer("eve", wire);
+  const room = await ada.engine.createDirect(ben.identity);
+  assert.equal(await ada.engine.mayForward(room, { consented: true }), true);
+  assert.equal(await ada.engine.mayForward(room, { consented: false }), false);
+  assert.equal(await ada.engine.mayForward(room, { consented: true, directPath: true }), false);
+  // Ben is invited, not joined; Eve is not in the room; an unknown room forwards nothing.
+  assert.equal(await ben.engine.mayForward(room, { consented: true }), false);
+  assert.equal(await eve.engine.mayForward(room, { consented: true }), false);
+  assert.equal(await ada.engine.mayForward(hash(text("no room")), { consented: true }), false);
+});
