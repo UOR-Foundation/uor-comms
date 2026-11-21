@@ -272,7 +272,7 @@ theorem{
   parameters: [version : Nat, kind : Nat],
   statement: (((version =? 1) && ((3 <? kind) && (not (Comms.Content::newer version kind)))) = false),
   proof: linear_arithmetic{definitions: [Comms.Content::newer]},
-  axioms: [Quot.sound, propext]
+  axioms: [Classical.choice, Quot.sound, propext]
 }
 \end{semanticmodule}
 \end{lexlean}
