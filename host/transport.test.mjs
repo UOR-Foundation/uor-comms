@@ -22,7 +22,7 @@ import { deviceBook, newDeviceKey } from "/host/trust.mjs";
 import { blake3 } from "/try/vendor/prism-code/src/blake3.mjs";
 const hash = (b) => blake3(b);
 const text = (t) => new TextEncoder().encode(t);
-window.setup = async (name, other, holds = true, lossy = false) => {
+window.setup = async (name, other, holds = true, lossy = false, { refuse = [], forward = false } = {}) => {
   const identity = hash(text("identity " + name));
   const book = deviceBook({ hash, own: { identity, ...(await newDeviceKey()) } });
   const device = book.device;
@@ -39,6 +39,8 @@ window.setup = async (name, other, holds = true, lossy = false) => {
     rooms: () => (held ? [room] : []),
     members: () => members.map((member) => ({ member, status: 2 })),
     carries: (_room, address) => contents.has(hex(address)),
+    // The kernel's mayForward is tested in host/test.mjs; here a member that consents may forward.
+    mayForward: async (_room, { consented }) => consented && held,
     eventsOf: () => events.slice(),
     eventOf: (_room, address) => events.find((e) => hex(e.address) === hex(address)) ?? null,
     subscribe: (l) => { listeners.add(l); return () => listeners.delete(l); },
@@ -63,11 +65,14 @@ window.setup = async (name, other, holds = true, lossy = false) => {
     if (!lost && JSON.parse(text).t === "offer") { lost = true; return Promise.resolve(); }
     return relay.publish(topic, text);
   } };
+  // A peer refused here never connects directly: a stand-in for two networks with no path between them.
+  const refused = new Set([].concat(refuse).map((o) => hex(hash(text("identity " + o)))));
+  const verdict = (identity, device) => (refused.has(hex(identity)) ? false : book.verdict(identity, device));
   const transport = webrtcTransport({
     rendezvous,
     signer: book,
-    verdict: book.verdict,
-    hash, store, helloEvery: 500, setupWithin: 10_000, typingFor: 1_500,
+    verdict,
+    hash, store, helloEvery: 500, setupWithin: 10_000, typingFor: 1_500, forward,
   });
   transport.bind(engine);
   window.peer = { engine, transport, store, events, contents, hash, text, hex, book };
@@ -284,5 +289,59 @@ test("a peer whose offer was lost is set up again once the setup deadline passes
   await joe.tab.waitForFunction((i) => window.peer.transport.peers().includes(i), ivy.info.identity, { timeout: 40_000 });
   await ivy.tab.waitForFunction((j) => window.peer.transport.peers().includes(j), joe.info.identity, { timeout: 10_000 });
   for (const side of [ivy, joe]) await side.tab.evaluate(() => window.peer.transport.stop());
+  assert.deepEqual(errors, []);
+});
+
+test("a consenting member fetches content for a member with no direct path to its holder, and stops when consent is withdrawn", async (t) => {
+  const { url, close } = await serve();
+  t.after(close);
+  const browser = await chromium.launch();
+  t.after(() => browser.close());
+  const errors = [];
+  const open = async (name, other, options) => {
+    const tab = await (await browser.newContext()).newPage();
+    tab.on("pageerror", (e) => errors.push(e));
+    await tab.goto(url);
+    await tab.waitForFunction(() => window.ready === true);
+    return { tab, info: await tab.evaluate(([n, o, opt]) => window.setup(n, o, true, false, opt), [name, other, options]) };
+  };
+  // Ana and Cy refuse each other's proofs, so they never connect; Bo reaches both and consents to forward.
+  const ana = await open("ana", ["bo", "cy"], { refuse: ["cy"] });
+  const bo = await open("bo", ["ana", "cy"], { forward: true });
+  const cy = await open("cy", ["ana", "bo"], { refuse: ["ana"] });
+  for (const side of [ana, cy]) await side.tab.evaluate((l) => window.accept(l), await bo.tab.evaluate(() => window.invite()));
+  await Promise.all([ana, bo, cy].map(({ tab }) => tab.evaluate(() => window.peer.transport.start())));
+  for (const side of [ana, cy]) await bo.tab.waitForFunction((i) => window.peer.transport.peers().includes(i), side.info.identity, { timeout: 30_000 });
+  // Each side checks the other's proof in its own time: wait for Ana's and Cy's view of Bo too.
+  for (const side of [ana, cy]) await side.tab.waitForFunction((b) => window.peer.transport.peers().includes(b), bo.info.identity, { timeout: 30_000 });
+  // Only Ana holds the bytes; every member's engine has admitted the message that names them.
+  const address = await ana.tab.evaluate(async () => {
+    const { store, text, hex, contents } = window.peer;
+    const at = await store.put(text("from the other network"));
+    contents.add(hex(at));
+    return Array.from(at);
+  });
+  for (const side of [bo, cy]) await side.tab.evaluate((a) => window.peer.contents.add(window.peer.hex(Uint8Array.from(a))), address);
+  assert.equal(await cy.tab.evaluate(() => window.peer.transport.peers().length), 1);
+  // Events already cross: Bo relays what it admits to the members it reaches.
+  await ana.tab.evaluate(async () => {
+    const { engine, transport, hash, text } = window.peer;
+    const bytes = text("an event across networks");
+    const message = { address: hash(bytes), bytes, signature: null };
+    await engine.receive(message);
+    await transport.announce(message);
+  });
+  await cy.tab.waitForFunction(() => window.peer.events.some((e) => new TextDecoder().decode(e.bytes) === "an event across networks"), null, { timeout: 10_000 });
+  const fetched = await cy.tab.evaluate(async (a) => {
+    const bytes = await window.peer.transport.fetch(Uint8Array.from(a));
+    return bytes && new TextDecoder().decode(bytes);
+  }, address);
+  assert.equal(fetched, "from the other network");
+  // Bo did not keep a copy: forwarding passes the bytes on.
+  assert.equal(await bo.tab.evaluate((a) => window.peer.store.has(Uint8Array.from(a)), address), false);
+  // Without consent nothing is forwarded.
+  await bo.tab.evaluate(() => window.peer.transport.forwarding(false));
+  assert.equal(await cy.tab.evaluate((a) => window.peer.transport.fetch(Uint8Array.from(a)), address), null);
+  for (const side of [ana, bo, cy]) await side.tab.evaluate(() => window.peer.transport.stop());
   assert.deepEqual(errors, []);
 });

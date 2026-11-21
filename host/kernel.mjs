@@ -92,6 +92,12 @@ export function kernel(dispatch) {
       (await ask(0x16, [[sender.status, 1], [sender.power, 8], [settingsPower, 8], flag(direct), eventBytes])) === "composed",
     /** A setting's default (`Comms.Settings::defaultOf`); every default is 0 or 50 (`everyDefaultIsZeroOrFifty`). */
     defaultOf: async (key) => Number(await ask(0x17, [[key, 8]])),
+    /**
+     * Whether a device may forward for a peer with no direct path (`Comms.Reach::mayForward`, operation 19):
+     * only with consent, and only a joined member or a device a member owns.
+     */
+    forward: async (forwarderStatus, ownedByMember, consented, directPath) =>
+      (await ask(0x13, [[forwarderStatus, 1], flag(ownedByMember), flag(consented), flag(directPath)])) === "forward",
     /** What to do next in a send: `sign`, `store`, `announce` or `nothing`. */
     sendStep: (phase, report) => ask(0x08, [[phase, 1], [report, 1]]),
   };
