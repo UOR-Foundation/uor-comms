@@ -595,13 +595,18 @@ test("room settings: the kernel's defaults, changed by event, read by every peer
     const now = await side.engine.state(room);
     assert.deepEqual([hex(now.name), now.open], [hex(hash(title)), true]);
     assert.equal(side.engine.timeline(room).events.filter((e) => e.action === ACTION.change).length, 2);
+    // The name's bytes are served to any member, as a message's are.
+    assert.equal(side.engine.carries(room, hash(title)), true);
   }
   // Open: Cam, on the same wire, holds the room and joins without an invitation.
   await cam.engine.join(room);
   assert.equal(standing(ada.engine, room, cam.identity).status, 2);
   // Ben has power 0: he changes nothing, and a change he writes anyway is refused on receipt.
   assert.equal(await ben.engine.mayChangeSetting(room, "name", text("mine")), false);
-  await assert.rejects(ben.engine.changeSetting(room, "name", text("mine")), { reason: "not allowed" });
+  await assert.rejects(ben.engine.changeSetting(room, "name", text("mine")), { reason: "needs power" });
+  // Asking stores nothing; only a change does.
+  assert.equal(await ada.engine.mayChangeSetting(room, "name", text("asked only")), true);
+  assert.equal(await ada.store.has(hash(text("asked only"))), false);
   const heads = ben.engine.timeline(room).events.at(-1).address;
   const forged = encode({ action: ACTION.change, room, sender: ben.identity, device: ben.device, target: new Uint8Array(32), parents: [heads] });
   assert.deepEqual((await ada.engine.receive({ address: hash(forged), bytes: forged, signature: await ben.options.signer.sign(forged) })).reason, "not allowed");

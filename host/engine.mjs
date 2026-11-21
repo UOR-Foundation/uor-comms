@@ -210,7 +210,9 @@ export function open({ identity, device, kernel, hash, store, signer, verdict, t
     const depth = fields.parents.reduce((most, a) => Math.max(most, target.events.get(hex(a)).depth + 1), 0);
     const event = { address, bytes, signature, fields, depth };
     target.events.set(hex(address), event);
-    if (fields.action === ACTION.send) {
+    // A message's content, and a settings change's name, description or picture, may be fetched by members.
+    const namesContent = (action, content) => (action === ACTION.send || action === ACTION.change) && !isZero(content);
+    if (namesContent(fields.action, fields.content)) {
       const naming = target.contents.get(hex(fields.content)) ?? new Set();
       target.contents.set(hex(fields.content), naming.add(hex(address)));
     }
@@ -218,7 +220,7 @@ export function open({ identity, device, kernel, hash, store, signer, verdict, t
     if (fields.action === ACTION.redact) {
       target.redacted.add(hex(fields.target));
       const redacted = target.events.get(hex(fields.target));
-      if (redacted.fields.action === ACTION.send) await withdraw(redacted.fields.content);
+      if (namesContent(redacted.fields.action, redacted.fields.content)) await withdraw(redacted.fields.content);
     }
     for (const parent of fields.parents) target.heads.delete(hex(parent));
     target.heads.add(hex(address));
@@ -312,7 +314,7 @@ export function open({ identity, device, kernel, hash, store, signer, verdict, t
   }
 
   /** The change of setting this identity would send now, and whether the kernel admits it. */
-  async function settingChange(roomId, setting, value) {
+  async function settingChange(roomId, setting, value, keep = false) {
     const room = rooms.get(hex(roomId));
     if (!room) throw new Refused("unknown room");
     let key;
@@ -320,7 +322,8 @@ export function open({ identity, device, kernel, hash, store, signer, verdict, t
     let content = ZERO;
     if (setting in SETTING && SETTING[setting] <= SETTING.picture) {
       key = SETTING[setting];
-      if (value !== null) content = await store.put(value);
+      // Asking (`mayChangeSetting`) only names the bytes; changing stores them.
+      if (value !== null) content = keep ? await store.put(value) : hash(value);
     } else if (setting === "open") {
       key = SETTING.open;
       granted = value ? 1 : 0;
@@ -399,11 +402,14 @@ export function open({ identity, device, kernel, hash, store, signer, verdict, t
      * for x in invite, kick, ban, unban, send, setPower, redact, settings, with a number.
      */
     async changeSetting(roomId, setting, value, { onStep } = {}) {
-      const { room, bytes, allowed } = await settingChange(roomId, setting, value);
+      const { room, bytes, allowed } = await settingChange(roomId, setting, value, true);
       if (!allowed) {
+        // The send rule names banned and not joined; below the room's settings power is needs power;
+        // anything else the change rule refuses is not allowed. Naming the reason is host code, not modelled.
         const me = standing(room.state, identity);
         const why = await kernel.reason(ACTION.send, me, me, await roomFor(room.state, ACTION.send), 0);
-        throw new Refused(why === "permitted" || why === "needs power" ? "not allowed" : why);
+        const below = me.power < (await valueOf(room.state, SETTING.settings));
+        throw new Refused(why === "permitted" || why === "needs power" ? (below ? "needs power" : "not allowed") : why);
       }
       return publish(bytes, onStep);
     },
