@@ -76,7 +76,7 @@ The holo's entry point, `RoomKernel.dispatch`, answers twenty-three operations. 
 | Compose | 8 | a send citing one parent; version 2; banned sender; parents out of order; two parents in order; a parent count the words do not match; a trailing byte; no parents |
 | Compose a redaction | 6 | another's event with the redaction power; without it; their own event without it; a send asked as a redaction; banned sender; a trailing byte |
 | Create a room | 6 | a room; a direct room; an ordinary action; an event that names a room; one that cites a parent; a trailing byte |
-| Read content | 14 | content of version 2 and of version 1 with kind 4 (newer); a message; a reply with two mentions; an edit; a reaction; an edit naming nothing; a reaction naming nothing; empty text; a NUL in text; a space in a reaction key; mentions out of order; an attachment; a trailing byte |
+| Read content | 14 | content of version 2 and of version 1 with kind 4, each 19 bytes (newer); a message; a reply with two mentions; an edit; a reaction; an edit naming nothing; a reaction naming nothing; empty text; a NUL in text; a space in a reaction key; mentions out of order; an attachment; a trailing byte |
 | Direct room | 3 | an invitation in a direct room; in another room; a join in a direct room |
 | Queue | 4 | invited; joined with power; the same in a direct room; a stranger in a closed room |
 | Relay tree | 3 | a parent, a non-parent, the publisher |
