@@ -329,6 +329,8 @@ test("a consenting member fetches content for a member with no direct path to it
   const bo = await open("bo", ["ana", "cy"], { forward: true });
   const cy = await open("cy", ["ana", "bo"], { refuse: ["ana"] });
   for (const side of [ana, cy]) await side.tab.evaluate((l) => window.accept(l), await bo.tab.evaluate(() => window.invite()));
+  const reachOf = (side) => side.tab.evaluate(() => window.peer.transport.reachability(window.peer.engine.rooms()[0]));
+  assert.deepEqual(await reachOf(cy), { [ana.info.identity]: "none", [bo.info.identity]: "none" });
   await Promise.all([ana, bo, cy].map(({ tab }) => tab.evaluate(() => window.peer.transport.start())));
   for (const side of [ana, cy]) await bo.tab.waitForFunction((i) => window.peer.transport.peers().includes(i), side.info.identity, { timeout: 30_000 });
   // Each side checks the other's proof in its own time: wait for Ana's and Cy's view of Bo too.
@@ -342,6 +344,8 @@ test("a consenting member fetches content for a member with no direct path to it
   });
   for (const side of [bo, cy]) await side.tab.evaluate((a) => window.peer.contents.add(window.peer.hex(Uint8Array.from(a))), address);
   assert.equal(await cy.tab.evaluate(() => window.peer.transport.peers().length), 1);
+  // Cy reaches Bo directly, and Ana only through a member.
+  assert.deepEqual(await reachOf(cy), { [ana.info.identity]: "members", [bo.info.identity]: "direct" });
   // Events already cross: Bo relays what it admits to the members it reaches.
   await ana.tab.evaluate(async () => {
     const { engine, transport, hash, text } = window.peer;

@@ -100,7 +100,9 @@ export function webrtcTransport({
   };
   const unhexId = (h) => Uint8Array.from(h.match(/../g), (x) => parseInt(x, 16));
 
+  const reachListeners = new Set();
   const setStatus = () => {
+    for (const listener of reachListeners) listener();
     const next = [...peers.values()].some((p) => p.identity) ? "online"
       : peers.size > 0 || topics.size > 0 ? "connecting" : "offline";
     if (next === status) return;
@@ -456,6 +458,18 @@ export function webrtcTransport({
     },
     /** The engine gives this identity's receipts here; they go to every connected peer that may see the room. */
     receipt(r) { shareReceipt(r); },
+    /**
+     * For each other member the room lists (hex): "direct" (a device of theirs is a proven peer), "members"
+     * (another member, or another device of this identity, is connected and may relay) or "none".
+     */
+    reachability(room) {
+      const connected = new Set([...peers.values()].filter((p) => p.identity).map((p) => p.identity));
+      const others = engine.members(room).filter((m) => SHARED.has(m.status) && m.member !== hex(engine.identity));
+      const relay = connected.has(hex(engine.identity)) || others.some((m) => connected.has(m.member));
+      return Object.fromEntries(others.map((m) => [m.member, connected.has(m.member) ? "direct" : relay ? "members" : "none"]));
+    },
+    /** Hears each change of connected or proven peers: then `reachability` may answer differently. */
+    onReachability(listener) { reachListeners.add(listener); return () => reachListeners.delete(listener); },
     /** Tells the room's connected members this identity is typing (`on`) or stopped. Nothing is kept. */
     typing(room, on) {
       for (const peer of peers.values()) if (mayShare(peer, room)) send(peer, { t: "typing", room: b64(room), on: Boolean(on) });
