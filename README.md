@@ -1,6 +1,6 @@
-![UOR Foundation placeholder artwork used for UOR Comms, not an approved product banner](assets/readme-banner-PLACEHOLDER.png)
+![UOR Comms provisional banner: modeled peer messaging, not approved](assets/readme-banner-PLACEHOLDER.png)
 
-*Illustrative UOR Foundation placeholder while a UOR Comms-specific PNG awaits asset availability and brand approval.*
+*Illustrative UOR Comms placeholder artwork, pending UOR Foundation brand approval.*
 
 # UOR Comms
 
