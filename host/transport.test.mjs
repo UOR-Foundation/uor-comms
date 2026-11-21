@@ -312,6 +312,8 @@ test("a consenting member fetches content for a member with no direct path to it
   for (const side of [ana, cy]) await side.tab.evaluate((l) => window.accept(l), await bo.tab.evaluate(() => window.invite()));
   await Promise.all([ana, bo, cy].map(({ tab }) => tab.evaluate(() => window.peer.transport.start())));
   for (const side of [ana, cy]) await bo.tab.waitForFunction((i) => window.peer.transport.peers().includes(i), side.info.identity, { timeout: 30_000 });
+  // Each side checks the other's proof in its own time: wait for Ana's and Cy's view of Bo too.
+  for (const side of [ana, cy]) await side.tab.waitForFunction((b) => window.peer.transport.peers().includes(b), bo.info.identity, { timeout: 30_000 });
   // Only Ana holds the bytes; every member's engine has admitted the message that names them.
   const address = await ana.tab.evaluate(async () => {
     const { store, text, hex, contents } = window.peer;
