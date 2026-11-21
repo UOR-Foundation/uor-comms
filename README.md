@@ -1,8 +1,25 @@
+![UOR COMMS visual banner: MODELED PEER MESSAGING · EXPERIMENTAL](assets/readme-banner.svg)
+
 # UOR Comms
+
+[![Bootstrap](https://github.com/UOR-Foundation/uor-comms/actions/workflows/bootstrap.yml/badge.svg?branch=main)](https://github.com/UOR-Foundation/uor-comms/actions/workflows/bootstrap.yml)
+[![Build](https://github.com/UOR-Foundation/uor-comms/actions/workflows/build.yml/badge.svg?branch=main)](https://github.com/UOR-Foundation/uor-comms/actions/workflows/build.yml)
+[![License: MIT OR Apache-2.0](https://img.shields.io/badge/license-MIT%20OR%20Apache--2.0-718096)](LICENSE-MIT)
 
 **An experimental, serverless messaging engine with a modeled room kernel and an early JavaScript host.** The project explores how peers can agree on room membership, permissions, event admission, ordering, and messaging decisions without relying on a central room server.
 
 **Status: active development, not a production-ready messenger.** The repository contains a LexLean room model, Lean proofs of specific properties, acceptance vectors, and host-level tests. It does **not** establish end-to-end encrypted messaging, finished Prism ID integration, or general internet/NAT connectivity. Read [the evidence and open boundaries](docs/STATUS.md) before relying on any security or deployment claim.
+
+## Contents
+
+- [Why this exists](#why-this-exists)
+- [What the repository currently contains](#what-the-repository-currently-contains)
+- [Known boundaries](#known-boundaries)
+- [Developer quick start](#developer-quick-start)
+- [Kernel operations](#kernel-operations)
+- [Everyday development commands](#everyday-development-commands)
+- [Architecture and navigation](#architecture-and-navigation)
+- [Contributing, authority, and license](#contributing-authority-and-license)
 
 ## Why this exists
 
