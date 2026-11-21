@@ -111,7 +111,7 @@ Feature: room
     And createAnswer in RoomKernel.lex.tex contains ((Comms.Event::shaped words) && (Comms.Create::mayCreate (Comms.Event::wordAt words 0) (Comms.Event::wordAt words 1)
     And routeHigh in RoomKernel.lex.tex contains (if ((operation =? 12) && (201 <=? length)) then (createAnswer value length)
     And contentAnswer in RoomKernel.lex.tex contains (Comms.Content::kindIn value 1 (prim subtract length 1 : Nat))
-    And contentAnswer in RoomKernel.lex.tex contains (if (Comms.Content::newerIn value 1 (prim subtract length 1 : Nat)) then (prim utf8_encode "unknown" : Bytes)
+    And contentAnswer in RoomKernel.lex.tex contains (if (Comms.Content::newerIn value 1 (prim subtract length 1 : Nat)) then (prim utf8_encode "newer" : Bytes)
     And routeHigh in RoomKernel.lex.tex contains (if ((operation =? 13) && (2 <=? length)) then (contentAnswer value length)
     And directAnswer in RoomKernel.lex.tex contains (Comms.Create::directAllows (natAt value 1 1 0) (natAt value 2 1 0))
     And routeHigh in RoomKernel.lex.tex contains (if ((operation =? 14) && (length =? 3)) then (directAnswer value)

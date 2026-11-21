@@ -191,8 +191,8 @@ test("content version 1: the kernel reads a message, an edit and a reaction, and
   assert.equal(await kernel.content(encodeContent({ kind: KIND.reaction, key: "👍", relates: target })), "reaction");
   assert.equal(await kernel.content(encodeContent({ kind: KIND.edit, text: "fixed" })), "refused");
   assert.equal(await kernel.content(encodeContent({ text: "" })), "refused");
-  // Its first byte reads as version 112: content a later engine might write is unknown, not refused.
-  assert.equal(await kernel.content(text("plain bytes")), "unknown");
+  // Its first byte reads as version 112: content a newer engine might write is newer, not refused.
+  assert.equal(await kernel.content(text("plain bytes")), "newer");
   assert.equal(await kernel.content(Uint8Array.from([0, 1])), "refused");
   const wire = direct();
   const peerA = await peer("ada", wire);

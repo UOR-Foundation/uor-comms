@@ -60,7 +60,7 @@ export function kernel(dispatch) {
     /** `left`, `right` or `same`: which of two (rank, address) candidates comes first. */
     order: (leftRank, leftAddress, rightRank, rightAddress) =>
       ask(0x03, [[leftRank, 8], leftAddress, [rightRank, 8], rightAddress]),
-    /** What message content is: `message`, `edit`, `reaction` or `refused` (`Comms.Content::valid`). */
+    /** What message content is: `message`, `edit`, `reaction`, `newer` (a newer version or kind, `Comms.Content::newer`) or `refused`. */
     content: (contentBytes) => ask(0x0d, [contentBytes]),
     /**
      * Why the permission rule refuses an action, by name (`Comms.Reason::refusalOf`): `banned`, `closed`,
