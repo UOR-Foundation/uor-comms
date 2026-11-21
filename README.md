@@ -1,4 +1,6 @@
-![UOR COMMS visual banner: MODELED PEER MESSAGING · EXPERIMENTAL](assets/readme-banner.svg)
+![UOR Comms preliminary visual banner: modeled peer messaging, placeholder not approved](assets/readme-banner-PLACEHOLDER.png)
+
+*Illustrative placeholder artwork, pending UOR Foundation brand approval.*
 
 # UOR Comms
 
